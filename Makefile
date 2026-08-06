@@ -12,13 +12,13 @@ help:
 	@echo "   format                     : Formate le frontend Nuxt (Prettier)"
 	@echo "   audit                      : Audit des dépendances (composer audit + npm outdated/audit)"
 
-up:
+start:
 	@docker network inspect chatbot-proxy >/dev/null 2>&1 || docker network create chatbot-proxy
 	docker compose -f traefik/docker-compose.yml up -d
 	cd backend && docker compose -p backend_symfony up -d
 	$(MAKE) services-url
 
-down:
+stop:
 	cd backend && docker compose -p backend_symfony down
 	docker compose -f traefik/docker-compose.yml down
 
