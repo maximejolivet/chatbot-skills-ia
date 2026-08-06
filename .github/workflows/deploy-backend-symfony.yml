@@ -1,0 +1,234 @@
+# Single pipeline for backend/: lint + audit gate the deploy, all
+# in one job -- there's no separate CI-only workflow file for this project
+# (unlike a PR-checks-then-deploy split). A lint/audit failure stops the
+# job before whitelist/rsync/SSH ever run, same gating effect a separate
+# "build" job would give, without a second workflow file to keep in sync.
+#
+# Deploys to o2switch over SSH (shared cPanel hosting, domain:
+# chat-ia.jolivetmaxime.fr). o2switch restricts SSH access with an IP
+# whitelist (cPanel > Sécurité > Accès SSH): GitHub Actions runners get a
+# different IP on every run, so this workflow whitelists the runner's IP via
+# the cPanel API before attempting SSH.
+#
+# One job, not build+deploy split: unlike a static frontend, there's no
+# separate "build once, ship to multiple targets" concern here, and the
+# whitelist step MUST run in the same job as the SSH/rsync steps anyway
+# (every job gets a fresh runner VM with its own public IP -- whitelisting
+# in one job and using SSH in another would almost certainly whitelist the
+# wrong IP).
+#
+# Layout on the server: DEPLOY_PROJECT_PATH must be OUTSIDE the web-facing
+# document root (e.g. /home/{{user}}/repositories/chatbot-ia/backend)
+# -- only backend/public/ is meant to be reachable over HTTP. Point
+# the chat-ia.jolivetmaxime.fr subdomain's document root (cPanel > Domaines)
+# at "$DEPLOY_PROJECT_PATH/public", not at $DEPLOY_PROJECT_PATH itself:
+# pointing it there would serve src/, vendor/, .env, config/ directly.
+#
+# One-time manual prerequisites (not automated here):
+# - Select PHP 8.4 for the subdomain (cPanel > MultiPHP Manager).
+# - Create the PostgreSQL database and Qdrant Cloud collection, and have
+#   their connection details ready for DEPLOY_ENV_FILE below.
+#
+# Required secrets (Settings > Secrets and variables > Actions):
+# - DEPLOY_SSH_KEY          SSH private key (dedicated to deployment, not a personal key)
+# - DEPLOY_SSH_HOST         {{user}}.o2switch.net
+# - DEPLOY_SSH_USER         {{user}} (cPanel username)
+# - DEPLOY_PROJECT_PATH     /home/{{user}}/repositories/chatbot-ia/backend
+# - DEPLOY_CPANEL_PASSWORD  cPanel password -- ONLY used for the SSH whitelist
+#                           API (port 2083), unrelated to the SSH key above.
+# - DEPLOY_ENV_FILE         Full contents of the production .env: DATABASE_URL
+#                           (the o2switch PostgreSQL instance), ADMIN_USERNAME/
+#                           ADMIN_PASSWORD_HASH (bin/console security:hash-password),
+#                           QDRANT_HOST/QDRANT_PORT/QDRANT_API_KEY (Qdrant Cloud),
+#                           AI_PROVIDER=api_endpoint + AI_API_* (or configure
+#                           an AiProviderConfig row after the first deploy
+#                           instead), CORS_ALLOW_ORIGIN for the real frontend
+#                           origin. Never paste any of this in chat -- build
+#                           it in a local .env, then `gh secret set DEPLOY_ENV_FILE < .env`.
+#
+# Set all of the above yourself via `gh secret set` or the GitHub UI.
+#
+# workflow_dispatch takes a dry_run input: runs the whole pipeline (build,
+# whitelist, SSH) but passes --dry-run to rsync and skips writing .env/
+# running migrations -- a safe preview of what a deploy would change.
+
+name: Deploy chat-ia (backend)
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend-symfony.yml'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (rsync --dry-run, skip .env write and migrations)'
+        type: boolean
+        default: false
+
+# Queues overlapping runs instead of letting them race: two concurrent runs
+# would interleave whitelist add/remove calls and rsync to the same path.
+concurrency:
+  group: deploy-backend-${{ github.ref }}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production-backend
+      url: https://chat-ia.jolivetmaxime.fr
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Validate composer.json/composer.lock
+        run: composer validate --strict
+
+      # Dummy env, just enough for composer's post-install auto-scripts
+      # (cache:clear, assets:install) to boot the kernel on the runner --
+      # unrelated to the real production .env, which is written to the
+      # server later from the DEPLOY_ENV_FILE secret.
+      - name: Prepare .env for the build
+        run: cp .env.example .env
+
+      - name: Install dependencies (with dev, for the checks below)
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Lint YAML config
+        run: php bin/console lint:yaml config --parse-tags
+
+      - name: Lint Twig templates
+        run: php bin/console lint:twig templates
+
+      - name: Lint container
+        run: php bin/console lint:container
+
+      - name: Composer audit -- CVE scan
+        run: composer audit
+
+      # No PHPUnit/PHPStan suite is configured yet in this project -- add a
+      # `test`/static-analysis step here once one exists, rather than
+      # fabricating one.
+
+      # Rebuilt here (on the runner), never on the server -- no vendor/ from
+      # a previous deploy sits around to accidentally corrupt.
+      - name: Prune to production dependencies
+        run: composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction
+
+      # Inline instead of a third-party action: haythem/public-ip is
+      # unmaintained (last release 2022, deprecated Node 16 runtime) and
+      # does nothing more than call a public IP echo service.
+      - name: Get runner public IP
+        id: ip
+        run: echo "ipv4=$(curl -sS https://api.ipify.org)" >> "$GITHUB_OUTPUT"
+
+      # Logic lives in .github/scripts/o2switch-whitelist-backend-symfony.sh
+      # (checked out from repo root, hence ../.., since this job's default
+      # working-directory is backend/) -- extracted out of the
+      # workflow so it's testable/readable on its own, and named distinctly
+      # from the unrelated WordPress project's own o2switch-whitelist.sh on
+      # this same hosting account (different script, different state, must
+      # not share a filename).
+      - name: Whitelist runner IP on o2switch (and drop the 2 oldest)
+        env:
+          CPANEL_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          CPANEL_PASSWORD: ${{ secrets.DEPLOY_CPANEL_PASSWORD }}
+          CPANEL_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          RUNNER_IP: ${{ steps.ip.outputs.ipv4 }}
+        run: ../.github/scripts/o2switch-whitelist-backend-symfony.sh
+
+      - name: Wait for SSH port to open (post-whitelist propagation)
+        run: |
+          echo "Waiting for ${{ secrets.DEPLOY_SSH_HOST }}:22 to accept connections..."
+          for i in $(seq 1 24); do
+            if timeout 5 bash -c 'cat < /dev/null > /dev/tcp/${{ secrets.DEPLOY_SSH_HOST }}/22' 2>/dev/null; then
+              echo "TCP connect OK after $((i * 5))s"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::TCP connect to ${{ secrets.DEPLOY_SSH_HOST }}:22 still failing after 120s -- whitelist may not have propagated yet, or host/port is wrong."
+          exit 1
+
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Trust the remote host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -v "${{ secrets.DEPLOY_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      # var/ (cache/logs/uploaded documents) and .env are excluded from
+      # --delete too, not just from the sync source: --delete removes
+      # anything on the server not present here, and var/uploads/documents
+      # (uploaded knowledge-base files) plus the live .env only ever exist
+      # on the server, never in this checkout.
+      - name: Rsync to o2switch
+        run: |
+          rsync -avz --delete ${{ inputs.dry_run && '--dry-run' || '' }} \
+            --exclude '.env' --exclude '.env.*' \
+            --exclude 'var' \
+            --exclude '.git' \
+            . "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}:${{ secrets.DEPLOY_PROJECT_PATH }}/"
+
+      # Piped in via env: + a here-string rather than interpolated straight
+      # into the run: script, so the secret's content is never re-parsed by
+      # the shell.
+      - name: Deploy production .env
+        if: ${{ !inputs.dry_run }}
+        env:
+          ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
+        run: |
+          ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "cat > ${{ secrets.DEPLOY_PROJECT_PATH }}/.env" <<< "$ENV_FILE"
+
+      - name: Run database migrations
+        if: ${{ !inputs.dry_run }}
+        run: |
+          ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console doctrine:migrations:migrate --no-interaction"
+
+      - name: Warm up the prod cache
+        if: ${{ !inputs.dry_run }}
+        run: |
+          ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console cache:clear --env=prod --no-debug"
+
+      # Firewalled behind Basic Auth (see security.yaml), so a plain 200 is
+      # not the success signal -- 401 with the right WWW-Authenticate header
+      # means Symfony booted and the firewall is enforcing, which is the
+      # actual thing worth confirming here.
+      - name: Smoke test -- confirm the API is up and enforcing auth
+        if: ${{ !inputs.dry_run }}
+        run: |
+          for i in 1 2 3; do
+            STATUS=$(curl -sk -o /dev/null -w '%{http_code}' "https://chat-ia.jolivetmaxime.fr/api/ai_agents") && break
+            echo "Attempt $i failed, retrying in 5s..."
+            sleep 5
+          done
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" != "401" ] && [ "$STATUS" != "200" ]; then
+            echo "::error::Expected 401 (auth required) or 200, got $STATUS -- deploy likely broken."
+            exit 1
+          fi
