@@ -1,10 +1,5 @@
 # Cahier des charges — Frontend Nuxt/Vue (`frontend/`)
 
-> Périmètre : ce document couvre **uniquement** le frontend `frontend/` — un widget de chatbot Vue 3 / Nuxt 4, branché sur le backend Symfony (`backend/`). Il ne couvre pas le backend Symfony lui-même (voir [`docs/backend/SPECIFICATION.md`](../backend/SPECIFICATION.md)).
-
-Dernière mise à jour du document : 2026-08-06.
-
----
 
 ## 1. Présentation générale
 
@@ -25,19 +20,19 @@ Le head HTML (`nuxt.config.ts`) définit un titre **"3615 ASSISTANT — Chatbot 
 
 ## 2. Stack technique
 
-| Composant | Technologie / version | Rôle |
-|---|---|---|
-| Runtime | **Node.js 24** | |
-| Framework | **Nuxt 4.5** | SSR + routage fichier + serveur Nitro intégré |
-| Bundler / dev server | **Vite 8.2** (via Nuxt) | |
-| UI | **Vue 3.5** (Composition API, `<script setup>`) | |
-| Style | **`@nuxtjs/tailwindcss` 6.14** (Tailwind CSS) | Thème custom (`tailwind.config.js`), classes utilitaires (`assets/css/main.css`) |
-| Langage | **TypeScript 7.0** | |
-| HTTP client (déclaré) | **axios 1.19** | Présent en dépendance mais **non utilisé dans le code actuel** — les appels réseau passent tous par `$fetch` (natif Nuxt/ofetch) |
-| Emojis | **`unicode-emoji-json` 0.9** | Données statiques (par groupe) pour le sélecteur d'emoji du composant `Chatbot` |
-| Formatage | **Prettier 3.9** (`.prettierrc.json` : single quotes, semicolons, `printWidth: 100`) | |
-| Devtools | **`@nuxt/devtools`** | |
-| Conteneurisation | Servi comme service `nuxt` dans `backend/compose.yaml` (image `node:24-alpine`, build + `node .output/server/index.mjs`) | Pas de `Dockerfile` propre à ce projet |
+| Composant             | Technologie / version                                                                                                    | Rôle                                                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime               | **Node.js 24**                                                                                                           |                                                                                                                                  |
+| Framework             | **Nuxt 4.5**                                                                                                             | SSR + routage fichier + serveur Nitro intégré                                                                                    |
+| Bundler / dev server  | **Vite 8.2** (via Nuxt)                                                                                                  |                                                                                                                                  |
+| UI                    | **Vue 3.5** (Composition API, `<script setup>`)                                                                          |                                                                                                                                  |
+| Style                 | **`@nuxtjs/tailwindcss` 6.14** (Tailwind CSS)                                                                            | Thème custom (`tailwind.config.js`), classes utilitaires (`assets/css/main.css`)                                                 |
+| Langage               | **TypeScript 7.0**                                                                                                       |                                                                                                                                  |
+| HTTP client (déclaré) | **axios 1.19**                                                                                                           | Présent en dépendance mais **non utilisé dans le code actuel** — les appels réseau passent tous par `$fetch` (natif Nuxt/ofetch) |
+| Emojis                | **`unicode-emoji-json` 0.9**                                                                                             | Données statiques (par groupe) pour le sélecteur d'emoji du composant `Chatbot`                                                  |
+| Formatage             | **Prettier 3.9** (`.prettierrc.json` : single quotes, semicolons, `printWidth: 100`)                                     |                                                                                                                                  |
+| Devtools              | **`@nuxt/devtools`**                                                                                                     |                                                                                                                                  |
+| Conteneurisation      | Servi comme service `nuxt` dans `backend/compose.yaml` (image `node:24-alpine`, build + `node .output/server/index.mjs`) | Pas de `Dockerfile` propre à ce projet                                                                                           |
 
 **Aucun état global (Pinia/Vuex)** : l'état de l'ouverture du widget passe par `useState` (état Nuxt partagé SSR/client), l'état de la conversation par un simple `ref` local au composable `useChatbot`.
 
@@ -164,14 +159,14 @@ Composable Vue exposant tout l'état et les actions nécessaires à un composant
 **État interne** (`ChatbotState`) : `messages[]`, `isLoading`, `inputValue`, `error`, `selectedAgentId`, `agents[]`.
 
 **Actions exposées** :
-| Fonction | Rôle |
-|---|---|
-| `sendMessage(content)` | Push optimiste du message utilisateur → `POST /api/chat/quick-send` → push du message assistant, gestion d'erreur réseau |
-| `handleSubmit(event)` | Wrapper pour soumission de formulaire (`preventDefault` + `sendMessage`) |
-| `handleInputChange(event)` | Met à jour `inputValue`, réinitialise `error` |
-| `clearMessages()` | Vide l'historique local (aucun appel réseau, aucune suppression côté backend — la conversation n'est de toute façon pas persistée en mode `quick-send`) |
+| Fonction                    | Rôle                                                                                                                                                                              |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sendMessage(content)`      | Push optimiste du message utilisateur → `POST /api/chat/quick-send` → push du message assistant, gestion d'erreur réseau                                                          |
+| `handleSubmit(event)`       | Wrapper pour soumission de formulaire (`preventDefault` + `sendMessage`)                                                                                                          |
+| `handleInputChange(event)`  | Met à jour `inputValue`, réinitialise `error`                                                                                                                                     |
+| `clearMessages()`           | Vide l'historique local (aucun appel réseau, aucune suppression côté backend — la conversation n'est de toute façon pas persistée en mode `quick-send`)                           |
 | `setSelectedAgent(agentId)` | Change l'agent actif pour les prochains messages — exposée par le composable mais **plus appelée par aucun composant** depuis le retrait du sélecteur d'agent de l'UI (voir §4.2) |
-| `fetchAgents()` | `GET /api/ai_agents`, appelé automatiquement à `onMounted` |
+| `fetchAgents()`             | `GET /api/ai_agents`, appelé automatiquement à `onMounted`                                                                                                                        |
 
 **Gestion des agents** : le backend renvoie une collection **JSON-LD Hydra** (`{ member: [...] }`, convention API Platform) où le champ booléen `AiAgent.isActive` est sérialisé `active` (convention Symfony pour les getters `is*`). Le composable **déballe** `.member`, **renomme** `active` → `is_active`, puis **sélectionne automatiquement** le premier agent actif (`agents.find(a => a.is_active)`) comme `selectedAgentId` — sans intervention de l'utilisateur. Avec un seul agent actif côté backend (cas courant), c'est équivalent à un widget mono-agent fixe.
 
@@ -189,15 +184,15 @@ Wrapper minimal autour de `useState<boolean>('chat-widget-open', () => false)` �
 
 Ce frontend **ne met en œuvre aucune fonctionnalité LLM ou RAG lui-même** — il ne fait qu'exposer, via son UI, les capacités déjà orchestrées côté `backend`. Concrètement :
 
-| Fonctionnalité (implémentée côté backend) | Ce que fait ce frontend |
-|---|---|
-| **Chat / complétion LLM** (Ollama ou endpoint OpenAI-compatible) | Envoie le message utilisateur brut à `POST /api/chat/quick-send` ; affiche `response.response` tel quel. Aucune mise en forme (markdown, code, etc.) n'est appliquée — le contenu est rendu en texte brut (`white-space: pre-wrap`) |
-| **Sélection d'agent IA** (prompt système, RAG, outils spécifiques par agent) | Récupère la liste via `GET /api/ai_agents` et sélectionne **automatiquement** le premier agent actif (aucun choix laissé à l'utilisateur, pas de `<select>` dans l'UI) ; transmet son `agent_id` dans le body de `quick-send`. Le frontend ne fait aucune recherche vectorielle lui-même, ne configure aucun paramètre RAG (top-k, collection, etc.) |
-| **RAG (recherche documentaire contextuelle)** | Totalement transparent pour ce frontend : si l'agent sélectionné a une collection documentaire liée côté backend, le contexte RAG est injecté silencieusement dans le prompt système par le backend ; le frontend ne voit et n'affiche aucune source/citation |
-| **Tool-calling (exécution de workflows)** | Le backend renvoie `tool_calls` dans la réponse de `quick-send` (trace des outils exécutés), mais **ce frontend n'affiche pas ce champ** — il n'exploite que `response.response` |
-| **Usage de tokens** (`token_usage`) | Renvoyé par le backend, également **non affiché** par ce frontend |
-| **Statuts LLM/embedding** (`GET /api/chat/llm-status`, `/api/chat/embedding-status`) | **Non consommés** par ce frontend — le statut "En ligne" affiché dans l'en-tête du chat est un texte statique, pas une vérification réelle |
-| **Streaming SSE** (`POST /api/conversations/{id}/stream`) | **Non consommé** — nécessiterait une conversation persistée, hors du mode `quick-send` utilisé ici |
+| Fonctionnalité (implémentée côté backend)                                            | Ce que fait ce frontend                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Chat / complétion LLM** (Ollama ou endpoint OpenAI-compatible)                     | Envoie le message utilisateur brut à `POST /api/chat/quick-send` ; affiche `response.response` tel quel. Aucune mise en forme (markdown, code, etc.) n'est appliquée — le contenu est rendu en texte brut (`white-space: pre-wrap`)                                                                                                                  |
+| **Sélection d'agent IA** (prompt système, RAG, outils spécifiques par agent)         | Récupère la liste via `GET /api/ai_agents` et sélectionne **automatiquement** le premier agent actif (aucun choix laissé à l'utilisateur, pas de `<select>` dans l'UI) ; transmet son `agent_id` dans le body de `quick-send`. Le frontend ne fait aucune recherche vectorielle lui-même, ne configure aucun paramètre RAG (top-k, collection, etc.) |
+| **RAG (recherche documentaire contextuelle)**                                        | Totalement transparent pour ce frontend : si l'agent sélectionné a une collection documentaire liée côté backend, le contexte RAG est injecté silencieusement dans le prompt système par le backend ; le frontend ne voit et n'affiche aucune source/citation                                                                                        |
+| **Tool-calling (exécution de workflows)**                                            | Le backend renvoie `tool_calls` dans la réponse de `quick-send` (trace des outils exécutés), mais **ce frontend n'affiche pas ce champ** — il n'exploite que `response.response`                                                                                                                                                                     |
+| **Usage de tokens** (`token_usage`)                                                  | Renvoyé par le backend, également **non affiché** par ce frontend                                                                                                                                                                                                                                                                                    |
+| **Statuts LLM/embedding** (`GET /api/chat/llm-status`, `/api/chat/embedding-status`) | **Non consommés** par ce frontend — le statut "En ligne" affiché dans l'en-tête du chat est un texte statique, pas une vérification réelle                                                                                                                                                                                                           |
+| **Streaming SSE** (`POST /api/conversations/{id}/stream`)                            | **Non consommé** — nécessiterait une conversation persistée, hors du mode `quick-send` utilisé ici                                                                                                                                                                                                                                                   |
 
 En résumé : ce frontend est une **vitrine minimaliste** du backend — beaucoup de capacités backend (streaming, traçabilité des outils, usage de tokens, statut des providers, conversations persistées) existent côté API mais ne sont **pas exploitées** dans l'UI actuelle. Elles constituent des évolutions naturelles (voir §9).
 
@@ -207,28 +202,28 @@ En résumé : ce frontend est une **vitrine minimaliste** du backend — beaucou
 
 ### 7.1 Ce que ce frontend expose
 
-| Méthode | Route (côté Nuxt) | Comportement |
-|---|---|---|
-| `ANY` | `/api/*` | Route Nitro catch-all (`server/api/[...path].ts`) — proxy transparent vers `${API_URL}/api/*` sur le backend Symfony |
+| Méthode | Route (côté Nuxt) | Comportement                                                                                                         |
+| ------- | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `ANY`   | `/api/*`          | Route Nitro catch-all (`server/api/[...path].ts`) — proxy transparent vers `${API_URL}/api/*` sur le backend Symfony |
 
 Aucune autre route serveur n'est définie. `pages/index.vue` est une page vide (le widget est monté globalement depuis `app.vue`).
 
 ### 7.2 Ce que ce frontend consomme (endpoints backend Symfony réellement appelés)
 
-| Méthode | Endpoint backend | Appelé depuis | Usage |
-|---|---|---|---|
-| `POST` | `/api/chat/quick-send` | `useChatbot().sendMessage()` | Envoi d'un message (chat anonyme, non persisté), body `{ message: string, agent_id?: number }` |
-| `GET` | `/api/ai_agents` | `useChatbot().fetchAgents()` (au montage) | Liste des agents IA disponibles, pour sélectionner automatiquement le premier actif |
+| Méthode | Endpoint backend       | Appelé depuis                             | Usage                                                                                          |
+| ------- | ---------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `POST`  | `/api/chat/quick-send` | `useChatbot().sendMessage()`              | Envoi d'un message (chat anonyme, non persisté), body `{ message: string, agent_id?: number }` |
+| `GET`   | `/api/ai_agents`       | `useChatbot().fetchAgents()` (au montage) | Liste des agents IA disponibles, pour sélectionner automatiquement le premier actif            |
 
 > Voir [le cahier des charges backend](../backend/SPECIFICATION.md#8-référence-api-complète) pour le détail complet de l'API Symfony (bien plus large que ces deux endpoints).
 
 ### 7.3 Configuration de la cible API
 
-| Variable | Défaut | Rôle |
-|---|---|---|
-| `API_URL` | `http://chatbot-symfony:8000` | URL du backend Symfony, résolue **côté serveur** (Nitro) au moment du proxy. Le nom `chatbot-symfony` n'est résolvable que dans le réseau Docker de `backend/compose.yaml` — en dehors de Docker Compose, il faut la surcharger explicitement (ex. `http://symfony.chatbot.localhost` via Traefik ; `localhost:8000` ne fonctionne plus, le port fixe ayant été retiré) |
-| `ADMIN_USERNAME` | `''` | Identifiant du compte de service utilisé pour l'en-tête `Authorization: Basic` envoyé au backend (voir §3.4) |
-| `ADMIN_PASSWORD` | `''` | Mot de passe en clair du même compte — jamais exposé côté client (`runtimeConfig` non-`public`, donc server-only) |
+| Variable         | Défaut                        | Rôle                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `API_URL`        | `http://chatbot-symfony:8000` | URL du backend Symfony, résolue **côté serveur** (Nitro) au moment du proxy. Le nom `chatbot-symfony` n'est résolvable que dans le réseau Docker de `backend/compose.yaml` — en dehors de Docker Compose, il faut la surcharger explicitement (ex. `http://symfony.chatbot.localhost` via Traefik ; `localhost:8000` ne fonctionne plus, le port fixe ayant été retiré) |
+| `ADMIN_USERNAME` | `''`                          | Identifiant du compte de service utilisé pour l'en-tête `Authorization: Basic` envoyé au backend (voir §3.4)                                                                                                                                                                                                                                                            |
+| `ADMIN_PASSWORD` | `''`                          | Mot de passe en clair du même compte — jamais exposé côté client (`runtimeConfig` non-`public`, donc server-only)                                                                                                                                                                                                                                                       |
 
 `API_URL` est exposée dans `nuxt.config.ts` via `runtimeConfig.public.apiUrl`, lue par `server/api/[...path].ts` via `useRuntimeConfig().public.apiUrl`. `ADMIN_USERNAME`/`ADMIN_PASSWORD` sont dans `runtimeConfig` (hors de `public`) — accessibles uniquement côté serveur, jamais sérialisées vers le client.
 
@@ -293,26 +288,13 @@ import { Chatbot } from '~/components/Chatbot';
 </script>
 ```
 
-| Prop | Type | Défaut | Description |
-|---|---|---|---|
-| `title` | `string` | `'Assistant IA'` | Titre affiché dans l'en-tête |
-| `theme` | `'light' \| 'dark'` | `'light'` | Thème visuel |
-| `apiUrl` | `string` | `'/api'` | *(non utilisée pour construire les URLs d'appel réel — voir §5.1, les endpoints sont codés en dur dans `useChatbot`)* |
-| `placeholder` | `string` | `'Tapez votre message...'` | Placeholder du champ de saisie |
-| `className` | `string` | `''` | Classes CSS supplémentaires sur le conteneur racine |
-| `showClose` | `boolean` | `false` | Affiche un bouton de fermeture (utilisé par `ChatWidget`) |
+| Prop          | Type                | Défaut                     | Description                                                                                                           |
+| ------------- | ------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `title`       | `string`            | `'Assistant IA'`           | Titre affiché dans l'en-tête                                                                                          |
+| `theme`       | `'light' \| 'dark'` | `'light'`                  | Thème visuel                                                                                                          |
+| `apiUrl`      | `string`            | `'/api'`                   | *(non utilisée pour construire les URLs d'appel réel — voir §5.1, les endpoints sont codés en dur dans `useChatbot`)* |
+| `placeholder` | `string`            | `'Tapez votre message...'` | Placeholder du champ de saisie                                                                                        |
+| `className`   | `string`            | `''`                       | Classes CSS supplémentaires sur le conteneur racine                                                                   |
+| `showClose`   | `boolean`           | `false`                    | Affiche un bouton de fermeture (utilisé par `ChatWidget`)                                                             |
 
 > Pour le widget flottant complet (bulle + tooltip + panneau), utiliser directement `<ChatWidget />` (déjà monté globalement dans `app.vue`) plutôt que `<Chatbot />` seul.
-
----
-
-## 9. Limites connues et pistes d'évolution
-
-- **Pas de persistance** : chaque session de chat repart de zéro (mode `quick-send` uniquement) ; aucune UI pour lister/reprendre une conversation passée (`/api/conversations` n'est jamais appelé).
-- **Pas de streaming affiché** : la réponse s'affiche d'un bloc après l'attente complète du backend, malgré l'existence côté API d'un endpoint SSE.
-- **Statut "En ligne" statique** : n'interroge jamais `/api/chat/llm-status` ni `/api/chat/embedding-status` — un backend indisponible ne serait détecté qu'à l'échec du prochain envoi de message.
-- **`tool_calls` et `token_usage` ignorés** : le backend les renvoie mais l'UI ne les exploite pas (pas de trace des outils exécutés par l'agent, pas d'affichage de coût/consommation).
-- **`axios` en dépendance mais inutilisé** : tous les appels réseau passent par `$fetch`/`ofetch` (natif Nuxt) — dépendance à retirer ou nettoyer si confirmé inutile.
-- **Pas de linting ni de tests automatisés.**
-- **Logs verbeux du proxy en production** : `server/api/[...path].ts` logge en `console.log`/`console.error` chaque requête (méthode, URLs, aperçu body/réponse) sans distinction d'environnement — à conditionner par `APP_ENV`/`NODE_ENV` avant une mise en production.
-- **Le thème "Minitel" du `tailwind.config.js`** (couleurs `primary`/`ink`/`paper`/`signal`, police IBM Plex Mono) n'est actuellement exploité que partiellement — les composants du widget de chat restent sur une palette bleu/gris Tailwind par défaut ; à harmoniser si l'identité visuelle "3615 ASSISTANT" doit être poussée plus loin.

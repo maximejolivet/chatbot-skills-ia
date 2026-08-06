@@ -1,11 +1,5 @@
 # Cahier des charges — Backend Symfony (`backend/`)
 
-> Périmètre : ce document couvre **uniquement** le backend Symfony (`backend/`). Il ne couvre pas le frontend (`frontend/`).
-
-Dernière mise à jour : 2026-08-06.
-
----
-
 ## 1. Présentation générale
 
 `backend` est une API backend pour un **chatbot IA d'entreprise** combinant :
@@ -20,12 +14,12 @@ Le backend est bâti en **Symfony 8 / API Platform 4 / PHP 8.4**, organisé en 5
 ### 1.1 Les 5 domaines métier
 
 | Domaine            | Rôle                                                                                                          | Namespace PHP         |
-| ------------------ | --------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| `ai_providers`      | Abstraction des providers LLM/embedding (Ollama, endpoints OpenAI-compatibles) et sélection du provider actif   | `App\AiProvider`       |
-| `vector_connector`  | Wrapper Qdrant, génération d'embeddings, recherche vectorielle, analyse de documents                            | `App\VectorConnector`  |
-| `knowledge_base`    | Gestion des documents (upload, extraction de texte, chunking), collections, catégories, FAQ                     | `App\KnowledgeBase`    |
-| `workflows`         | Moteur d'exécution de workflows (steps configurables) utilisé comme « outils » par les agents                   | `App\Workflow`         |
-| `chat`              | Orchestration de la conversation : agents IA, RAG, tool-calling, historique                                     | `App\Chat`             |
+| ------------------ | ------------------------------------------------------------------------------------------------------------- | --------------------- |
+| `ai_providers`     | Abstraction des providers LLM/embedding (Ollama, endpoints OpenAI-compatibles) et sélection du provider actif | `App\AiProvider`      |
+| `vector_connector` | Wrapper Qdrant, génération d'embeddings, recherche vectorielle, analyse de documents                          | `App\VectorConnector` |
+| `knowledge_base`   | Gestion des documents (upload, extraction de texte, chunking), collections, catégories, FAQ                   | `App\KnowledgeBase`   |
+| `workflows`        | Moteur d'exécution de workflows (steps configurables) utilisé comme « outils » par les agents                 | `App\Workflow`        |
+| `chat`             | Orchestration de la conversation : agents IA, RAG, tool-calling, historique                                   | `App\Chat`            |
 
 Ordre de dépendance : `ai_providers` ← `vector_connector` ← `knowledge_base` ; `ai_providers` + `workflows` ← `chat` (qui référence aussi `knowledge_base` via les collections).
 
@@ -33,23 +27,23 @@ Ordre de dépendance : `ai_providers` ← `vector_connector` ← `knowledge_base
 
 ## 2. Stack technique
 
-| Composant             | Technologie                                                                                          | Détail                                                                                                                                                                            |
-| --------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Langage / runtime     | **PHP 8.4**                                                                                          | `php:8.4-cli` (image Docker)                                                                                                                                                      |
-| Framework             | **Symfony 8.1**                                                                                      | `framework-bundle`, `security-bundle`, `twig-bundle`, `console`, `dotenv`, `runtime`, `validator`, `serializer`, `form`, `expression-language`, `property-access`/`property-info` |
-| Couche API REST       | **API Platform 4.3** (`api-platform/symfony`, `api-platform/doctrine-orm`)                           | Génère des ressources REST/JSON-LD (Hydra) à partir des entités Doctrine, exposées sous `/api`                                                                                    |
-| Documentation API     | **NelmioApiDocBundle 5.11**                                                                          | Miroir OpenAPI 3.0 « pur » (sans Hydra) des ressources API Platform, exposé sous `/doc`                                                                                           |
-| ORM / Base de données | **Doctrine ORM 3.6** + **Doctrine Migrations 4.0**                                                   | **PostgreSQL 15/16** (`postgresql://...`)                                                                                                                                         |
-| Backoffice / admin    | **Sylius Resource Bundle 1.14** + **Sylius Grid Bundle 1.16** + **Symfony Form**                     | CRUD générique piloté par configuration, exposé sous `/admin`                                                                                                                     |
-| Pagination admin      | **Pagerfanta** (`pagerfanta/doctrine-orm-adapter`, `babdev/pagerfanta-bundle`)                       | Utilisé par les grilles Sylius                                                                                                                                                    |
-| Base vectorielle      | **Qdrant** (image `qdrant/qdrant:v1.19.0`)                                                            | Stockage et recherche des embeddings, communication via REST (Symfony HttpClient)                                                                                                 |
-| LLM local             | **Ollama** (`OLLAMA_BASE_URL`)                                                                       | Chat + embeddings + analyse de documents, via l'API `/api/chat` d'Ollama (tool-calling natif)                                                                                     |
-| LLM distant           | **Endpoint OpenAI-compatible** (ex. OVHcloud AI Endpoints — `gpt-oss-120b`)                          | Format Chat Completions standard (`/v1/chat/completions`)                                                                                                                         |
-| Client HTTP           | **Symfony HttpClient**                                                                               | Utilisé pour tous les appels sortants : Ollama, endpoints OpenAI-compatibles, Qdrant, `api_call`/`webhook` des workflows                                                          |
-| Extraction de texte   | **smalot/pdfparser 2.12** (PDF), `ZipArchive` natif PHP (DOCX), fonctions natives (TXT/MD/HTML/JSON) | Pipeline d'ingestion documentaire                                                                                                                                                 |
-| CORS                  | **NelmioCorsBundle 2.6**                                                                             | Origines autorisées configurables via `CORS_ALLOW_ORIGIN` (regex)                                                                                                                 |
-| Style backoffice      | **Tailwind CSS via CDN**                                                                             | Pas de pipeline d'assets (pas d'AssetMapper/Webpack Encore installé)                                                                                                              |
-| Conteneurisation      | **Docker** (`Dockerfile`, `compose.yaml`, `compose.override.yaml`)                                   | Services : `app` (Symfony), `database` (Postgres), `qdrant`, `nuxt` (frontend de démo)                                                                                            |
+| Composant             | Technologie                                                                                          | Détail                                                                                                                                                                                                                                                                                                                            |
+| --------------------- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Langage / runtime     | **PHP 8.4**                                                                                          | `php:8.4-cli` (image Docker)                                                                                                                                                                                                                                                                                                      |
+| Framework             | **Symfony 8.1**                                                                                      | `framework-bundle`, `security-bundle`, `twig-bundle`, `console`, `dotenv`, `runtime`, `validator`, `serializer`, `form`, `expression-language`, `property-access`/`property-info`                                                                                                                                                 |
+| Couche API REST       | **API Platform 4.3** (`api-platform/symfony`, `api-platform/doctrine-orm`)                           | Génère des ressources REST/JSON-LD (Hydra) à partir des entités Doctrine, exposées sous `/api`                                                                                                                                                                                                                                    |
+| Documentation API     | **NelmioApiDocBundle 5.11**                                                                          | Miroir OpenAPI 3.0 « pur » (sans Hydra) des ressources API Platform, exposé sous `/doc`                                                                                                                                                                                                                                           |
+| ORM / Base de données | **Doctrine ORM 3.6** + **Doctrine Migrations 4.0**                                                   | **PostgreSQL 15/16** (`postgresql://...`)                                                                                                                                                                                                                                                                                         |
+| Backoffice / admin    | **Sylius Resource Bundle 1.14** + **Sylius Grid Bundle 1.16** + **Symfony Form**                     | CRUD générique piloté par configuration, exposé sous `/admin`                                                                                                                                                                                                                                                                     |
+| Pagination admin      | **Pagerfanta** (`pagerfanta/doctrine-orm-adapter`, `babdev/pagerfanta-bundle`)                       | Utilisé par les grilles Sylius                                                                                                                                                                                                                                                                                                    |
+| Base vectorielle      | **Qdrant** (image `qdrant/qdrant:v1.19.0`)                                                           | Stockage et recherche des embeddings, communication via REST (Symfony HttpClient)                                                                                                                                                                                                                                                 |
+| LLM local             | **Ollama** (`OLLAMA_BASE_URL`)                                                                       | Chat + embeddings + analyse de documents, via l'API `/api/chat` d'Ollama (tool-calling natif)                                                                                                                                                                                                                                     |
+| LLM distant           | **Endpoint OpenAI-compatible** (ex. OVHcloud AI Endpoints — `gpt-oss-120b`)                          | Format Chat Completions standard (`/v1/chat/completions`)                                                                                                                                                                                                                                                                         |
+| Client HTTP           | **Symfony HttpClient**                                                                               | Utilisé pour tous les appels sortants : Ollama, endpoints OpenAI-compatibles, Qdrant, `api_call`/`webhook` des workflows                                                                                                                                                                                                          |
+| Extraction de texte   | **smalot/pdfparser 2.12** (PDF), `ZipArchive` natif PHP (DOCX), fonctions natives (TXT/MD/HTML/JSON) | Pipeline d'ingestion documentaire                                                                                                                                                                                                                                                                                                 |
+| CORS                  | **NelmioCorsBundle 2.6**                                                                             | Origines autorisées configurables via `CORS_ALLOW_ORIGIN` (regex)                                                                                                                                                                                                                                                                 |
+| Style backoffice      | **Tailwind CSS via CDN**                                                                             | Pas de pipeline d'assets (pas d'AssetMapper/Webpack Encore installé)                                                                                                                                                                                                                                                              |
+| Conteneurisation      | **Docker** (`Dockerfile`, `compose.yaml`, `compose.override.yaml`)                                   | Services : `app` (Symfony), `database` (Postgres), `qdrant`, `nuxt` (frontend de démo)                                                                                                                                                                                                                                            |
 | Reverse proxy (dev)   | **Traefik**                                                                                          | Routage par domaine (`*.chatbot.localhost`) via provider **fichier** (`traefik/dynamic.yml`), pas par labels Docker — les services rejoignent le réseau externe `chatbot-proxy` mais ne portent aucun label `traefik.*` (le client Docker embarqué dans l'image Traefik échoue à négocier sa version d'API avec ce moteur Docker) |
 
 **Ce qui n'est délibérément pas présent** (voir §12) :
@@ -109,36 +103,36 @@ ai_providers  ──┐
 ### 4.1 `ai_providers`
 
 **`AiProviderConfig`** — une configuration de provider IA, par usage.
-| Champ                                        | Type                        | Remarque                                                                                        |
-| --------------------------------------------- | --------------------------- | --------------------------------------------------------------------------------------------- |
-| `name`                                        | string(200), unique          |                                                                                               |
-| `usage`                                       | enum `AiProviderUsage`       | `chat` \| `embedding`                                                                        |
-| `provider`                                    | enum `AiProvider`            | `ollama` \| `api_endpoint`                                                                    |
-| `apiEndpoint`, `apiKey`, `model`, `baseUrl`   | string, nullable             | dépend du provider                                                                             |
-| `isActive`                                    | bool                          | une seule config active par usage est prise en compte                                          |
-| `isDefault`                                   | bool                          |                                                                                               |
-| `lastTestStatus`                              | enum `AiProviderTestStatus`  | `unknown` \| `success` \| `error`, mis à jour par `POST /api/ai_provider_configs/{id}/test`   |
-| `lastTestedAt`                                | datetime nullable             |                                                                                               |
+| Champ                                       | Type                        | Remarque                                                                                    |
+| ------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------- |
+| `name`                                      | string(200), unique         |                                                                                             |
+| `usage`                                     | enum `AiProviderUsage`      | `chat` \| `embedding`                                                                       |
+| `provider`                                  | enum `AiProvider`           | `ollama` \| `api_endpoint`                                                                  |
+| `apiEndpoint`, `apiKey`, `model`, `baseUrl` | string, nullable            | dépend du provider                                                                          |
+| `isActive`                                  | bool                        | une seule config active par usage est prise en compte                                       |
+| `isDefault`                                 | bool                        |                                                                                             |
+| `lastTestStatus`                            | enum `AiProviderTestStatus` | `unknown` \| `success` \| `error`, mis à jour par `POST /api/ai_provider_configs/{id}/test` |
+| `lastTestedAt`                              | datetime nullable           |                                                                                             |
 
 ### 4.2 `vector_connector`
 
 **`VectorIndex`** — la référence côté base d'une collection Qdrant connue.
-| Champ                            | Type                                                          |
-| ---------------------------------- | ---------------------------------------------------------------- |
-| `name` (unique), `description`    | string                                                            |
-| `collectionId`                    | string(100), unique — nom réel de la collection dans Qdrant       |
-| `dimension`                       | int, défaut `1024` (dimension de `mxbai-embed-large`)              |
-| `isActive`                        | bool                                                              |
-| `metadata`                        | array (JSON)                                                      |
+| Champ                          | Type                                                        |
+| ------------------------------ | ----------------------------------------------------------- |
+| `name` (unique), `description` | string                                                      |
+| `collectionId`                 | string(100), unique — nom réel de la collection dans Qdrant |
+| `dimension`                    | int, défaut `1024` (dimension de `mxbai-embed-large`)       |
+| `isActive`                     | bool                                                        |
+| `metadata`                     | array (JSON)                                                |
 
 **`SearchQuery`** — log analytique de chaque recherche vectorielle exécutée.
-| Champ             | Type                                    |
-| ------------------- | ------------------------------------------ |
-| `query`             | string(500)                                 |
-| `vectorIndex`       | relation vers `VectorIndex`, obligatoire     |
-| `resultsCount`      | int                                          |
-| `executionTime`     | float (secondes)                             |
-| `metadata`          | array                                        |
+| Champ           | Type                                     |
+| --------------- | ---------------------------------------- |
+| `query`         | string(500)                              |
+| `vectorIndex`   | relation vers `VectorIndex`, obligatoire |
+| `resultsCount`  | int                                      |
+| `executionTime` | float (secondes)                         |
+| `metadata`      | array                                    |
 
 > Non exposée en CRUD direct — consultable uniquement via `GET /vector/stats`. Aucun champ `user` : pas de scoping par utilisateur.
 
@@ -149,119 +143,119 @@ ai_providers  ──┐
 **`Faq`** — `question` (500), `answer` (text), `category` (nullable), `isActive`, `tags` (array). CRUD complet. Aucun champ `created_by` (pas de scoping par utilisateur).
 
 **`Collection`** — un regroupement logique de documents, optionnellement lié à un agent et/ou un index vectoriel.
-| Champ                              | Type                                                                                       |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `name` (unique), `description`       | string                                                                                          |
-| `agent`                               | `OneToOne` vers `AiAgent`, nullable, `onDelete: CASCADE`                                        |
-| `vectorIndex`                         | `ManyToOne` vers `VectorIndex`, nullable, `onDelete: SET NULL`                                   |
-| `isCommon`                            | bool — une seule collection « commune », bootstrappée à la volée (voir `CollectionService`)      |
-| `getCollectionNameForQdrant()`        | dérive le nom réel de la collection Qdrant                                                       |
+| Champ                          | Type                                                                                        |
+| ------------------------------ | ------------------------------------------------------------------------------------------- |
+| `name` (unique), `description` | string                                                                                      |
+| `agent`                        | `OneToOne` vers `AiAgent`, nullable, `onDelete: CASCADE`                                    |
+| `vectorIndex`                  | `ManyToOne` vers `VectorIndex`, nullable, `onDelete: SET NULL`                              |
+| `isCommon`                     | bool — une seule collection « commune », bootstrappée à la volée (voir `CollectionService`) |
+| `getCollectionNameForQdrant()` | dérive le nom réel de la collection Qdrant                                                  |
 
 **`Document`** — un fichier source ingéré.
-| Champ                        | Type                                                                              |
-| ------------------------------- | ------------------------------------------------------------------------------------ |
-| `title`, `description`         | string / text                                                                        |
-| `filePath`                      | string nullable — chemin relatif sous `var/uploads/documents/`                        |
-| `fileType`                      | enum `DocumentFileType` : `pdf` \| `txt` \| `docx` \| `md` \| `html` \| `json`         |
-| `category`, `collection`        | relations nullable, `onDelete: SET NULL`                                              |
-| `fileSize`                      | int (octets)                                                                          |
-| `status`                        | enum `DocumentStatus` : `pending` → `processing` → `indexed` \| `error`                |
-| `processingError`               | text                                                                                  |
-| `metadata`                      | array (inclut `embedding_usage` une fois indexé)                                       |
-| `chunks`                        | `OneToMany` vers `DocumentChunk`, `orphanRemoval: true`                                |
+| Champ                    | Type                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------ |
+| `title`, `description`   | string / text                                                                  |
+| `filePath`               | string nullable — chemin relatif sous `var/uploads/documents/`                 |
+| `fileType`               | enum `DocumentFileType` : `pdf` \| `txt` \| `docx` \| `md` \| `html` \| `json` |
+| `category`, `collection` | relations nullable, `onDelete: SET NULL`                                       |
+| `fileSize`               | int (octets)                                                                   |
+| `status`                 | enum `DocumentStatus` : `pending` → `processing` → `indexed` \| `error`        |
+| `processingError`        | text                                                                           |
+| `metadata`               | array (inclut `embedding_usage` une fois indexé)                               |
+| `chunks`                 | `OneToMany` vers `DocumentChunk`, `orphanRemoval: true`                        |
 
 Aucun champ `uploaded_by` (pas de scoping par utilisateur).
 
 **`DocumentChunk`** — un fragment de texte indexé (pas de `#[ApiResource]` propre, exposé via l'action `/documents/{id}/chunks`).
-| Champ                                          | Type                                                     |
-| -------------------------------------------------- | ----------------------------------------------------------- |
-| `document`                                          | `ManyToOne`, `onDelete: CASCADE`                             |
-| `content`                                           | text                                                          |
-| `chunkIndex`, `startPosition`, `endPosition`         | int                                                           |
-| `vectorId`                                          | string(64) nullable — ID du point Qdrant correspondant        |
-| `metadata`                                          | array                                                          |
+| Champ                                        | Type                                                   |
+| -------------------------------------------- | ------------------------------------------------------ |
+| `document`                                   | `ManyToOne`, `onDelete: CASCADE`                       |
+| `content`                                    | text                                                   |
+| `chunkIndex`, `startPosition`, `endPosition` | int                                                    |
+| `vectorId`                                   | string(64) nullable — ID du point Qdrant correspondant |
+| `metadata`                                   | array                                                  |
 
 Contrainte d'unicité `(document_id, chunk_index)`.
 
 ### 4.4 `workflows`
 
 **`Workflow`** — une définition de workflow, utilisable comme « outil » par un agent.
-| Champ                              | Type                                                             |
-| -------------------------------------- | -------------------------------------------------------------------- |
-| `name` (unique), `description`         | string                                                                 |
-| `triggerType`                          | enum `WorkflowTriggerType` : `manual` \| `api` \| `agent_tool`         |
-| `triggerConfig`                        | array                                                                  |
-| `parametersSchema`                     | array — JSON Schema exposé au LLM comme paramètres de l'outil         |
-| `status`                               | enum `WorkflowStatus` : `draft` \| `active` \| `inactive`              |
-| `isActive`                             | bool — soft delete                                                    |
-| `steps`                                | `OneToMany` vers `WorkflowStep`, ordonné par `order`                   |
-| `agents`                               | `ManyToMany` côté inverse vers `AiAgent`                               |
+| Champ                          | Type                                                           |
+| ------------------------------ | -------------------------------------------------------------- |
+| `name` (unique), `description` | string                                                         |
+| `triggerType`                  | enum `WorkflowTriggerType` : `manual` \| `api` \| `agent_tool` |
+| `triggerConfig`                | array                                                          |
+| `parametersSchema`             | array — JSON Schema exposé au LLM comme paramètres de l'outil  |
+| `status`                       | enum `WorkflowStatus` : `draft` \| `active` \| `inactive`      |
+| `isActive`                     | bool — soft delete                                             |
+| `steps`                        | `OneToMany` vers `WorkflowStep`, ordonné par `order`           |
+| `agents`                       | `ManyToMany` côté inverse vers `AiAgent`                       |
 
 **`WorkflowStep`** — une étape d'un workflow.
-| Champ             | Type                                                                                                                             |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `workflow`           | `ManyToOne`, `onDelete: CASCADE`                                                                                                       |
-| `name`               | string(200)                                                                                                                             |
-| `stepType`           | enum `WorkflowStepType` : `api_call` \| `email` \| `notification` \| `data_transform` \| `condition` \| `delay` \| `webhook`             |
-| `order`              | int — contrainte d'unicité `(workflow_id, order)`                                                                                       |
-| `configuration`      | array (JSON, dépend du type)                                                                                                            |
-| `isActive`           | bool                                                                                                                                     |
+| Champ           | Type                                                                                                                         |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `workflow`      | `ManyToOne`, `onDelete: CASCADE`                                                                                             |
+| `name`          | string(200)                                                                                                                  |
+| `stepType`      | enum `WorkflowStepType` : `api_call` \| `email` \| `notification` \| `data_transform` \| `condition` \| `delay` \| `webhook` |
+| `order`         | int — contrainte d'unicité `(workflow_id, order)`                                                                            |
+| `configuration` | array (JSON, dépend du type)                                                                                                 |
+| `isActive`      | bool                                                                                                                         |
 
 **`WorkflowExecution`** — une trace d'exécution (lecture seule via l'API : `GetCollection`/`Get` uniquement).
-| Champ                          | Type                                                                                                  |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `workflow`                          | `ManyToOne`, `onDelete: CASCADE`                                                                              |
-| `conversation`                      | `ManyToOne` nullable vers `Conversation`, `onDelete: SET NULL`                                                 |
-| `inputData`, `outputData`           | array                                                                                                          |
-| `status`                            | enum `WorkflowExecutionStatus` : `pending` \| `running` \| `completed` \| `failed` \| `cancelled`               |
-| `startedAt`, `completedAt`          | datetime nullable                                                                                              |
-| `errorMessage`                      | text                                                                                                            |
-| `executionLog`                      | array — détail par étape (statut, sortie, temps d'exécution)                                                   |
+| Champ                      | Type                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------- |
+| `workflow`                 | `ManyToOne`, `onDelete: CASCADE`                                                                  |
+| `conversation`             | `ManyToOne` nullable vers `Conversation`, `onDelete: SET NULL`                                    |
+| `inputData`, `outputData`  | array                                                                                             |
+| `status`                   | enum `WorkflowExecutionStatus` : `pending` \| `running` \| `completed` \| `failed` \| `cancelled` |
+| `startedAt`, `completedAt` | datetime nullable                                                                                 |
+| `errorMessage`             | text                                                                                              |
+| `executionLog`             | array — détail par étape (statut, sortie, temps d'exécution)                                      |
 
 Aucun champ `triggered_by`.
 
 ### 4.5 `chat`
 
 **`Conversation`** — CRUD complet.
-| Champ         | Type                                                                        |
-| --------------- | -------------------------------------------------------------------------------- |
-| `title`          | string(200)                                                                        |
-| `isActive`       | bool                                                                                |
-| `messages`       | `OneToMany` vers `Message`, ordonné par `createdAt`, `orphanRemoval: true`          |
+| Champ      | Type                                                                       |
+| ---------- | -------------------------------------------------------------------------- |
+| `title`    | string(200)                                                                |
+| `isActive` | bool                                                                       |
+| `messages` | `OneToMany` vers `Message`, ordonné par `createdAt`, `orphanRemoval: true` |
 
 **Limite la plus significative** du modèle actuel : aucun champ `user` — les conversations ne sont scopées par aucun utilisateur, quiconque connaît un ID peut le lire/écrire.
 
 **`Message`** — pas de `#[ApiResource]` propre (exposé via les actions de `Conversation`).
-| Champ             | Type                                                                              |
-| ------------------- | -------------------------------------------------------------------------------------- |
-| `conversation`       | `ManyToOne`, `onDelete: CASCADE`                                                        |
-| `role`               | enum `MessageRole` : `user` \| `assistant` \| `system` \| `tool`                          |
-| `content`            | text                                                                                      |
-| `metadata`           | array — contient `token_usage` et `tool_calls` pour les messages assistant                |
+| Champ          | Type                                                                       |
+| -------------- | -------------------------------------------------------------------------- |
+| `conversation` | `ManyToOne`, `onDelete: CASCADE`                                           |
+| `role`         | enum `MessageRole` : `user` \| `assistant` \| `system` \| `tool`           |
+| `content`      | text                                                                       |
+| `metadata`     | array — contient `token_usage` et `tool_calls` pour les messages assistant |
 
 **`AiAgent`** — lecture seule via REST (`GetCollection(paginationEnabled: false)` + `Get` uniquement), écriture réservée au backoffice.
-| Champ                              | Type                                                                                                              |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `name` (unique), `description`        | string                                                                                                                |
-| `systemPrompt`                        | text — remplace le prompt système par défaut si non vide                                                            |
-| `workflows`                           | `ManyToMany` vers `Workflow` (table `ai_agent_workflow`) — `getActiveWorkflows()` filtre les workflows `isActive`     |
-| `collection`                          | `OneToOne` côté inverse vers `Collection` — la base de connaissance RAG de l'agent                                    |
-| `isActive`                            | bool                                                                                                                  |
+| Champ                          | Type                                                                                                              |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `name` (unique), `description` | string                                                                                                            |
+| `systemPrompt`                 | text — remplace le prompt système par défaut si non vide                                                          |
+| `workflows`                    | `ManyToMany` vers `Workflow` (table `ai_agent_workflow`) — `getActiveWorkflows()` filtre les workflows `isActive` |
+| `collection`                   | `OneToOne` côté inverse vers `Collection` — la base de connaissance RAG de l'agent                                |
+| `isActive`                     | bool                                                                                                              |
 
 ### 4.6 Enums PHP (backed enums, valeurs string)
 
-| Enum                        | Valeurs                                                                                    |
-| ----------------------------- | ---------------------------------------------------------------------------------------------- |
-| `AiProvider`                  | `ollama`, `api_endpoint`                                                                        |
-| `AiProviderUsage`              | `chat`, `embedding`                                                                              |
-| `AiProviderTestStatus`         | `unknown`, `success`, `error`                                                                    |
-| `DocumentFileType`             | `pdf`, `txt`, `docx`, `md`, `html`, `json`                                                       |
-| `DocumentStatus`               | `pending`, `processing`, `indexed`, `error`                                                       |
-| `MessageRole`                  | `user`, `assistant`, `system`, `tool`                                                              |
-| `WorkflowExecutionStatus`      | `pending`, `running`, `completed`, `failed`, `cancelled`                                          |
-| `WorkflowStatus`               | `draft`, `active`, `inactive`                                                                     |
-| `WorkflowStepType`             | `api_call`, `email`, `notification`, `data_transform`, `condition`, `delay`, `webhook`             |
-| `WorkflowTriggerType`          | `manual`, `api`, `agent_tool`                                                                      |
+| Enum                      | Valeurs                                                                                |
+| ------------------------- | -------------------------------------------------------------------------------------- |
+| `AiProvider`              | `ollama`, `api_endpoint`                                                               |
+| `AiProviderUsage`         | `chat`, `embedding`                                                                    |
+| `AiProviderTestStatus`    | `unknown`, `success`, `error`                                                          |
+| `DocumentFileType`        | `pdf`, `txt`, `docx`, `md`, `html`, `json`                                             |
+| `DocumentStatus`          | `pending`, `processing`, `indexed`, `error`                                            |
+| `MessageRole`             | `user`, `assistant`, `system`, `tool`                                                  |
+| `WorkflowExecutionStatus` | `pending`, `running`, `completed`, `failed`, `cancelled`                               |
+| `WorkflowStatus`          | `draft`, `active`, `inactive`                                                          |
+| `WorkflowStepType`        | `api_call`, `email`, `notification`, `data_transform`, `condition`, `delay`, `webhook` |
+| `WorkflowTriggerType`     | `manual`, `api`, `agent_tool`                                                          |
 
 ---
 
@@ -276,10 +270,10 @@ Deux interfaces (`App\AiProvider\Client\*`) découplent le reste de l'app du pro
 
 Deux implémentations pour chaque interface :
 
-| Provider                                                                                        | Chat                                                                                              | Embedding                                | Transport            |
-| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------- | ------------------------ |
-| **Ollama** (`OllamaLlmClient`, `OllamaEmbeddingClient`)                                            | `POST {OLLAMA_BASE_URL}/api/chat` (`stream: false`, supporte `tools`)                                 | `POST {OLLAMA_BASE_URL}/api/embeddings`       | Symfony HttpClient        |
-| **Endpoint OpenAI-compatible** (`OpenAiCompatibleLlmClient`, `OpenAiCompatibleEmbeddingClient`)    | Format *Chat Completions* standard (`/v1/chat/completions`), header `Authorization: Bearer <key>`     | Format *Embeddings* standard                  | Symfony HttpClient        |
+| Provider                                                                                        | Chat                                                                                              | Embedding                               | Transport          |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------- | ------------------ |
+| **Ollama** (`OllamaLlmClient`, `OllamaEmbeddingClient`)                                         | `POST {OLLAMA_BASE_URL}/api/chat` (`stream: false`, supporte `tools`)                             | `POST {OLLAMA_BASE_URL}/api/embeddings` | Symfony HttpClient |
+| **Endpoint OpenAI-compatible** (`OpenAiCompatibleLlmClient`, `OpenAiCompatibleEmbeddingClient`) | Format *Chat Completions* standard (`/v1/chat/completions`), header `Authorization: Bearer <key>` | Format *Embeddings* standard            | Symfony HttpClient |
 
 Détails d'implémentation notables :
 - Le client Ollama utilise **`/api/chat`** (pas `/api/generate`) car c'est le seul endpoint Ollama supportant `tools` et retournant `message.tool_calls`, requis par le vrai tool-calling.
@@ -343,13 +337,13 @@ Question utilisateur ──> Embedding ──> Recherche Qdrant (top-k) ──> 
 ### 6.2 Ingestion de documents — `knowledge_base`
 
 **`DocumentProcessorService`** — extraction de texte selon le type de fichier :
-| Type          | Méthode                                                                                                                                          |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pdf`             | `smalot/pdfparser`                                                                                                                              |
-| `txt`, `md`       | lecture brute                                                                                                                                     |
-| `docx`            | ouvre l'archive ZIP, extrait `word/document.xml`, convertit les balises `<w:p>`/`<w:br/>` en retours à la ligne, `strip_tags`                     |
-| `html`            | `strip_tags`                                                                                                                                      |
-| `json`            | `json_decode` puis ré-encodage indenté (`JSON_PRETTY_PRINT`)                                                                                      |
+| Type        | Méthode                                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `pdf`       | `smalot/pdfparser`                                                                                                            |
+| `txt`, `md` | lecture brute                                                                                                                 |
+| `docx`      | ouvre l'archive ZIP, extrait `word/document.xml`, convertit les balises `<w:p>`/`<w:br/>` en retours à la ligne, `strip_tags` |
+| `html`      | `strip_tags`                                                                                                                  |
+| `json`      | `json_decode` puis ré-encodage indenté (`JSON_PRETTY_PRINT`)                                                                  |
 
 Nettoyage : normalisation des espaces, suppression des caractères non-alphanumériques hors ponctuation de base (regex Unicode `\p{}`/`\w`).
 
@@ -421,15 +415,15 @@ Un `Workflow` `active` peut être exposé au LLM comme **outil** si un agent lui
 
 Types d'étapes supportés (`WorkflowStepType`) :
 
-| Type              | Comportement                                                                                                                                                                                                          |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `api_call`           | Requête HTTP sortante (méthode/URL/headers/body configurables, substitution de placeholders `{{champ}}` dans l'URL et le body)                                                                                          |
-| `webhook`            | Identique à `api_call` mais envoie toujours `inputData` en JSON                                                                                                                                                          |
-| `data_transform`     | Applique une liste de transformations (`set`, `remove`, `add`) aux données courantes                                                                                                                                     |
-| `condition`          | Évalue une condition (`equals`, `not_equals`, `contains`, `greater_than`, `less_than`) sur un champ, exécute une `true_action`/`false_action` (seule l'action `set_field` est actuellement implémentée)                  |
-| `delay`              | `sleep()` bloquant pendant le nombre de secondes configuré                                                                                                                                                               |
-| `email`              | **Stub** : journalise seulement, aucun backend d'envoi réel configuré                                                                                                                                                     |
-| `notification`       | **Stub** : journalise seulement                                                                                                                                                                                           |
+| Type             | Comportement                                                                                                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `api_call`       | Requête HTTP sortante (méthode/URL/headers/body configurables, substitution de placeholders `{{champ}}` dans l'URL et le body)                                                                          |
+| `webhook`        | Identique à `api_call` mais envoie toujours `inputData` en JSON                                                                                                                                         |
+| `data_transform` | Applique une liste de transformations (`set`, `remove`, `add`) aux données courantes                                                                                                                    |
+| `condition`      | Évalue une condition (`equals`, `not_equals`, `contains`, `greater_than`, `less_than`) sur un champ, exécute une `true_action`/`false_action` (seule l'action `set_field` est actuellement implémentée) |
+| `delay`          | `sleep()` bloquant pendant le nombre de secondes configuré                                                                                                                                              |
+| `email`          | **Stub** : journalise seulement, aucun backend d'envoi réel configuré                                                                                                                                   |
+| `notification`   | **Stub** : journalise seulement                                                                                                                                                                         |
 
 ### 7.3 Synchronicité
 
@@ -449,64 +443,64 @@ Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les res
 
 ### 8.1 `ai_providers`
 
-| Méthode    | URL                                    | Description                                                                                    |
-| ---------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `GET`        | `/api/ai_provider_configs`                | Liste des configs de providers                                                                       |
-| `GET`        | `/api/ai_provider_configs/{id}`           | Détail                                                                                               |
-| `POST`       | `/api/ai_provider_configs`                | Création                                                                                              |
-| `PATCH`      | `/api/ai_provider_configs/{id}`           | Mise à jour partielle                                                                                  |
-| `DELETE`     | `/api/ai_provider_configs/{id}`           | Suppression                                                                                            |
-| `POST`       | `/api/ai_provider_configs/{id}/test`      | Test **en live** de la config (appelle réellement le provider), persiste `lastTestStatus`/`lastTestedAt` |
+| Méthode  | URL                                  | Description                                                                                              |
+| -------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/ai_provider_configs`           | Liste des configs de providers                                                                           |
+| `GET`    | `/api/ai_provider_configs/{id}`      | Détail                                                                                                   |
+| `POST`   | `/api/ai_provider_configs`           | Création                                                                                                 |
+| `PATCH`  | `/api/ai_provider_configs/{id}`      | Mise à jour partielle                                                                                    |
+| `DELETE` | `/api/ai_provider_configs/{id}`      | Suppression                                                                                              |
+| `POST`   | `/api/ai_provider_configs/{id}/test` | Test **en live** de la config (appelle réellement le provider), persiste `lastTestStatus`/`lastTestedAt` |
 
 ### 8.2 `vector_connector`
 
-| Méthode                            | URL                             | Description                                                                                    |
-| ------------------------------------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `GET`/`POST`/`PATCH`/`DELETE`          | `/api/vector_indices[/{id}]`         | CRUD des index vectoriels connus                                                                        |
-| `POST`                                 | `/api/vector/search`                 | **Recherche vectorielle canonique** — body `{query, collection_name?, category_id?, limit?}`             |
-| `GET`                                  | `/api/vector/stats`                  | Nombre d'index actifs, total des requêtes journalisées, 10 `SearchQuery` les plus récentes               |
+| Méthode                       | URL                          | Description                                                                                  |
+| ----------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------- |
+| `GET`/`POST`/`PATCH`/`DELETE` | `/api/vector_indices[/{id}]` | CRUD des index vectoriels connus                                                             |
+| `POST`                        | `/api/vector/search`         | **Recherche vectorielle canonique** — body `{query, collection_name?, category_id?, limit?}` |
+| `GET`                         | `/api/vector/stats`          | Nombre d'index actifs, total des requêtes journalisées, 10 `SearchQuery` les plus récentes   |
 
 ### 8.3 `knowledge_base`
 
-| Méthode                            | URL                                  | Description                                                                                                                                                                                                 |
-| ------------------------------------ | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`/`POST`/`PATCH`/`DELETE`          | `/api/document_categories[/{id}]`         | CRUD des catégories                                                                                                                                                                                             |
-| `GET`/`POST`/`PATCH`/`DELETE`          | `/api/faqs[/{id}]`                        | CRUD des FAQ                                                                                                                                                                                                    |
-| `GET`/`POST`/`PATCH`/`DELETE`          | `/api/collections[/{id}]`                 | CRUD des collections                                                                                                                                                                                            |
-| `GET`                                  | `/api/documents`                          | Liste des documents                                                                                                                                                                                             |
-| `GET`                                  | `/api/documents/{id}`                     | Détail                                                                                                                                                                                                          |
-| `PATCH`                                | `/api/documents/{id}`                     | Mise à jour (métadonnées, pas le fichier)                                                                                                                                                                       |
-| `POST`                                 | `/api/documents`                          | **Upload multipart** (`file`, `title`, `description?`, `category_id?`) — extensions autorisées : `pdf, txt, docx, md, html, json`, taille max **10 Mo**. Déclenche `chunkDocument()` + `vectorize()` en synchrone |
-| `DELETE`                               | `/api/documents/{id}`                     | Supprime les vecteurs Qdrant + les chunks + le fichier physique + la ligne                                                                                                                                     |
-| `POST`                                 | `/api/documents/{id}/process`             | Ré-indexation complète (supprime puis recrée les chunks/vecteurs), **synchrone**                                                                                                                                |
-| `GET`                                  | `/api/documents/{id}/chunks`              | Liste des chunks du document                                                                                                                                                                                    |
+| Méthode                       | URL                               | Description                                                                                                                                                                                                       |
+| ----------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`/`POST`/`PATCH`/`DELETE` | `/api/document_categories[/{id}]` | CRUD des catégories                                                                                                                                                                                               |
+| `GET`/`POST`/`PATCH`/`DELETE` | `/api/faqs[/{id}]`                | CRUD des FAQ                                                                                                                                                                                                      |
+| `GET`/`POST`/`PATCH`/`DELETE` | `/api/collections[/{id}]`         | CRUD des collections                                                                                                                                                                                              |
+| `GET`                         | `/api/documents`                  | Liste des documents                                                                                                                                                                                               |
+| `GET`                         | `/api/documents/{id}`             | Détail                                                                                                                                                                                                            |
+| `PATCH`                       | `/api/documents/{id}`             | Mise à jour (métadonnées, pas le fichier)                                                                                                                                                                         |
+| `POST`                        | `/api/documents`                  | **Upload multipart** (`file`, `title`, `description?`, `category_id?`) — extensions autorisées : `pdf, txt, docx, md, html, json`, taille max **10 Mo**. Déclenche `chunkDocument()` + `vectorize()` en synchrone |
+| `DELETE`                      | `/api/documents/{id}`             | Supprime les vecteurs Qdrant + les chunks + le fichier physique + la ligne                                                                                                                                        |
+| `POST`                        | `/api/documents/{id}/process`     | Ré-indexation complète (supprime puis recrée les chunks/vecteurs), **synchrone**                                                                                                                                  |
+| `GET`                         | `/api/documents/{id}/chunks`      | Liste des chunks du document                                                                                                                                                                                      |
 
 ### 8.4 `workflows`
 
-| Méthode                 | URL                               | Description                                                                                       |
-| ------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `GET`/`POST`/`PATCH`       | `/api/workflows[/{id}]`                | CRUD (partiel) des workflows                                                                            |
-| `DELETE`                   | `/api/workflows/{id}`                  | **Soft delete** (`isActive = false`)                                                                     |
-| `GET`                       | `/api/workflows/{id}/steps`            | Liste des étapes actives, ordonnées                                                                     |
-| `POST`                      | `/api/workflows/{id}/steps`            | Création d'une étape (`name`, `step_type`, `order`, `configuration?`, `is_active?`)                      |
-| `POST`                      | `/api/workflows/{id}/trigger`          | Déclenchement (rejette si le workflow n'est pas `active`) — **synchrone**, renvoie l'exécution terminée   |
-| `POST`                      | `/api/workflows/{id}/test`             | Exécution de test — **synchrone**, aucune vérification de statut                                          |
-| `GET`                       | `/api/workflow_executions`             | Liste des exécutions (lecture seule)                                                                     |
-| `GET`                       | `/api/workflow_executions/{id}`        | Détail d'une exécution                                                                                    |
+| Méthode              | URL                             | Description                                                                                             |
+| -------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `GET`/`POST`/`PATCH` | `/api/workflows[/{id}]`         | CRUD (partiel) des workflows                                                                            |
+| `DELETE`             | `/api/workflows/{id}`           | **Soft delete** (`isActive = false`)                                                                    |
+| `GET`                | `/api/workflows/{id}/steps`     | Liste des étapes actives, ordonnées                                                                     |
+| `POST`               | `/api/workflows/{id}/steps`     | Création d'une étape (`name`, `step_type`, `order`, `configuration?`, `is_active?`)                     |
+| `POST`               | `/api/workflows/{id}/trigger`   | Déclenchement (rejette si le workflow n'est pas `active`) — **synchrone**, renvoie l'exécution terminée |
+| `POST`               | `/api/workflows/{id}/test`      | Exécution de test — **synchrone**, aucune vérification de statut                                        |
+| `GET`                | `/api/workflow_executions`      | Liste des exécutions (lecture seule)                                                                    |
+| `GET`                | `/api/workflow_executions/{id}` | Détail d'une exécution                                                                                  |
 
 ### 8.5 `chat`
 
-| Méthode                            | URL                                    | Description                                                                                              |
-| ------------------------------------ | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `GET`/`POST`/`PATCH`/`DELETE`          | `/api/conversations[/{id}]`                  | CRUD des conversations                                                                                              |
-| `GET`                                  | `/api/conversations/{id}/messages`           | Historique des messages                                                                                             |
-| `POST`                                 | `/api/conversations/{id}/messages`           | Envoie un message utilisateur, le persiste + renvoie la réponse de l'assistant (body : `{message, agent_id?}`)      |
-| `POST`                                 | `/api/conversations/{id}/stream`             | Idem, réponse en **SSE** (`text/event-stream`)                                                                      |
-| `GET`                                  | `/api/ai_agents`                             | Liste des agents (lecture seule, pagination désactivée)                                                             |
-| `GET`                                  | `/api/ai_agents/{id}`                        | Détail d'un agent                                                                                                    |
-| `POST`                                 | `/api/chat/quick-send`                       | Chat **anonyme, non persisté** (body : `{message, agent_id?}`) — utilisé par les frontends de démo                  |
-| `GET`                                  | `/api/chat/llm-status`                       | Statut du provider LLM actif (`reachable`/`running`/`error`/`not_reachable`)                                        |
-| `GET`                                  | `/api/chat/embedding-status`                 | Statut du provider d'embedding actif                                                                                 |
+| Méthode                       | URL                                | Description                                                                                                    |
+| ----------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `GET`/`POST`/`PATCH`/`DELETE` | `/api/conversations[/{id}]`        | CRUD des conversations                                                                                         |
+| `GET`                         | `/api/conversations/{id}/messages` | Historique des messages                                                                                        |
+| `POST`                        | `/api/conversations/{id}/messages` | Envoie un message utilisateur, le persiste + renvoie la réponse de l'assistant (body : `{message, agent_id?}`) |
+| `POST`                        | `/api/conversations/{id}/stream`   | Idem, réponse en **SSE** (`text/event-stream`)                                                                 |
+| `GET`                         | `/api/ai_agents`                   | Liste des agents (lecture seule, pagination désactivée)                                                        |
+| `GET`                         | `/api/ai_agents/{id}`              | Détail d'un agent                                                                                              |
+| `POST`                        | `/api/chat/quick-send`             | Chat **anonyme, non persisté** (body : `{message, agent_id?}`) — utilisé par les frontends de démo             |
+| `GET`                         | `/api/chat/llm-status`             | Statut du provider LLM actif (`reachable`/`running`/`error`/`not_reachable`)                                   |
+| `GET`                         | `/api/chat/embedding-status`       | Statut du provider d'embedding actif                                                                           |
 
 ### 8.6 Formats de réponse notables
 
@@ -532,20 +526,20 @@ Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les res
 
 Construit avec **Sylius Resource/Grid Bundle** — CRUD générique piloté par config YAML (`config/routes/admin.yaml`) + repository + form + grid, sans thème packagé (templates Twig maison, `templates/admin/crud/*.html.twig`), stylé en Tailwind CDN.
 
-| Ressource                                 | URL                            | Opérations                                                                                       |
-| ------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `AiProviderConfig`                          | `/admin/ai-provider-configs`         | CRUD complet                                                                                             |
-| `VectorIndex`                               | `/admin/vector-indexes`              | CRUD complet                                                                                             |
-| `SearchQuery`                               | `/admin/search-queries`              | Lecture seule (`index`, `show`)                                                                          |
-| `DocumentCategory`                          | `/admin/document-categories`         | CRUD complet                                                                                             |
-| `Faq`                                       | `/admin/faqs`                        | CRUD complet                                                                                             |
-| `Collection`                                | `/admin/collections`                 | CRUD complet                                                                                             |
-| `Document`                                  | `/admin/documents`                   | `index`, `show`, `update`, `delete` — **pas de création** (réservée à `POST /api/documents`)              |
-| `Workflow` (+ `WorkflowStep` imbriqué)       | `/admin/workflows`                   | CRUD complet                                                                                             |
-| `WorkflowExecution`                         | `/admin/workflow-executions`         | Lecture seule                                                                                             |
-| `AiAgent`                                   | `/admin/ai-agents`                   | CRUD complet — **seul moyen de créer/modifier un agent**, l'API REST étant en lecture seule              |
-| `Conversation`                              | `/admin/conversations`               | CRUD complet                                                                                             |
-| `Message`                                   | `/admin/messages`                    | Lecture seule                                                                                             |
+| Ressource                              | URL                          | Opérations                                                                                   |
+| -------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------- |
+| `AiProviderConfig`                     | `/admin/ai-provider-configs` | CRUD complet                                                                                 |
+| `VectorIndex`                          | `/admin/vector-indexes`      | CRUD complet                                                                                 |
+| `SearchQuery`                          | `/admin/search-queries`      | Lecture seule (`index`, `show`)                                                              |
+| `DocumentCategory`                     | `/admin/document-categories` | CRUD complet                                                                                 |
+| `Faq`                                  | `/admin/faqs`                | CRUD complet                                                                                 |
+| `Collection`                           | `/admin/collections`         | CRUD complet                                                                                 |
+| `Document`                             | `/admin/documents`           | `index`, `show`, `update`, `delete` — **pas de création** (réservée à `POST /api/documents`) |
+| `Workflow` (+ `WorkflowStep` imbriqué) | `/admin/workflows`           | CRUD complet                                                                                 |
+| `WorkflowExecution`                    | `/admin/workflow-executions` | Lecture seule                                                                                |
+| `AiAgent`                              | `/admin/ai-agents`           | CRUD complet — **seul moyen de créer/modifier un agent**, l'API REST étant en lecture seule  |
+| `Conversation`                         | `/admin/conversations`       | CRUD complet                                                                                 |
+| `Message`                              | `/admin/messages`            | Lecture seule                                                                                |
 
 Pour ajouter une 14ᵉ ressource : une entité `implements ResourceInterface`, un repository avec `ResourceRepositoryTrait`, une classe `App\Form\XType`, une classe `App\Grid\XGrid` (`#[AsGrid]`), une entrée dans `config/packages/sylius_resource.yaml` et `config/routes/admin.yaml`. Le rendu des champs est mutualisé via `App\Twig\AdminExtension::fieldValue()` (basé sur `PropertyAccessor`, gère nativement enums/dates/bools/relations/collections).
 
@@ -588,11 +582,11 @@ docker compose up -d --build
 
 Services démarrés (`compose.yaml`) :
 
-| Service    | Rôle                                                                             | Port hôte                                                      |
-| ---------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `app`      | API Symfony (serveur PHP intégré, `php -S 0.0.0.0:8000`)                         | aucun (retiré — accès uniquement via Traefik, voir ci-dessous) |
-| `database` | PostgreSQL (`postgres:${POSTGRES_VERSION:-16}-alpine`)                           | port aléatoire (exposé via `compose.override.yaml`)            |
-| `qdrant`   | Base vectorielle                                                                 | ports aléatoires (REST/gRPC)                                   |
+| Service    | Rôle                                                                 | Port hôte                                                      |
+| ---------- | -------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `app`      | API Symfony (serveur PHP intégré, `php -S 0.0.0.0:8000`)             | aucun (retiré — accès uniquement via Traefik, voir ci-dessous) |
+| `database` | PostgreSQL (`postgres:${POSTGRES_VERSION:-16}-alpine`)               | port aléatoire (exposé via `compose.override.yaml`)            |
+| `qdrant`   | Base vectorielle                                                     | ports aléatoires (REST/gRPC)                                   |
 | `nuxt`     | Frontend de démo Nuxt (`frontend/`), branché sur `app` via `API_URL` | `3010`                                                         |
 
 `OLLAMA_BASE_URL` est automatiquement pointé vers `http://host.docker.internal:11434` (Ollama tournant sur la machine hôte, hors conteneur). Un réseau Docker externe `chatbot-proxy` (Traefik) est requis (`networks.proxy.external: true`) ; le service échouera à démarrer sans lui, sauf à retirer ce bloc. Créé automatiquement par `make up` (racine du dépôt) ; à défaut, `docker network create chatbot-proxy` une fois.
@@ -627,26 +621,26 @@ php bin/console doctrine:migrations:migrate
 
 Fichier de référence : `.env.example`.
 
-| Variable                 | Défaut / exemple                                                                         | Rôle                                                                                  |
-| ------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `APP_ENV`                | `dev`                                                                                    | Environnement Symfony                                                                 |
-| `APP_SECRET`             | (généré)                                                                                 | Secret applicatif Symfony                                                             |
-| `DATABASE_URL`           | `postgresql://postgres:postgres@127.0.0.1:5432/chatbot_db?serverVersion=15&charset=utf8` | Connexion Doctrine                                                                    |
-| `CORS_ALLOW_ORIGIN`      | `^https?://(localhost\|127\.0\.0\.1)(:[0-9]+)?$`                                         | Regex des origines autorisées                                                         |
-| `AI_PROVIDER`            | `ollama`                                                                                 | `ollama` \| `api_endpoint` — fallback quand aucune `AiProviderConfig` active n'existe |
-| `OLLAMA_BASE_URL`        | `http://localhost:11434`                                                                 | URL du serveur Ollama                                                                 |
-| `OLLAMA_EMBEDDING_MODEL` | `mxbai-embed-large`                                                                      | Modèle d'embedding (dimension 1024)                                                   |
-| `OLLAMA_ANALYSIS_MODEL`  | `gpt-oss:20b`                                                                            | Modèle dédié à l'analyse de documents                                                 |
-| `OLLAMA_CHAT_MODEL`      | `gpt-oss:20b`                                                                            | Modèle de chat par défaut (Ollama)                                                    |
-| `AI_API_ENDPOINT`        | ex. endpoint OVHcloud AI Endpoints `.../v1/chat/completions`                             | URL de l'endpoint OpenAI-compatible                                                   |
-| `AI_API_KEY`             | *(vide)*                                                                                 | Clé API de l'endpoint distant                                                         |
-| `AI_API_MODEL`           | `gpt-oss-120b`                                                                           | Modèle utilisé sur l'endpoint distant                                                 |
-| `AI_API_TIMEOUT`         | `30`                                                                                     | Timeout HTTP (secondes)                                                               |
-| `QDRANT_HOST`            | `localhost`                                                                              | Hôte Qdrant                                                                           |
-| `QDRANT_PORT`            | `6333`                                                                                   | Port REST Qdrant                                                                      |
-| `QDRANT_API_KEY`         | *(vide)*                                                                                 | Clé API Qdrant (si sécurisé)                                                          |
-| `ADMIN_USERNAME`         | `admin`                                                                                  | Identifiant du compte admin unique (§10), utilisé par les deux firewalls             |
-| `ADMIN_PASSWORD_HASH`    | *(vide — à générer)*                                                                     | Hash bcrypt du mot de passe admin (`bin/console security:hash-password`)             |
+| Variable                 | Défaut / exemple                                                                         | Rôle                                                                                       |
+| ------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `APP_ENV`                | `dev`                                                                                    | Environnement Symfony                                                                      |
+| `APP_SECRET`             | (généré)                                                                                 | Secret applicatif Symfony                                                                  |
+| `DATABASE_URL`           | `postgresql://postgres:postgres@127.0.0.1:5432/chatbot_db?serverVersion=15&charset=utf8` | Connexion Doctrine                                                                         |
+| `CORS_ALLOW_ORIGIN`      | `^https?://(localhost\|127\.0\.0\.1)(:[0-9]+)?$`                                         | Regex des origines autorisées                                                              |
+| `AI_PROVIDER`            | `ollama`                                                                                 | `ollama` \| `api_endpoint` — fallback quand aucune `AiProviderConfig` active n'existe      |
+| `OLLAMA_BASE_URL`        | `http://localhost:11434`                                                                 | URL du serveur Ollama                                                                      |
+| `OLLAMA_EMBEDDING_MODEL` | `mxbai-embed-large`                                                                      | Modèle d'embedding (dimension 1024)                                                        |
+| `OLLAMA_ANALYSIS_MODEL`  | `gpt-oss:20b`                                                                            | Modèle dédié à l'analyse de documents                                                      |
+| `OLLAMA_CHAT_MODEL`      | `gpt-oss:20b`                                                                            | Modèle de chat par défaut (Ollama)                                                         |
+| `AI_API_ENDPOINT`        | ex. endpoint OVHcloud AI Endpoints `.../v1/chat/completions`                             | URL de l'endpoint OpenAI-compatible                                                        |
+| `AI_API_KEY`             | *(vide)*                                                                                 | Clé API de l'endpoint distant                                                              |
+| `AI_API_MODEL`           | `gpt-oss-120b`                                                                           | Modèle utilisé sur l'endpoint distant                                                      |
+| `AI_API_TIMEOUT`         | `30`                                                                                     | Timeout HTTP (secondes)                                                                    |
+| `QDRANT_HOST`            | `localhost`                                                                              | Hôte Qdrant                                                                                |
+| `QDRANT_PORT`            | `6333`                                                                                   | Port REST Qdrant                                                                           |
+| `QDRANT_API_KEY`         | *(vide)*                                                                                 | Clé API Qdrant (si sécurisé)                                                               |
+| `ADMIN_USERNAME`         | `admin`                                                                                  | Identifiant du compte admin unique (§10), utilisé par les deux firewalls                   |
+| `ADMIN_PASSWORD_HASH`    | *(vide — à générer)*                                                                     | Hash bcrypt du mot de passe admin (`bin/console security:hash-password`)                   |
 | `ADMIN_PASSWORD`         | *(vide — à générer)*                                                                     | Contrepartie en clair, jamais lue par Symfony : uniquement pour le proxy Nuxt (Basic Auth) |
 
 > `DEFAULT_URI` (génération d'URL en CLI) est aussi présent, non lié à l'IA.
@@ -666,23 +660,9 @@ Toutes les requêtes ci-dessous nécessitent l'authentification HTTP Basic (`-u 
 
 ### 12.1 Limites d'architecture assumées
 
-| Limite                                     | Détail                                                                                                                                                        | Impact                                                                                                                                                       |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Limite                                    | Détail                                                                                                                                                                                                                                 | Impact                                                                                                                                                                               |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Authentification mono-compte**          | `security.yaml` protège `/api` (HTTP Basic) et `/admin` (form login) derrière un seul compte admin (provider `memory`) ; aucun scoping par utilisateur (pas de champ `user`/`uploaded_by`/`created_by`/`triggered_by` sur les entités) | `/api` et `/admin` nécessitent les identifiants admin, mais conversations, executions et documents restent visibles/modifiables par quiconque a ce compte (pas de multi-utilisateur) |
-| **Pas de file de messages**               | Pas de Symfony Messenger/Redis                                                                                                                                | Chunking/vectorisation de documents et déclenchement de workflows tournent **en synchrone, bloquant** dans la requête HTTP, plutôt qu'en tâche de fond |
-| **Streaming non combiné au tool-calling** | `ConversationStreamController` génère la réponse complète puis l'émet en SSE                                                                                  | Pas de vrai streaming token-par-token pendant l'exécution d'outils                                                                                           |
-| **CSRF stateless désactivé**              | Nécessiterait un asset pipeline (AssetMapper) non installé                                                                                                    | Formulaires du backoffice sans protection CSRF stateless (seules les suppressions ont du CSRF session-based)                                                 |
-
-### 12.2 Prochaines étapes possibles (identifiées dans le code)
-
-1. **Authentification multi-utilisateur** (entité `User`, rôles) pour remplacer le compte admin unique actuel et réintroduire le scoping par utilisateur sur `Conversation`/`WorkflowExecution`.
-2. **File d'attente asynchrone** (Symfony Messenger + Redis) pour déporter le chunking/la vectorisation de documents et le déclenchement de workflows hors de la requête HTTP.
-3. **Asset pipeline** (AssetMapper) pour réactiver le CSRF stateless et remplacer le Tailwind CDN par un build local.
-
-### 12.3 Autres limites fonctionnelles à connaître
-
-- Les step handlers `email` et `notification` des workflows sont des **stubs** : ils journalisent l'intention mais n'envoient rien réellement.
-- La condition de workflow (`condition` step) ne supporte qu'une seule action (`set_field`) en branche vraie/fausse.
-- `MAX_TOOL_ITERATIONS = 3` : au-delà, le LLM est forcé de répondre sans outil — un scénario nécessitant plus de 3 allers-retours d'outils échouera à les compléter tous.
-- La taille max d'upload de document est **10 Mo**, codée en dur dans `DocumentUploadController`.
-- Aucun mécanisme de retry/backoff sur les appels sortants (Ollama, endpoint IA, Qdrant, `api_call`/`webhook`).
+| **Pas de file de messages**               | Pas de Symfony Messenger/Redis                                                                                                                                                                                                         | Chunking/vectorisation de documents et déclenchement de workflows tournent **en synchrone, bloquant** dans la requête HTTP, plutôt qu'en tâche de fond                               |
+| **Streaming non combiné au tool-calling** | `ConversationStreamController` génère la réponse complète puis l'émet en SSE                                                                                                                                                           | Pas de vrai streaming token-par-token pendant l'exécution d'outils                                                                                                                   |
+| **CSRF stateless désactivé**              | Nécessiterait un asset pipeline (AssetMapper) non installé                                                                                                                                                                             | Formulaires du backoffice sans protection CSRF stateless (seules les suppressions ont du CSRF session-based)                                                                         |
