@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
@@ -13,8 +14,9 @@ use Sylius\Resource\Model\ResourceInterface;
 /**
  * A single execution (run) of a workflow.
  *
- * NOTE: no `triggered_by` attribution -- no auth/User system yet, same as
- * elsewhere in this backend.
+ * `triggeredBy` is the operator account authenticated on the request that
+ * started this execution, stamped automatically (see UserStampListener).
+ * Null for executions triggered before multi-user auth existed.
  */
 #[ORM\Entity(repositoryClass: WorkflowExecutionRepository::class)]
 #[ApiResource(operations: [new GetCollection(), new Get()])]
@@ -37,6 +39,14 @@ class WorkflowExecution implements ResourceInterface
     #[ORM\ManyToOne(targetEntity: Conversation::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Conversation $conversation = null;
+
+    // Not readable/writable over the API -- see Conversation::$user for why
+    // (User has no serialization groups, so embedding it would leak the
+    // password hash).
+    #[ApiProperty(readable: false, writable: false)]
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $triggeredBy = null;
 
     /**
      * @var array<string, mixed>
@@ -101,6 +111,18 @@ class WorkflowExecution implements ResourceInterface
     public function setConversation(?Conversation $conversation): static
     {
         $this->conversation = $conversation;
+
+        return $this;
+    }
+
+    public function getTriggeredBy(): ?User
+    {
+        return $this->triggeredBy;
+    }
+
+    public function setTriggeredBy(?User $triggeredBy): static
+    {
+        $this->triggeredBy = $triggeredBy;
 
         return $this;
     }

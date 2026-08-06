@@ -45,3 +45,7 @@ sylius_resource:
         app.message:
             classes:
                 model: App\Entity\Message
+        app.user:
+            classes:
+                model: App\Entity\User
+                form: App\Form\UserType

@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use ApiPlatform\Metadata\Get;
@@ -19,10 +20,12 @@ use Sylius\Resource\Model\ResourceInterface;
 /**
  * A chat conversation between a user and the AI.
  *
- * NOTE: this backend has no auth/User system yet, so there is no `user`
- * field -- same gap as Document.uploaded_by, Workflow.created_by, etc. --
- * and conversations are globally readable/writable by anyone with an id,
- * rather than scoped per-user.
+ * `user` is the operator account that owns this conversation, stamped
+ * automatically on creation (see UserStampListener) from whoever is
+ * authenticated on the admin/api firewall. Null for conversations created
+ * before multi-user auth existed. All operators currently share ROLE_ADMIN
+ * (see security.yaml), so this is attribution, not an access restriction --
+ * anyone authenticated can still read/write any conversation by id.
  */
 #[ORM\Entity(repositoryClass: ConversationRepository::class)]
 #[ORM\HasLifecycleCallbacks]
@@ -76,6 +79,15 @@ class Conversation implements ResourceInterface
 
     #[ORM\Column]
     private bool $isActive = true;
+
+    // Not readable/writable over the API: User has no serialization groups
+    // configured, so embedding it here would otherwise leak User::password
+    // (the hash) in every Conversation response. Visible in the admin
+    // backoffice (Twig/PropertyAccessor, not the API serializer).
+    #[ApiProperty(readable: false, writable: false)]
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $user = null;
 
     /**
      * @var DoctrineCollection<int, Message>
@@ -132,6 +144,18 @@ class Conversation implements ResourceInterface
     public function setIsActive(bool $isActive): static
     {
         $this->isActive = $isActive;
+
+        return $this;
+    }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): static
+    {
+        $this->user = $user;
 
         return $this;
     }

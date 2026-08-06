@@ -119,3 +119,13 @@ app_admin_message:
         grid: app_message
         only: [index, show]
     type: sylius.resource
+
+app_admin_user:
+    resource: |
+        alias: app.user
+        section: admin
+        path: /admin/users
+        templates: admin/crud
+        redirect: index
+        grid: app_user
+    type: sylius.resource

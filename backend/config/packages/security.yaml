@@ -3,15 +3,15 @@ security:
     password_hashers:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
 
-    # Single admin account, credentials from env (see .env) -- no User entity/DB
-    # needed for a single-admin backoffice.
+    # Multi-user: each operator is a row in app_user (App\Entity\User),
+    # identified by email. Replaces the old single shared ADMIN_USERNAME /
+    # ADMIN_PASSWORD_HASH in-memory account -- create accounts with
+    # `bin/console app:user:create` or via /admin/users.
     providers:
         admin_provider:
-            memory:
-                users:
-                    '%env(ADMIN_USERNAME)%':
-                        password: '%env(ADMIN_PASSWORD_HASH)%'
-                        roles: ['ROLE_ADMIN']
+            entity:
+                class: App\Entity\User
+                property: email
 
     firewalls:
         dev:

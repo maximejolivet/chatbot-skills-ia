@@ -102,42 +102,46 @@ Testé en réel de bout en bout : `quick-send` simple, mémoire conversationnell
 
 Construit avec **Sylius Resource Bundle** (CRUD générique piloté par config : routing, repository, formulaire) et **Sylius Grid Bundle** (définition des colonnes/actions des listes), avec des templates Twig maison (pas de thème Sylius packagé) stylés en **Tailwind CSS** (chargé via CDN, pas d'asset pipeline).
 
-Les 13 entités du domaine sont gérables : `AiProviderConfig`, `VectorIndex`, `DocumentCategory`, `Faq`, `Collection`, `Workflow` (+ `WorkflowStep` imbriqué), `AiAgent`, `Conversation` en CRUD complet ; `SearchQuery`, `WorkflowExecution`, `Message` en lecture seule (mêmes restrictions que côté API) ; `Document` en lecture/édition/suppression seulement (la création reste réservée à `POST /api/documents`, qui gère l'upload multipart et le pipeline d'indexation — pas reproduit dans un formulaire générique).
+Les 14 entités du domaine sont gérables : `AiProviderConfig`, `VectorIndex`, `DocumentCategory`, `Faq`, `Collection`, `Workflow` (+ `WorkflowStep` imbriqué), `AiAgent`, `Conversation`, `User` en CRUD complet ; `SearchQuery`, `WorkflowExecution`, `Message` en lecture seule (mêmes restrictions que côté API) ; `Document` en lecture/édition/suppression seulement (la création reste réservée à `POST /api/documents`, qui gère l'upload multipart et le pipeline d'indexation — pas reproduit dans un formulaire générique).
 
 **`AiAgent` mérite une mention particulière** : son API REST est volontairement en lecture seule. Le backoffice est donc le *seul* moyen d'en créer/modifier.
 
 Architecture, pour ajouter une 14e ressource : une entité `implements Sylius\Resource\Model\ResourceInterface`, un repository avec `Sylius\Bundle\ResourceBundle\Doctrine\ORM\ResourceRepositoryTrait`, une classe `App\Form\XType`, une classe `App\Grid\XGrid` (`#[AsGrid]`), une entrée dans `config/packages/sylius_resource.yaml` et `config/routes/admin.yaml`. Les templates (`templates/admin/crud/*.html.twig`) et le rendu des champs (`App\Twig\AdminExtension::fieldValue()`, basé sur `PropertyAccessor` — gère nativement enums/dates/bools/relations/collections) sont partagés par toutes les ressources, sans rien à écrire de plus.
 
-**Authentification requise.** `/admin` est protégé par Symfony Security (firewall `admin`, `config/packages/security.yaml`) : formulaire de login sur `/admin/login`, session cookie. Un seul compte admin (identifiants dans `.env`, voir §Sécurité ci-dessous) — pas de multi-utilisateur.
+**Authentification requise.** `/admin` est protégé par Symfony Security (firewall `admin`, `config/packages/security.yaml`) : formulaire de login sur `/admin/login`, session cookie. Multi-utilisateur : chaque opérateur a son propre compte (table `app_user`, gérable dans `/admin/users`), voir §Sécurité ci-dessous.
 
 **CSRF désactivé délibérément** (`config/packages/csrf.yaml`) : la protection CSRF « stateless » activée par défaut par Symfony Flex nécessite le contrôleur Stimulus `csrf-protection`, qui nécessite un asset pipeline (Symfony UX/AssetMapper) non installé ici. Plutôt que de livrer des formulaires avec un token qui ne serait jamais rempli, la protection CSRF des formulaires est désactivée. Seule exception : les actions de suppression (gérées directement par Sylius, pas par le composant Form) utilisent le CSRF **session-based classique** de Symfony (`csrf_token(id)` dans le Twig), qui lui fonctionne sans JS.
 
 ## Sécurité
 
-Deux firewalls (`config/packages/security.yaml`), un seul compte admin (`ADMIN_USERNAME`/`ADMIN_PASSWORD_HASH` dans `.env`, provider `memory` — pas de table `User`) :
+Deux firewalls (`config/packages/security.yaml`), tous deux authentifiés contre la table `app_user` (`App\Entity\User`, provider `entity`, identifiant = email) :
 
 - **`admin`** (`^/admin`) : `form_login` classique, session cookie. Page de connexion sur `/admin/login`, déconnexion sur `/admin/logout`.
 - **`api`** (`^/`, catch-all) : `http_basic`, `stateless: true`. Couvre `/api/*` et `/doc`. Pensé pour un client machine (curl, scripts, ou le proxy serveur d'un frontend) plutôt que pour un navigateur.
 
-`access_control` exige `ROLE_ADMIN` sur `^/admin` et `^/(api|doc)` ; seule `^/admin/login` reste publique. Générer/changer le mot de passe :
+`access_control` exige `ROLE_ADMIN` sur `^/admin` et `^/(api|doc)` ; seule `^/admin/login` reste publique. Tous les comptes ont `ROLE_ADMIN` par défaut (pas de rôle restreint pour l'instant, voir "Limites connues") — gérer les comptes se fait soit dans `/admin/users`, soit en ligne de commande :
+
+```bash
+docker exec chatbot-symfony php bin/console app:user:create operateur@example.com 'un-mot-de-passe-solide'
+```
+
+L'ancien compte admin unique (`ADMIN_USERNAME`/`ADMIN_PASSWORD_HASH` dans `.env`) a été repris tel quel comme premier compte `app_user` lors de la migration (même email `admin`, même hash) : les identifiants existants (dont `ADMIN_PASSWORD`, utilisé par le proxy du frontend Nuxt pour s'authentifier en Basic Auth au nom des visiteurs du widget) continuent de fonctionner sans rien changer. Générer un nouveau hash pour un compte :
 
 ```bash
 docker exec chatbot-symfony php bin/console security:hash-password
 ```
 
-Puis mettre à jour `ADMIN_PASSWORD_HASH` (et `ADMIN_PASSWORD`, la contrepartie en clair utilisée par le proxy du frontend Nuxt pour s'authentifier en Basic Auth au nom des visiteurs du widget) dans `.env`.
-
-`AiProviderConfig.apiKey` est `#[ApiProperty(readable: false)]` : jamais renvoyé par l'API, uniquement accepté en écriture.
+`AiProviderConfig.apiKey` est `#[ApiProperty(readable: false)]` : jamais renvoyé par l'API, uniquement accepté en écriture. Même traitement pour `Conversation.user` et `WorkflowExecution.triggeredBy` (`#[ApiProperty(readable: false, writable: false)]`) : `User` n'a pas de groupes de sérialisation, donc les exposer sur l'API embarquerait le hash de mot de passe dans chaque réponse. Ces deux champs sont renseignés automatiquement à la création (`App\EventListener\UserStampListener`, sur `prePersist`) à partir de l'utilisateur authentifié sur la requête ; ils restent visibles dans le backoffice (Twig/`PropertyAccessor`, indépendant du serializer API).
 
 ## Limites connues
 
 Tous documentées inline dans le code (recherchez `NOTE`/`Limite` dans les entités et services concernés) :
 
-- **Pas de multi-utilisateur** : un seul compte admin partagé, aucun champ `user`/`uploaded_by`/`created_by`/`triggered_by` sur les entités. Conséquence : les conversations, executions et le backoffice `/admin` sont protégés par authentification, mais pas scopés par utilisateur (tout est visible/modifiable par quiconque a les identifiants admin)
+- **Multi-utilisateur sans cloisonnement** : chaque opérateur a son propre compte (`app_user`), et `Conversation`/`WorkflowExecution` savent qui les a créées (`user`/`triggeredBy`). Mais tous les comptes partagent `ROLE_ADMIN` : c'est de l'attribution, pas une restriction d'accès — n'importe quel compte authentifié peut toujours lire/modifier les conversations ou exécutions de n'importe qui. Un vrai cloisonnement par utilisateur (rôle `ROLE_USER` restreint + règles `security` par ressource API Platform) reste à faire.
 - **Pas de message queue (Redis/Symfony Messenger)** : le chunking/vectorisation de documents (`knowledge_base`) et le déclenchement de workflows (`workflows`) tournent en synchrone dans la requête plutôt qu'en tâche de fond — bloquant
 
 ## Prochaines étapes possibles
 
-- Authentification multi-utilisateur (entité `User`, rôles) pour remplacer le compte admin unique et introduire le scoping par utilisateur sur `Conversation`/`WorkflowExecution`
+- Cloisonnement réel par utilisateur : rôle `ROLE_USER` restreint en plus de `ROLE_ADMIN`, et règles `security` par ressource API Platform pour qu'un compte non-admin ne voie/modifie que ses propres `Conversation`/`WorkflowExecution`
 - File d'attente async (Symfony Messenger + Redis) pour le chunking/la vectorisation/le déclenchement de workflows
 - Asset pipeline (AssetMapper) pour réactiver le CSRF stateless et remplacer le Tailwind CDN par un build local
