@@ -1,0 +1,19 @@
+{
+  "name": "chatbot-ia",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chatbot IA — Symfony backend + Nuxt frontend, routed via Traefik",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maximejolivet/chatbot-ia.git"
+  },
+  "license": "ISC",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
+    "husky": "^9.1.7"
+  }
+}

@@ -1,0 +1,15 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: Chatbot Backend API
+            description: |
+                Documentation Swagger « classique » (OpenAPI pur, sans l'enveloppe Hydra/JSON-LD) :
+                inclut automatiquement les ressources API Platform (nelmio/api-doc-bundle les
+                miroir via ApiPlatformDescriber) ainsi que les contrôleurs Symfony écrits à la
+                main. /api reste la doc interactive « native » d'API Platform (Hydra/JSON-LD).
+            version: 1.0.0
+    areas:
+        default:
+            # Exclut uniquement le bruit interne (pages d'erreur, /doc lui-même).
+            path_patterns:
+                - ^/(?!_error|doc)

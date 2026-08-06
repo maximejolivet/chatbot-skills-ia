@@ -1,0 +1,8 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Créer · {{ metadata.name|humanize }}{% endblock %}
+{% block header %}Créer : {{ metadata.name|humanize }}{% endblock %}
+
+{% block content %}
+    {% include 'admin/crud/_form.html.twig' %}
+{% endblock %}

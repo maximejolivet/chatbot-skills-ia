@@ -1,0 +1,11 @@
+# Servi hors du préfixe /api : l'entrypoint API Platform (/api/{index}.{_format})
+# capte déjà tout ce qui est sous /api, donc /api/doc serait inatteignable.
+app.swagger_ui:
+    path: /doc
+    methods: GET
+    controller: nelmio_api_doc.controller.swagger_ui
+
+app.swagger_json:
+    path: /doc.json
+    methods: GET
+    controller: nelmio_api_doc.controller.swagger

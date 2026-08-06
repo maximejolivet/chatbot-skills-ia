@@ -1,0 +1,56 @@
+security:
+    # https://symfony.com/doc/current/security.html#registering-the-user-hashing-passwords
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+
+    # Single admin account, credentials from env (see .env) -- no User entity/DB
+    # needed for a single-admin backoffice.
+    providers:
+        admin_provider:
+            memory:
+                users:
+                    '%env(ADMIN_USERNAME)%':
+                        password: '%env(ADMIN_PASSWORD_HASH)%'
+                        roles: ['ROLE_ADMIN']
+
+    firewalls:
+        dev:
+            # Ensure dev tools and static assets are always allowed
+            pattern: ^/(_profiler|_wdt|assets|build)/
+            security: false
+        admin:
+            # Human-facing backoffice: session-based login form.
+            pattern: ^/admin
+            lazy: true
+            provider: admin_provider
+            form_login:
+                login_path: app_admin_login
+                check_path: app_admin_login
+                default_target_path: app_admin_dashboard
+            logout:
+                path: app_admin_logout
+                target: app_admin_login
+        api:
+            # Everything else (API Platform /api, Swagger /doc): stateless HTTP Basic,
+            # so curl/scripts/the Nuxt frontend proxy can authenticate as a service account.
+            pattern: ^/
+            stateless: true
+            provider: admin_provider
+            http_basic: ~
+
+    # Note: Only the *first* matching rule is applied
+    access_control:
+        - { path: ^/admin/login, roles: PUBLIC_ACCESS }
+        - { path: ^/admin, roles: ROLE_ADMIN }
+        - { path: ^/(api|doc)(/|$), roles: ROLE_ADMIN }
+
+when@test:
+    security:
+        password_hashers:
+            # Password hashers are resource-intensive by design to ensure security.
+            # In tests, it's safe to reduce their cost to improve performance.
+            Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+                algorithm: auto
+                cost: 4 # Lowest possible value for bcrypt
+                time_cost: 3 # Lowest possible value for argon
+                memory_cost: 10 # Lowest possible value for argon

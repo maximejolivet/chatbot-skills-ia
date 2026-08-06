@@ -1,0 +1,85 @@
+
+services:
+  app:
+    build: .
+    container_name: chatbot-symfony
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-!ChangeMe!}@database:5432/${POSTGRES_DB:-app}?serverVersion=${POSTGRES_VERSION:-16}&charset=utf8
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: "6333"
+    volumes:
+      - .:/app
+    depends_on:
+      database:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - proxy
+
+###> doctrine/doctrine-bundle ###
+  database:
+    image: postgres:${POSTGRES_VERSION:-16}-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      # You should definitely change the password in production
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-app}", "-U", "${POSTGRES_USER:-app}"]
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - database_data:/var/lib/postgresql/data:rw
+      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
+      # - ./docker/db/data:/var/lib/postgresql/data:rw
+###< doctrine/doctrine-bundle ###
+
+  qdrant:
+    image: qdrant/qdrant:v1.19.0
+    ports:
+      - "6333"
+      - "6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - default
+      - proxy
+
+  nuxt:
+    image: node:24-alpine
+    container_name: chatbot-symfony-nuxt
+    working_dir: /app
+    volumes:
+      - ../frontend:/app
+    command: sh -c "npm ci && npm run build && HOST=0.0.0.0 PORT=3000 node .output/server/index.mjs"
+    ports:
+      - "3010:3000"
+    environment:
+      - CHOKIDAR_USEPOLLING=1
+      - NODE_OPTIONS="--dns-result-order=ipv4first"
+      - API_URL=http://chatbot-symfony:8000
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+    depends_on:
+      - app
+    networks:
+      - default
+      - proxy
+
+volumes:
+###> doctrine/doctrine-bundle ###
+  database_data:
+###< doctrine/doctrine-bundle ###
+  qdrant_data:
+
+networks:
+  default:
+  proxy:
+    name: chatbot-proxy
+    external: true

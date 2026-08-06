@@ -1,0 +1,37 @@
+# <type>(<scope>): <emoji> <description>
+#
+# <optional body — explain the what and why, not the how>
+#
+# Verified-by: composer audit <N> advisories, npm audit <N> vulnerabilities
+# Refs: #<issue>
+# Closes: #<issue>
+# Co-authored-by: <name> <email>
+# Signed-off-by: <name> <email>
+#
+# ── Types ──────────────────────────────────────────────
+# feat      ✨  new feature
+# fix       🐛  bug fix
+# refactor  ♻️  refactor, no behavior change
+# perf      ⚡️  performance improvement
+# docs      📝  documentation
+# style     💄  formatting, no logic change
+# test      ✅  add/fix tests
+# build     📦  dependencies, build config
+# ci        👷  CI/CD pipelines
+# chore     🔧  misc maintenance/config
+# revert    ⏪  revert a commit
+# security  🔒  security fix
+#
+# ── Rules ──────────────────────────────────────────────
+# - description: always in English, even if drafted in another language
+#   first — translate it before committing
+# - description: imperative, lowercase, no trailing period, ≤ 72 chars
+# - scope: REQUIRED (not optional) — lowercase module name (e.g.
+#   backend-symfony, nuxt-symfony, traefik, docs, scripts, repo)
+# - body: optional, wrap at 72 chars
+# - Verified-by: fill in both counters even if 0 (delete if neither
+#   composer audit nor npm audit ran for this change)
+# - Refs: optional, links the ticket without closing it
+# - Closes: optional, use instead of/alongside Refs to auto-close the
+#   ticket on merge (GitHub/GitLab)
+# - Co-authored-by / Signed-off-by: optional, delete if unused

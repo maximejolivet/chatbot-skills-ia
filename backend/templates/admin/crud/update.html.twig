@@ -1,0 +1,8 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Modifier · {{ metadata.name|humanize }}{% endblock %}
+{% block header %}Modifier : {{ metadata.name|humanize }} #{{ resource.id }}{% endblock %}
+
+{% block content %}
+    {% include 'admin/crud/_form.html.twig' %}
+{% endblock %}

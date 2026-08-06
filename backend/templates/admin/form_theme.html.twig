@@ -1,0 +1,65 @@
+{% use 'form_div_layout.html.twig' %}
+
+{% block form_row %}
+    {%- if form.vars.errors|length > 0 or 'hidden' not in block_prefixes -%}
+    <div class="mb-4{% if 'checkbox' in block_prefixes %} flex items-center gap-2{% endif %}">
+        {%- if 'checkbox' in block_prefixes -%}
+            {{ form_widget(form) }}
+            {{ form_label(form) }}
+        {%- else -%}
+            {{ form_label(form) }}
+            {{ form_widget(form) }}
+        {%- endif -%}
+        {{ form_errors(form) }}
+        {%- if form.vars.help is defined and form.vars.help -%}
+            <p class="mt-1 text-xs text-slate-500">{{ form.vars.help }}</p>
+        {%- endif -%}
+    </div>
+    {%- else -%}
+        {{ form_widget(form) }}
+    {%- endif -%}
+{% endblock %}
+
+{% block form_label %}
+    {%- if label is not same as(false) and 'checkbox' not in block_prefixes -%}
+        <label {% if id is defined %}for="{{ id }}"{% endif %} class="block text-sm font-medium text-slate-700 mb-1">
+            {{- label is not empty ? label|trans : name|humanize -}}
+        </label>
+    {%- elseif 'checkbox' not in block_prefixes -%}
+        <label class="block text-sm font-medium text-slate-700 mb-1">{{ name|humanize }}</label>
+    {%- else -%}
+        <label {% if id is defined %}for="{{ id }}"{% endif %} class="text-sm text-slate-700">
+            {{- label is not empty ? label|trans : name|humanize -}}
+        </label>
+    {%- endif -%}
+{% endblock %}
+
+{% block form_errors %}
+    {%- if errors|length > 0 -%}
+        <ul class="mt-1 text-sm text-red-600 space-y-0.5">
+            {%- for error in errors -%}
+                <li>{{ error.message }}</li>
+            {%- endfor -%}
+        </ul>
+    {%- endif -%}
+{% endblock %}
+
+{% block form_widget_simple %}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500')|trim}) -%}
+    {{- parent() -}}
+{% endblock %}
+
+{% block textarea_widget %}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500')|trim}) -%}
+    {{- parent() -}}
+{% endblock %}
+
+{% block choice_widget_collapsed %}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500')|trim}) -%}
+    {{- parent() -}}
+{% endblock %}
+
+{% block checkbox_widget %}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500')|trim}) -%}
+    {{- parent() -}}
+{% endblock %}

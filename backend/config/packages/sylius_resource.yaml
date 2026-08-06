@@ -1,0 +1,47 @@
+sylius_resource:
+    resources:
+        app.ai_provider_config:
+            classes:
+                model: App\Entity\AiProviderConfig
+                form: App\Form\AiProviderConfigType
+        app.vector_index:
+            classes:
+                model: App\Entity\VectorIndex
+                form: App\Form\VectorIndexType
+        app.search_query:
+            classes:
+                model: App\Entity\SearchQuery
+        app.document_category:
+            classes:
+                model: App\Entity\DocumentCategory
+                form: App\Form\DocumentCategoryType
+        app.faq:
+            classes:
+                model: App\Entity\Faq
+                form: App\Form\FaqType
+        app.collection:
+            classes:
+                model: App\Entity\Collection
+                form: App\Form\CollectionType
+        app.document:
+            classes:
+                model: App\Entity\Document
+                form: App\Form\DocumentType
+        app.workflow:
+            classes:
+                model: App\Entity\Workflow
+                form: App\Form\WorkflowType
+        app.workflow_execution:
+            classes:
+                model: App\Entity\WorkflowExecution
+        app.ai_agent:
+            classes:
+                model: App\Entity\AiAgent
+                form: App\Form\AiAgentType
+        app.conversation:
+            classes:
+                model: App\Entity\Conversation
+                form: App\Form\ConversationType
+        app.message:
+            classes:
+                model: App\Entity\Message

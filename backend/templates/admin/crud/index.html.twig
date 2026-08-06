@@ -1,0 +1,83 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% set item_actions = resources.definition.hasActionGroup('item') ? resources.definition.getActionGroup('item').actions : [] %}
+{% set main_actions = resources.definition.hasActionGroup('main') ? resources.definition.getActionGroup('main').actions : [] %}
+
+{% block title %}{{ metadata.pluralName|capitalize }}{% endblock %}
+{% block header %}{{ metadata.pluralName|capitalize|replace({'_': ' '}) }}{% endblock %}
+
+{% block header_actions %}
+    {% for action in main_actions %}
+        <a href="{{ path(admin_route(metadata.name, action.type)) }}"
+           class="inline-flex items-center rounded-md bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700">
+            + {{ action.label starts with 'sylius.' ? 'Créer' : action.label }}
+        </a>
+    {% endfor %}
+{% endblock %}
+
+{% block content %}
+    <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 text-sm">
+                <thead class="bg-slate-50">
+                    <tr>
+                        {% for field in resources.definition.enabledFields %}
+                            <th class="px-4 py-2.5 text-left font-medium text-slate-500">{{ field.label ?? field.name }}</th>
+                        {% endfor %}
+                        {% if item_actions is not empty %}
+                            <th class="px-4 py-2.5 text-right font-medium text-slate-500">Actions</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for row in resources.data %}
+                        <tr class="hover:bg-slate-50">
+                            {% for field in resources.definition.enabledFields %}
+                                <td class="px-4 py-2.5 text-slate-700">{{ admin_field_value(row, field.path ?? field.name) }}</td>
+                            {% endfor %}
+                            {% if item_actions is not empty %}
+                                <td class="px-4 py-2.5 text-right space-x-3 whitespace-nowrap">
+                                    {% for action in item_actions %}
+                                        {% if action.type == 'delete' %}
+                                            <form method="post" action="{{ path(admin_route(metadata.name, 'delete'), {id: row.id}) }}"
+                                                  onsubmit="return confirm('Supprimer cet élément ?');" class="inline">
+                                                <input type="hidden" name="_method" value="DELETE">
+                                                <input type="hidden" name="_csrf_token" value="{{ csrf_token(row.id) }}">
+                                                <button type="submit" class="text-red-600 hover:text-red-800">Supprimer</button>
+                                            </form>
+                                        {% else %}
+                                            <a href="{{ path(admin_route(metadata.name, action.type), {id: row.id}) }}"
+                                               class="text-brand-700 hover:text-brand-900">
+                                                {{ action.type == 'show' ? 'Voir' : (action.type == 'update' ? 'Modifier' : action.label) }}
+                                            </a>
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="{{ resources.definition.enabledFields|length + 1 }}" class="px-4 py-8 text-center text-slate-400">
+                                Aucun élément.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if resources.data.haveToPaginate %}
+            <div class="flex items-center justify-between px-4 py-3 border-t border-slate-200 text-sm text-slate-600">
+                <span>Page {{ resources.data.currentPage }} / {{ resources.data.nbPages }} ({{ resources.data.nbResults }} au total)</span>
+                <div class="space-x-2">
+                    {% if resources.data.hasPreviousPage %}
+                        <a href="{{ path(app.request.attributes.get('_route'), app.request.query.all|merge({page: resources.data.previousPage})) }}" class="text-brand-700 hover:underline">← Précédent</a>
+                    {% endif %}
+                    {% if resources.data.hasNextPage %}
+                        <a href="{{ path(app.request.attributes.get('_route'), app.request.query.all|merge({page: resources.data.nextPage})) }}" class="text-brand-700 hover:underline">Suivant →</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

@@ -1,0 +1,22 @@
+services:
+  traefik:
+    image: traefik:v3.5
+    container_name: chatbot-traefik
+    command:
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+      - --api.dashboard=true
+      - --api.insecure=true
+    ports:
+      - "80:80"
+      - "8090:8080" # dashboard: http://traefik.chatbot.localhost:8090 or http://localhost:8090
+    volumes:
+      - ./dynamic.yml:/etc/traefik/dynamic/dynamic.yml:ro
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    name: chatbot-proxy
+    external: true

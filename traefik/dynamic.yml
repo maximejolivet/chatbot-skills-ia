@@ -1,0 +1,29 @@
+http:
+  routers:
+    traefik:
+      rule: Host(`traefik.chatbot.localhost`)
+      service: api@internal
+
+    symfony:
+      rule: Host(`symfony.chatbot.localhost`)
+      service: symfony
+    nuxt-symfony:
+      rule: Host(`nuxt-symfony.chatbot.localhost`)
+      service: nuxt-symfony
+    qdrant-symfony:
+      rule: Host(`qdrant-symfony.chatbot.localhost`)
+      service: qdrant-symfony
+
+  services:
+    symfony:
+      loadBalancer:
+        servers:
+          - url: http://chatbot-symfony:8000
+    nuxt-symfony:
+      loadBalancer:
+        servers:
+          - url: http://chatbot-symfony-nuxt:3000
+    qdrant-symfony:
+      loadBalancer:
+        servers:
+          - url: http://backend_symfony-qdrant-1:6333

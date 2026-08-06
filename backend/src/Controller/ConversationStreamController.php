@@ -1,0 +1,62 @@
+<?php
+
+namespace App\Controller;
+
+use App\Chat\ChatService;
+use App\Entity\Conversation;
+use Symfony\Bundle\FrameworkBundle\Controller\AsController;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+
+/**
+ * Runs the full (non-streaming) reply generation server-side, then emits the
+ * result as SSE -- true token-level streaming isn't combined with
+ * tool-calling in this design (see ChatOrchestrationService).
+ */
+#[AsController]
+final class ConversationStreamController
+{
+    public function __construct(private readonly ChatService $chatService)
+    {
+    }
+
+    public function __invoke(Conversation $data, Request $request): StreamedResponse
+    {
+        $body = json_decode($request->getContent(), true) ?? [];
+        $userMessage = trim((string) ($body['message'] ?? ''));
+        if ('' === $userMessage) {
+            throw new BadRequestHttpException('Missing message.');
+        }
+        $agentId = isset($body['agent_id']) ? (int) $body['agent_id'] : null;
+
+        $response = new StreamedResponse(function () use ($data, $userMessage, $agentId) {
+            $this->emit(['type' => 'user_message', 'content' => $userMessage]);
+
+            try {
+                $assistantMessage = $this->chatService->sendMessage($data, $userMessage, $agentId);
+                $this->emit(['type' => 'ai_complete', 'content' => $assistantMessage->getContent(), 'done' => true]);
+            } catch (\Throwable $e) {
+                $this->emit(['type' => 'error', 'content' => $e->getMessage()]);
+            }
+
+            $this->emit(['type' => 'done', 'done' => true]);
+        });
+
+        $response->headers->set('Content-Type', 'text/event-stream');
+        $response->headers->set('Cache-Control', 'no-cache');
+        $response->headers->set('Connection', 'keep-alive');
+        $response->headers->set('X-Accel-Buffering', 'no');
+
+        return $response;
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function emit(array $payload): void
+    {
+        echo 'data: '.json_encode($payload, \JSON_PARTIAL_OUTPUT_ON_ERROR)."\n\n";
+        flush();
+    }
+}

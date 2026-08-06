@@ -1,0 +1,21 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}{{ metadata.name|humanize }} #{{ resource.id }}{% endblock %}
+{% block header %}{{ metadata.name|humanize }} #{{ resource.id }}{% endblock %}
+
+{% block header_actions %}
+    <a href="{{ path(admin_route(metadata.name, 'index')) }}" class="text-sm text-slate-600 hover:text-slate-900">← Retour à la liste</a>
+{% endblock %}
+
+{% block content %}
+    <div class="bg-white rounded-lg border border-slate-200 p-6 max-w-2xl">
+        <dl class="divide-y divide-slate-100">
+            {% for field in admin_grid_fields(metadata.name) %}
+                <div class="py-3 grid grid-cols-3 gap-4">
+                    <dt class="text-sm font-medium text-slate-500">{{ field.label ?? field.name }}</dt>
+                    <dd class="text-sm text-slate-900 col-span-2 whitespace-pre-wrap">{{ admin_field_value(resource, field.path ?? field.name) }}</dd>
+                </div>
+            {% endfor %}
+        </dl>
+    </div>
+{% endblock %}

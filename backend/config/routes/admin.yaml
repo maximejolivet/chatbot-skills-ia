@@ -1,0 +1,121 @@
+app_admin_ai_provider_config:
+    resource: |
+        alias: app.ai_provider_config
+        section: admin
+        path: /admin/ai-provider-configs
+        templates: admin/crud
+        redirect: index
+        grid: app_ai_provider_config
+    type: sylius.resource
+
+app_admin_vector_index:
+    resource: |
+        alias: app.vector_index
+        section: admin
+        path: /admin/vector-indexes
+        templates: admin/crud
+        redirect: index
+        grid: app_vector_index
+    type: sylius.resource
+
+app_admin_search_query:
+    resource: |
+        alias: app.search_query
+        section: admin
+        path: /admin/search-queries
+        templates: admin/crud
+        grid: app_search_query
+        only: [index, show]
+    type: sylius.resource
+
+app_admin_document_category:
+    resource: |
+        alias: app.document_category
+        section: admin
+        path: /admin/document-categories
+        templates: admin/crud
+        redirect: index
+        grid: app_document_category
+    type: sylius.resource
+
+app_admin_faq:
+    resource: |
+        alias: app.faq
+        section: admin
+        path: /admin/faqs
+        templates: admin/crud
+        redirect: index
+        grid: app_faq
+    type: sylius.resource
+
+app_admin_collection:
+    resource: |
+        alias: app.collection
+        section: admin
+        path: /admin/collections
+        templates: admin/crud
+        redirect: index
+        grid: app_collection
+    type: sylius.resource
+
+# No "create" route -- documents are uploaded via POST /api/documents (multipart).
+app_admin_document:
+    resource: |
+        alias: app.document
+        section: admin
+        path: /admin/documents
+        templates: admin/crud
+        redirect: index
+        grid: app_document
+        only: [index, show, update, delete]
+    type: sylius.resource
+
+app_admin_workflow:
+    resource: |
+        alias: app.workflow
+        section: admin
+        path: /admin/workflows
+        templates: admin/crud
+        redirect: index
+        grid: app_workflow
+    type: sylius.resource
+
+app_admin_workflow_execution:
+    resource: |
+        alias: app.workflow_execution
+        section: admin
+        path: /admin/workflow-executions
+        templates: admin/crud
+        grid: app_workflow_execution
+        only: [index, show]
+    type: sylius.resource
+
+app_admin_ai_agent:
+    resource: |
+        alias: app.ai_agent
+        section: admin
+        path: /admin/ai-agents
+        templates: admin/crud
+        redirect: index
+        grid: app_ai_agent
+    type: sylius.resource
+
+app_admin_conversation:
+    resource: |
+        alias: app.conversation
+        section: admin
+        path: /admin/conversations
+        templates: admin/crud
+        redirect: index
+        grid: app_conversation
+    type: sylius.resource
+
+app_admin_message:
+    resource: |
+        alias: app.message
+        section: admin
+        path: /admin/messages
+        templates: admin/crud
+        grid: app_message
+        only: [index, show]
+    type: sylius.resource
