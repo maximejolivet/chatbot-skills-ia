@@ -13,7 +13,7 @@ use Sylius\Resource\Model\ResourceInterface;
  */
 #[ORM\Entity(repositoryClass: FaqRepository::class)]
 #[ORM\HasLifecycleCallbacks]
-#[ApiResource]
+#[ApiResource(security: "is_granted('ROLE_ADMIN')")]
 class Faq implements ResourceInterface
 {
     #[ORM\Id]

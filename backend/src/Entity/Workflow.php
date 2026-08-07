@@ -29,6 +29,7 @@ use Sylius\Resource\Model\ResourceInterface;
 #[ORM\Entity(repositoryClass: WorkflowRepository::class)]
 #[ORM\HasLifecycleCallbacks]
 #[ApiResource(
+    security: "is_granted('ROLE_ADMIN')",
     operations: [
         new GetCollection(),
         new Get(),

@@ -16,11 +16,14 @@ use Sylius\Resource\Model\ResourceInterface;
  *
  * `triggeredBy` is the operator account authenticated on the request that
  * started this execution, stamped automatically (see UserStampListener).
- * Null for executions triggered before multi-user auth existed.
+ * Null for executions triggered before multi-user auth existed (admin-only,
+ * see OwnershipVoter). ROLE_USER accounts are restricted to their own
+ * executions via the `security` expression below plus
+ * OwnershipCollectionExtension for GetCollection.
  */
 #[ORM\Entity(repositoryClass: WorkflowExecutionRepository::class)]
-#[ApiResource(operations: [new GetCollection(), new Get()])]
-class WorkflowExecution implements ResourceInterface
+#[ApiResource(operations: [new GetCollection(), new Get(security: "is_granted('OWNER', object)")])]
+class WorkflowExecution implements ResourceInterface, OwnedResourceInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -125,6 +128,16 @@ class WorkflowExecution implements ResourceInterface
         $this->triggeredBy = $triggeredBy;
 
         return $this;
+    }
+
+    public function getOwnerUser(): ?User
+    {
+        return $this->triggeredBy;
+    }
+
+    public static function getOwnerFieldName(): string
+    {
+        return 'triggeredBy';
     }
 
     /**

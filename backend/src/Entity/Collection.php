@@ -11,7 +11,7 @@ use Sylius\Resource\Model\ResourceInterface;
  * A collection of documents, optionally scoped to an AI agent.
  */
 #[ORM\Entity(repositoryClass: CollectionRepository::class)]
-#[ApiResource]
+#[ApiResource(security: "is_granted('ROLE_ADMIN')")]
 class Collection implements ResourceInterface
 {
     #[ORM\Id]

@@ -8,7 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Sylius\Resource\Model\ResourceInterface;
 
 #[ORM\Entity(repositoryClass: DocumentCategoryRepository::class)]
-#[ApiResource]
+#[ApiResource(security: "is_granted('ROLE_ADMIN')")]
 class DocumentCategory implements ResourceInterface
 {
     #[ORM\Id]

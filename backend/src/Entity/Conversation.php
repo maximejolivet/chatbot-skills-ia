@@ -23,19 +23,26 @@ use Sylius\Resource\Model\ResourceInterface;
  * `user` is the operator account that owns this conversation, stamped
  * automatically on creation (see UserStampListener) from whoever is
  * authenticated on the admin/api firewall. Null for conversations created
- * before multi-user auth existed. All operators currently share ROLE_ADMIN
- * (see security.yaml), so this is attribution, not an access restriction --
- * anyone authenticated can still read/write any conversation by id.
+ * before multi-user auth existed (admin-only, see OwnershipVoter). ROLE_ADMIN
+ * accounts can still read/write any conversation; ROLE_USER accounts are
+ * restricted to their own via the `security` expressions below
+ * (OwnershipVoter) plus OwnershipCollectionExtension for GetCollection.
  */
 #[ORM\Entity(repositoryClass: ConversationRepository::class)]
 #[ORM\HasLifecycleCallbacks]
 #[ApiResource(
     operations: [
         new GetCollection(),
-        new Get(),
+        new Get(security: "is_granted('OWNER', object)"),
         new Post(),
-        new Patch(),
-        new Delete(),
+        new Patch(security: "is_granted('OWNER', object)"),
+        new Delete(security: "is_granted('OWNER', object)"),
+        // No `security:` here -- empirically not enforced for
+        // custom-controller (read: true + controller:) operations in this
+        // API Platform version. Ownership is checked instead via
+        // #[IsGranted('OWNER', subject: 'data')] on each controller itself
+        // (ConversationMessagesController, ConversationStreamController),
+        // which Symfony's IsGrantedAttributeListener always enforces.
         new Get(
             uriTemplate: '/conversations/{id}/messages',
             controller: ConversationMessagesController::class,
@@ -61,7 +68,7 @@ use Sylius\Resource\Model\ResourceInterface;
         ),
     ],
 )]
-class Conversation implements ResourceInterface
+class Conversation implements ResourceInterface, OwnedResourceInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -158,6 +165,16 @@ class Conversation implements ResourceInterface
         $this->user = $user;
 
         return $this;
+    }
+
+    public function getOwnerUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public static function getOwnerFieldName(): string
+    {
+        return 'user';
     }
 
     /**

@@ -119,10 +119,13 @@ Deux firewalls (`config/packages/security.yaml`), tous deux authentifiés contre
 - **`admin`** (`^/admin`) : `form_login` classique, session cookie. Page de connexion sur `/admin/login`, déconnexion sur `/admin/logout`.
 - **`api`** (`^/`, catch-all) : `http_basic`, `stateless: true`. Couvre `/api/*` et `/doc`. Pensé pour un client machine (curl, scripts, ou le proxy serveur d'un frontend) plutôt que pour un navigateur.
 
-`access_control` exige `ROLE_ADMIN` sur `^/admin` et `^/(api|doc)` ; seule `^/admin/login` reste publique. Tous les comptes ont `ROLE_ADMIN` par défaut (pas de rôle restreint pour l'instant, voir "Limites connues") — gérer les comptes se fait soit dans `/admin/users`, soit en ligne de commande :
+`access_control` exige `ROLE_ADMIN` sur `^/admin` (seule `^/admin/login` reste publique) mais seulement `ROLE_USER` (le rôle de base, tout compte authentifié l'a) sur `^/(api|doc)` — l'accès à `/api` en tant que tel n'est plus réservé aux admins, l'autorisation fine se fait ressource par ressource : `Conversation`/`WorkflowExecution` acceptent `ROLE_USER` mais restreignent chaque compte à ses propres lignes (voir "Cloisonnement par utilisateur" ci-dessous) ; toutes les autres ressources (`Document`, `Workflow`, `AiAgent`, `AiProviderConfig`, etc.) exigent explicitement `ROLE_ADMIN` sur leur propre `#[ApiResource(security: ...)]`, donc restent fermées aux comptes `ROLE_USER`. Créer un compte :
 
 ```bash
+# Opérateur admin (par défaut) :
 docker exec chatbot-symfony php bin/console app:user:create operateur@example.com 'un-mot-de-passe-solide'
+# Compte restreint à ses propres conversations/exécutions :
+docker exec chatbot-symfony php bin/console app:user:create client@example.com 'un-mot-de-passe-solide' --role=ROLE_USER
 ```
 
 L'ancien compte admin unique (`ADMIN_USERNAME`/`ADMIN_PASSWORD_HASH` dans `.env`) a été repris tel quel comme premier compte `app_user` lors de la migration (même email `admin`, même hash) : les identifiants existants (dont `ADMIN_PASSWORD`, utilisé par le proxy du frontend Nuxt pour s'authentifier en Basic Auth au nom des visiteurs du widget) continuent de fonctionner sans rien changer. Générer un nouveau hash pour un compte :
@@ -133,15 +136,40 @@ docker exec chatbot-symfony php bin/console security:hash-password
 
 `AiProviderConfig.apiKey` est `#[ApiProperty(readable: false)]` : jamais renvoyé par l'API, uniquement accepté en écriture. Même traitement pour `Conversation.user` et `WorkflowExecution.triggeredBy` (`#[ApiProperty(readable: false, writable: false)]`) : `User` n'a pas de groupes de sérialisation, donc les exposer sur l'API embarquerait le hash de mot de passe dans chaque réponse. Ces deux champs sont renseignés automatiquement à la création (`App\EventListener\UserStampListener`, sur `prePersist`) à partir de l'utilisateur authentifié sur la requête ; ils restent visibles dans le backoffice (Twig/`PropertyAccessor`, indépendant du serializer API).
 
+## Cloisonnement par utilisateur
+
+`Conversation`/`WorkflowExecution` implémentent `App\Entity\OwnedResourceInterface`
+(`getOwnerUser()`, sur `user`/`triggeredBy` respectivement). Deux mécanismes,
+un par type d'opération API Platform :
+
+- **Item** (`Get`/`Patch`/`Delete`) : `security: "is_granted('OWNER', object)"`
+  sur l'opération, vérifié par `App\Security\Voter\OwnershipVoter`
+  (`ROLE_ADMIN` bypass toujours ; sinon compare `getOwnerUser()` au compte
+  authentifié ; propriétaire `null` = admin uniquement, lignes d'avant le
+  multi-utilisateur).
+- **Collection** (`GetCollection`) : pas d'`object` unique à vérifier pour un
+  Voter — `App\Doctrine\OwnershipCollectionExtension` filtre la requête DQL
+  elle-même (`WHERE o.user = :current_user` sauf `ROLE_ADMIN`).
+- **Opérations à contrôleur personnalisé** (`conversation_messages_*`,
+  `conversation_stream`, `read: true` + `controller:`) : le `security:`
+  déclaratif d'API Platform ne s'y applique pas de façon fiable (vérifié
+  empiriquement) — ces contrôleurs (`ConversationMessagesController`,
+  `ConversationStreamController`) utilisent à la place
+  `#[IsGranted('OWNER', subject: 'data')]`, toujours appliqué par Symfony.
+
+Toutes les autres ressources (`Document`, `Workflow`, `AiAgent`,
+`AiProviderConfig`, `Collection`, `Faq`, `DocumentCategory`, `VectorIndex`)
+exigent explicitement `ROLE_ADMIN` sur leur propre `#[ApiResource(security:
+...)]`, indépendamment de la règle `access_control` globale (voir §Sécurité)
+— un compte `ROLE_USER` ne peut ni les lire ni les modifier.
+
 ## Limites connues
 
 Tous documentées inline dans le code (recherchez `NOTE`/`Limite` dans les entités et services concernés) :
 
-- **Multi-utilisateur sans cloisonnement** : chaque opérateur a son propre compte (`app_user`), et `Conversation`/`WorkflowExecution` savent qui les a créées (`user`/`triggeredBy`). Mais tous les comptes partagent `ROLE_ADMIN` : c'est de l'attribution, pas une restriction d'accès — n'importe quel compte authentifié peut toujours lire/modifier les conversations ou exécutions de n'importe qui. Un vrai cloisonnement par utilisateur (rôle `ROLE_USER` restreint + règles `security` par ressource API Platform) reste à faire.
 - **Pas de message queue (Redis/Symfony Messenger)** : le chunking/vectorisation de documents (`knowledge_base`) et le déclenchement de workflows (`workflows`) tournent en synchrone dans la requête plutôt qu'en tâche de fond — bloquant
 
 ## Prochaines étapes possibles
 
-- Cloisonnement réel par utilisateur : rôle `ROLE_USER` restreint en plus de `ROLE_ADMIN`, et règles `security` par ressource API Platform pour qu'un compte non-admin ne voie/modifie que ses propres `Conversation`/`WorkflowExecution`
 - File d'attente async (Symfony Messenger + Redis) pour le chunking/la vectorisation/le déclenchement de workflows
 - Asset pipeline (AssetMapper) pour réactiver le CSRF stateless et remplacer le Tailwind CDN par un build local

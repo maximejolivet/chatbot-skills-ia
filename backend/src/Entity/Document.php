@@ -28,6 +28,7 @@ use Sylius\Resource\Model\ResourceInterface;
  */
 #[ORM\Entity(repositoryClass: DocumentRepository::class)]
 #[ApiResource(
+    security: "is_granted('ROLE_ADMIN')",
     operations: [
         new GetCollection(),
         new Get(),

@@ -39,10 +39,22 @@ security:
             http_basic: ~
 
     # Note: Only the *first* matching rule is applied
+    #
+    # /(api|doc) only requires ROLE_USER (i.e. any authenticated account) --
+    # ROLE_USER is the base role every account gets (User::getRoles() always
+    # adds it), so this just gates "authenticated," not "admin." Per-resource
+    # authorization happens below that: Conversation/WorkflowExecution allow
+    # ROLE_USER but restrict *which rows* via OwnershipVoter/
+    # OwnershipCollectionExtension (`security: "is_granted('OWNER', object)"`
+    # on their ApiResource operations); every other resource (Document,
+    # Workflow, AiAgent, AiProviderConfig, etc.) explicitly requires
+    # ROLE_ADMIN on its own #[ApiResource(security: ...)] to keep today's
+    # admin-only behavior -- relaxing this blanket rule does NOT open them to
+    # ROLE_USER accounts.
     access_control:
         - { path: ^/admin/login, roles: PUBLIC_ACCESS }
         - { path: ^/admin, roles: ROLE_ADMIN }
-        - { path: ^/(api|doc)(/|$), roles: ROLE_ADMIN }
+        - { path: ^/(api|doc)(/|$), roles: ROLE_USER }
 
 when@test:
     security:

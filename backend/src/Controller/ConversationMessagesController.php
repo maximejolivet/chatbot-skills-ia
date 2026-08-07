@@ -9,6 +9,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[AsController]
 final class ConversationMessagesController
@@ -17,6 +18,12 @@ final class ConversationMessagesController
     {
     }
 
+    // ApiResource's declarative `security: "is_granted('OWNER', object)"` on
+    // this operation is NOT reliably enforced for custom-controller (read:
+    // true + controller:) operations -- verified empirically, the voter
+    // never runs. #[IsGranted] on the controller itself always does, via
+    // Symfony's own IsGrantedAttributeListener on kernel.controller.
+    #[IsGranted('OWNER', subject: 'data')]
     public function __invoke(Conversation $data, Request $request): JsonResponse
     {
         if ($request->isMethod('GET')) {

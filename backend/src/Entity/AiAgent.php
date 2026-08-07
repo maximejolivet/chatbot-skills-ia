@@ -22,6 +22,7 @@ use Sylius\Resource\Model\ResourceInterface;
 #[ORM\Entity(repositoryClass: AiAgentRepository::class)]
 #[ORM\HasLifecycleCallbacks]
 #[ApiResource(
+    security: "is_granted('ROLE_ADMIN')",
     operations: [
         new GetCollection(paginationEnabled: false),
         new Get(),

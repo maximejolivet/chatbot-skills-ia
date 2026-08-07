@@ -8,6 +8,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Runs the full (non-streaming) reply generation server-side, then emits the
@@ -21,6 +22,9 @@ final class ConversationStreamController
     {
     }
 
+    // See ConversationMessagesController for why this is an #[IsGranted]
+    // check rather than relying on ApiResource's `security:` alone.
+    #[IsGranted('OWNER', subject: 'data')]
     public function __invoke(Conversation $data, Request $request): StreamedResponse
     {
         $body = json_decode($request->getContent(), true) ?? [];

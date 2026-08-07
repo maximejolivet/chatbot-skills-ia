@@ -11,7 +11,7 @@ use Sylius\Resource\Model\ResourceInterface;
  * Represents a vector index (Qdrant collection) known to the app.
  */
 #[ORM\Entity(repositoryClass: VectorIndexRepository::class)]
-#[ApiResource]
+#[ApiResource(security: "is_granted('ROLE_ADMIN')")]
 class VectorIndex implements ResourceInterface
 {
     #[ORM\Id]
