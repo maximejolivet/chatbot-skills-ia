@@ -1,0 +1,16 @@
+meta {
+  name: Get AI Agents
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/ai_agents
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}

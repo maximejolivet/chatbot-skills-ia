@@ -4,6 +4,11 @@
 .env.local
 .env.*.local
 
+# Bruno environment files hold real credentials (admin password) -- request
+# definitions in bruno/*.bru stay committed, only environments/*.bru (the
+# actual values) are local.
+bruno/environments/
+
 # Symfony
 var/
 
