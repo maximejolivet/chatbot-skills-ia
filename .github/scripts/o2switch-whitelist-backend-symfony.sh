@@ -18,20 +18,26 @@ set -euo pipefail
 ENDPOINT='frontend/o2switch/o2switch-ssh-whitelist/index.live.php'
 CPANEL="https://${CPANEL_USER}:${CPANEL_PASSWORD}@${CPANEL_HOST}:2083"
 
+# Bounds every call below -- without these, a curl request that connects but
+# never gets a response (seen in practice against this cPanel endpoint) hangs
+# until the job's overall 15-minute timeout kills it, with no error message
+# pointing at why. Failing fast here at least surfaces which call stalled.
+CURL_OPTS=(--connect-timeout 10 --max-time 30)
+
 echo "Fetching currently whitelisted IPs..."
-RESPONSE=$(curl -sX GET "$CPANEL/$ENDPOINT?r=list")
+RESPONSE=$(curl -sX GET "${CURL_OPTS[@]}" "$CPANEL/$ENDPOINT?r=list")
 LAST_IPS=$(echo "$RESPONSE" | jq -r '.data.list[]? | .address' | tail -n2)
 
 for address in $LAST_IPS; do
     echo "Removing old CI IP: $address (in & out)"
-    curl -sX GET "$CPANEL/$ENDPOINT?r=remove&address=$address&direction=in&port=22" | jq -r '.message // .success'
+    curl -sX GET "${CURL_OPTS[@]}" "$CPANEL/$ENDPOINT?r=remove&address=$address&direction=in&port=22" | jq -r '.message // .success'
     sleep 2
-    curl -sX GET "$CPANEL/$ENDPOINT?r=remove&address=$address&direction=out&port=22" | jq -r '.message // .success'
+    curl -sX GET "${CURL_OPTS[@]}" "$CPANEL/$ENDPOINT?r=remove&address=$address&direction=out&port=22" | jq -r '.message // .success'
     sleep 2
 done
 
 echo "Whitelisting runner IP $RUNNER_IP..."
-ADD_RESPONSE=$(curl -sX POST -d "whitelist[address]=$RUNNER_IP" -d 'whitelist[port]=22' "$CPANEL/$ENDPOINT?r=add")
+ADD_RESPONSE=$(curl -sX POST "${CURL_OPTS[@]}" -d "whitelist[address]=$RUNNER_IP" -d 'whitelist[port]=22' "$CPANEL/$ENDPOINT?r=add")
 echo "$ADD_RESPONSE" | jq
 
 # Fail loudly instead of silently sleeping and letting a later SSH step fail
