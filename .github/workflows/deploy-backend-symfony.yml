@@ -1,56 +1,6 @@
-# Single pipeline for backend/: lint + audit gate the deploy, all
-# in one job -- there's no separate CI-only workflow file for this project
-# (unlike a PR-checks-then-deploy split). A lint/audit failure stops the
-# job before whitelist/rsync/SSH ever run, same gating effect a separate
-# "build" job would give, without a second workflow file to keep in sync.
-#
-# Deploys to o2switch over SSH (shared cPanel hosting, domain:
-# chat-ia.jolivetmaxime.fr). o2switch restricts SSH access with an IP
-# whitelist (cPanel > Sécurité > Accès SSH): GitHub Actions runners get a
-# different IP on every run, so this workflow whitelists the runner's IP via
-# the cPanel API before attempting SSH.
-#
-# One job, not build+deploy split: unlike a static frontend, there's no
-# separate "build once, ship to multiple targets" concern here, and the
-# whitelist step MUST run in the same job as the SSH/rsync steps anyway
-# (every job gets a fresh runner VM with its own public IP -- whitelisting
-# in one job and using SSH in another would almost certainly whitelist the
-# wrong IP).
-#
-# Layout on the server: DEPLOY_PROJECT_PATH must be OUTSIDE the web-facing
-# document root (e.g. /home/{{user}}/repositories/chatbot-ia/backend)
-# -- only backend/public/ is meant to be reachable over HTTP. Point
-# the chat-ia.jolivetmaxime.fr subdomain's document root (cPanel > Domaines)
-# at "$DEPLOY_PROJECT_PATH/public", not at $DEPLOY_PROJECT_PATH itself:
-# pointing it there would serve src/, vendor/, .env, config/ directly.
-#
-# One-time manual prerequisites (not automated here):
-# - Select PHP 8.4 for the subdomain (cPanel > MultiPHP Manager).
-# - Create the PostgreSQL database and Qdrant Cloud collection, and have
-#   their connection details ready for DEPLOY_ENV_FILE below.
-#
-# Required secrets (Settings > Secrets and variables > Actions):
-# - DEPLOY_SSH_KEY          SSH private key (dedicated to deployment, not a personal key)
-# - DEPLOY_SSH_HOST         {{user}}.o2switch.net
-# - DEPLOY_SSH_USER         {{user}} (cPanel username)
-# - DEPLOY_PROJECT_PATH     /home/{{user}}/repositories/chatbot-ia/backend
-# - DEPLOY_CPANEL_PASSWORD  cPanel password -- ONLY used for the SSH whitelist
-#                           API (port 2083), unrelated to the SSH key above.
-# - DEPLOY_ENV_FILE         Full contents of the production .env: DATABASE_URL
-#                           (the o2switch PostgreSQL instance), ADMIN_USERNAME/
-#                           ADMIN_PASSWORD_HASH (bin/console security:hash-password),
-#                           QDRANT_HOST/QDRANT_PORT/QDRANT_API_KEY (Qdrant Cloud),
-#                           AI_PROVIDER=api_endpoint + AI_API_* (or configure
-#                           an AiProviderConfig row after the first deploy
-#                           instead), CORS_ALLOW_ORIGIN for the real frontend
-#                           origin. Never paste any of this in chat -- build
-#                           it in a local .env, then `gh secret set DEPLOY_ENV_FILE < .env`.
-#
-# Set all of the above yourself via `gh secret set` or the GitHub UI.
-#
-# workflow_dispatch takes a dry_run input: runs the whole pipeline (build,
-# whitelist, SSH) but passes --dry-run to rsync and skips writing .env/
-# running migrations -- a safe preview of what a deploy would change.
+# Full rationale, server layout, required secrets, and dry-run instructions:
+# see ../../DEPLOYMENT.md. Deploys to o2switch over SSH (shared cPanel
+# hosting) -- no logic here should change without reading that doc first.
 
 name: Deploy chat-ia (backend)
 

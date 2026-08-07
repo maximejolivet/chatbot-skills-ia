@@ -1,21 +1,13 @@
 #!/usr/bin/env bash
-# Whitelists the current GitHub Actions runner's IP for SSH (port 22) on
-# o2switch (cPanel), removing the two most recently whitelisted addresses
-# first -- o2switch caps the whitelist size, and every CI run adds a new IP
-# with nothing removing old ones on its own, so the quota fills up after a
-# few runs and blocks SSH entirely.
-#
-# Named "-backend-symfony" (not just "o2switch-whitelist.sh") to avoid
-# colliding with the same-purpose script for the unrelated WordPress project
-# hosted on this same o2switch account -- the two are independent, don't
-# share state, and shouldn't share a filename either.
+# Whitelists the current GitHub Actions runner's IP for SSH on o2switch,
+# removing the 2 most recently whitelisted addresses first (quota cap --
+# rationale in ../../DEPLOYMENT.md). Named "-backend-symfony" to avoid
+# colliding with the unrelated WordPress project's own whitelist script on
+# this same o2switch account.
 #
 # Known trade-off: "remove the last 2 entries" assumes they're stale CI
-# runner IPs. The o2switch API this endpoint wraps has no per-entry label
-# to distinguish a CI-added IP from one whitelisted by hand -- if a human IP
-# got whitelisted right before a CI run, it could get swept up here.
-# Accepted as a known limitation rather than adding state-tracking (a
-# GitHub Actions cache entry per whitelisted IP) for a narrow edge case.
+# runner IPs -- a human IP whitelisted right before a CI run could get
+# swept up too. Accepted rather than adding state-tracking for a narrow edge case.
 #
 # Required env vars: CPANEL_USER, CPANEL_PASSWORD, CPANEL_HOST, RUNNER_IP
 
