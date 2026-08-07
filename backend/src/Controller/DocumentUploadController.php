@@ -5,8 +5,7 @@ namespace App\Controller;
 use App\Entity\Document;
 use App\Entity\DocumentCategory;
 use App\Enum\DocumentFileType;
-use App\Enum\DocumentStatus;
-use App\KnowledgeBase\DocumentIndexingService;
+use App\Message\IndexDocumentMessage;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -14,10 +13,14 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * Mirrors knowledge_base.views.DocumentViewSet.create() + DocumentUploadSerializer
- * validation. Runs chunking/vectorization synchronously (see DocumentIndexingService).
+ * validation. Chunking/vectorization is dispatched to the `async` transport
+ * (see IndexDocumentMessageHandler) rather than run inline -- the response
+ * below reflects the document as just-uploaded (status 'pending'), not
+ * indexed; poll GET /api/documents/{id} for the final status.
  */
 #[AsController]
 final class DocumentUploadController
@@ -27,7 +30,7 @@ final class DocumentUploadController
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly DocumentIndexingService $documentIndexingService,
+        private readonly MessageBusInterface $messageBus,
         #[Autowire('%app.document_upload_dir%')]
         private readonly string $uploadDir,
     ) {
@@ -77,13 +80,7 @@ final class DocumentUploadController
         $document->setFilePath($relativePath)->setFileSize($fileSize);
         $this->entityManager->flush();
 
-        try {
-            $this->documentIndexingService->chunkDocument($document);
-            $this->documentIndexingService->vectorize($document);
-        } catch (\Throwable $e) {
-            $document->setStatus(DocumentStatus::Error)->setProcessingError($e->getMessage());
-            $this->entityManager->flush();
-        }
+        $this->messageBus->dispatch(new IndexDocumentMessage($document->getId()));
 
         return new JsonResponse([
             'id' => $document->getId(),
@@ -97,6 +94,6 @@ final class DocumentUploadController
             'processing_error' => $document->getProcessingError(),
             'metadata' => $document->getMetadata(),
             'chunk_count' => $document->getChunkCount(),
-        ], 201);
+        ], 202);
     }
 }

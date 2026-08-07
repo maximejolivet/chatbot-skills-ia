@@ -18,11 +18,17 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 /**
  * The one real step-execution engine.
  *
- * NOTE: this backend has no message queue set up yet (same gap as
- * knowledge_base.DocumentIndexingService), so execute() always runs
- * synchronously; WorkflowTriggerController and WorkflowTestController both
- * end up calling it the same way, whether triggered async ("fire and check
- * back later") or sync (blocking for the result) in intent.
+ * Two ways to run a workflow:
+ * - execute(): synchronous, creates the row and runs it inline, returning
+ *   the completed WorkflowExecution. Used only by
+ *   App\Chat\ChatOrchestrationService's tool-calling loop, which needs the
+ *   result immediately to continue the conversation with the LLM -- this
+ *   call site deliberately stays synchronous, not dispatched to Messenger.
+ * - createPendingExecution() + the `async` transport (see
+ *   App\Message\ExecuteWorkflowMessage /
+ *   App\MessageHandler\ExecuteWorkflowMessageHandler): used by
+ *   WorkflowTriggerController/WorkflowTestController, which return as soon
+ *   as the row exists and let the caller poll GET /api/workflow_executions/{id}.
  */
 final class WorkflowExecutionService
 {
@@ -57,6 +63,18 @@ final class WorkflowExecutionService
      */
     public function execute(int $workflowId, array $inputData, ?Conversation $conversation = null): WorkflowExecution
     {
+        return $this->run($this->createPendingExecution($workflowId, $inputData, $conversation));
+    }
+
+    /**
+     * Persists a WorkflowExecution row (status 'pending') without running it
+     * -- the caller either runs it inline (execute()) or dispatches
+     * ExecuteWorkflowMessage for a worker to pick up.
+     *
+     * @param array<string, mixed> $inputData
+     */
+    public function createPendingExecution(int $workflowId, array $inputData, ?Conversation $conversation = null): WorkflowExecution
+    {
         $workflow = $this->workflowRepository->getActive($workflowId);
         if (!$workflow) {
             throw new \RuntimeException("Workflow {$workflowId} not found or inactive.");
@@ -69,7 +87,7 @@ final class WorkflowExecutionService
         $this->entityManager->persist($execution);
         $this->entityManager->flush();
 
-        return $this->run($execution);
+        return $execution;
     }
 
     public function run(WorkflowExecution $execution): WorkflowExecution

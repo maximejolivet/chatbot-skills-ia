@@ -163,13 +163,39 @@ exigent explicitement `ROLE_ADMIN` sur leur propre `#[ApiResource(security:
 ...)]`, indépendamment de la règle `access_control` globale (voir §Sécurité)
 — un compte `ROLE_USER` ne peut ni les lire ni les modifier.
 
+## File d'attente async (Symfony Messenger + Redis)
+
+Deux opérations tournent désormais en tâche de fond au lieu de bloquer la requête HTTP, via le transport `async` (`config/packages/messenger.yaml`, Redis) :
+
+- **Indexation de documents** (`App\Message\IndexDocumentMessage` /
+  `IndexDocumentMessageHandler`) : `POST /api/documents` et `POST
+  /documents/{id}/process` répondent immédiatement (`202`, `status:
+  "pending"`) au lieu d'attendre la fin du chunking/vectorisation — poller
+  `GET /api/documents/{id}` pour le statut final (`indexed`/`error`).
+- **Déclenchement de workflow** (`App\Message\ExecuteWorkflowMessage` /
+  `ExecuteWorkflowMessageHandler`) : `POST /workflows/{id}/trigger` et
+  `.../test` créent la `WorkflowExecution` (statut `pending`) et répondent
+  `202` immédiatement — poller `GET /api/workflow_executions/{id}`.
+
+**Exception délibérée** : quand un `Workflow` est déclenché par le LLM
+via tool-calling (`App\Chat\ChatOrchestrationService`), l'exécution reste
+**synchrone** (`WorkflowExecutionService::execute()`, appelé directement,
+sans passer par le bus) — la boucle de tool-calling a besoin du résultat
+immédiatement pour poursuivre la conversation ; la rendre asynchrone
+casserait le tool-calling. Ce n'est pas un oubli.
+
+En local, un service `worker` dédié (`backend/compose.yaml`, `php
+bin/console messenger:consume async`) consomme en continu. **Non
+transposable tel quel sur o2switch** (hébergement mutualisé, pas de
+process persistant) : en production, il faudra soit une tâche cron
+invoquant `messenger:consume --limit=N --time-limit=X` périodiquement,
+soit un Redis externe managé (le mutualisé n'en fournit pas non plus) —
+même logique que Qdrant Cloud pour la base vectorielle.
+
 ## Limites connues
 
-Tous documentées inline dans le code (recherchez `NOTE`/`Limite` dans les entités et services concernés) :
-
-- **Pas de message queue (Redis/Symfony Messenger)** : le chunking/vectorisation de documents (`knowledge_base`) et le déclenchement de workflows (`workflows`) tournent en synchrone dans la requête plutôt qu'en tâche de fond — bloquant
+Tous documentées inline dans le code (recherchez `NOTE`/`Limite` dans les entités et services concernés) : aucune pour l'instant.
 
 ## Prochaines étapes possibles
 
-- File d'attente async (Symfony Messenger + Redis) pour le chunking/la vectorisation/le déclenchement de workflows
 - Asset pipeline (AssetMapper) pour réactiver le CSRF stateless et remplacer le Tailwind CDN par un build local

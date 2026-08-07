@@ -53,6 +53,39 @@ services:
       - default
       - proxy
 
+  redis:
+    image: redis:7-alpine
+    networks:
+      - default
+
+  # Persistent Messenger consumer for the `async` transport (document
+  # indexing, API-triggered workflow runs -- see config/packages/messenger.yaml).
+  # Same image/env as `app`, different command. Not viable as-is on o2switch
+  # (shared hosting has no persistent-process support) -- production needs a
+  # cron-invoked `messenger:consume --limit=N --time-limit=X` instead.
+  worker:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-!ChangeMe!}@database:5432/${POSTGRES_DB:-app}?serverVersion=${POSTGRES_VERSION:-16}&charset=utf8
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: "6333"
+    command: php bin/console messenger:consume async -vv --time-limit=3600
+    restart: unless-stopped
+    volumes:
+      - .:/app
+    depends_on:
+      database:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      redis:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+
   nuxt:
     image: node:24-alpine
     container_name: chatbot-symfony-nuxt

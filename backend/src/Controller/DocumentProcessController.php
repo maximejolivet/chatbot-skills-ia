@@ -4,23 +4,26 @@ namespace App\Controller;
 
 use App\Entity\Document;
 use App\Enum\DocumentStatus;
-use App\KnowledgeBase\DocumentIndexingService;
+use App\Message\IndexDocumentMessage;
 use App\Repository\DocumentChunkRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
- * Single canonical (re)processing entry point. Runs synchronously (see
- * DocumentIndexingService) -- this only returns once processing is done.
+ * Single canonical (re)processing entry point. Resets to 'pending' and
+ * dispatches to the `async` transport (see IndexDocumentMessageHandler) --
+ * this returns as soon as the message is queued, not once processing is
+ * done; poll GET /api/documents/{id} for the final status.
  */
 #[AsController]
 final class DocumentProcessController
 {
     public function __construct(
         private readonly DocumentChunkRepository $chunkRepository,
-        private readonly DocumentIndexingService $documentIndexingService,
         private readonly EntityManagerInterface $entityManager,
+        private readonly MessageBusInterface $messageBus,
     ) {
     }
 
@@ -30,16 +33,8 @@ final class DocumentProcessController
         $data->setStatus(DocumentStatus::Pending);
         $this->entityManager->flush();
 
-        try {
-            $this->documentIndexingService->chunkDocument($data);
-            $this->documentIndexingService->vectorize($data);
-        } catch (\Throwable $e) {
-            $data->setStatus(DocumentStatus::Error)->setProcessingError($e->getMessage());
-            $this->entityManager->flush();
+        $this->messageBus->dispatch(new IndexDocumentMessage($data->getId()));
 
-            return new JsonResponse(['status' => 'error', 'error' => $e->getMessage()], 500);
-        }
-
-        return new JsonResponse(['status' => $data->getStatus()->value]);
+        return new JsonResponse(['status' => $data->getStatus()->value], 202);
     }
 }

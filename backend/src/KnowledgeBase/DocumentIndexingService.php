@@ -16,9 +16,9 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * place that decides Document::status, and it only marks a document 'indexed'
  * once Qdrant has actually confirmed the vectors were stored.
  *
- * NOTE: this backend has no message queue set up yet, so the pipeline runs
- * synchronously within the upload/process request -- blocking. Revisit with
- * Symfony Messenger if upload latency becomes a problem.
+ * Called from the `async` Messenger transport worker
+ * (App\MessageHandler\IndexDocumentMessageHandler), not from the HTTP
+ * request directly -- see DocumentUploadController/DocumentProcessController.
  */
 final class DocumentIndexingService
 {
