@@ -26,7 +26,7 @@ found 0 vulnerabilities
 
 | Image           | Tag utilisé                      | Remarque                             |
 | --------------- | -------------------------------- | ------------------------------------ |
-| `mysql`         | `${MYSQL_VERSION:-8.0}`          | Version majeure épinglée (8.0)       |
+| `mariadb`       | `${MARIADB_VERSION:-11.4}`       | Version majeure épinglée (11.4)      |
 | `qdrant/qdrant` | `v1.19.0`                        | Épinglé (2026-08-06, était `latest`) |
 | `traefik`       | `v3.5`                           | Épinglé                              |
 | `node`          | `24-alpine`                      | Version majeure épinglée (24)        |

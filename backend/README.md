@@ -6,7 +6,7 @@ Backend du chatbot IA, en Symfony. Organisé en 5 domaines métier : `ai_provide
 
 - Symfony 8.1 + API Platform 4.3 (`/api`) pour exposer des ressources REST/JSON-LD à partir d'entités Doctrine
 - NelmioApiDocBundle (`/doc`) pour une doc OpenAPI 3.0 « pure » (sans Hydra/JSON-LD), miroir automatique des ressources API Platform
-- Doctrine ORM + Migrations, MySQL 8.0
+- Doctrine ORM + Migrations, MariaDB 11.4
 - Qdrant pour le stockage et la recherche vectorielle
 - Symfony HttpClient pour parler à Ollama / aux endpoints OpenAI-compatibles / à Qdrant
 - smalot/pdfparser (PDF) + ZipArchive (DOCX) pour l'extraction de texte des documents

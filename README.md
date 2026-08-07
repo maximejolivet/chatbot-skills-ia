@@ -8,7 +8,7 @@
 ![Nuxt](https://img.shields.io/badge/Nuxt-4.5-00DC82?logo=nuxtdotjs&logoColor=white)
 ![Vue](https://img.shields.io/badge/Vue-3.5-4FC08D?logo=vuedotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-7.0-3178C6?logo=typescript&logoColor=white)
-![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white)
+![MariaDB](https://img.shields.io/badge/MariaDB-11.4-003545?logo=mariadb&logoColor=white)
 ![Qdrant](https://img.shields.io/badge/Qdrant-v1.19.0-DC244C)
 ![Ollama](https://img.shields.io/badge/Ollama-qwen3.6-000000?logo=ollama&logoColor=white)
 ![Traefik](https://img.shields.io/badge/Traefik-v3.5-24A1C1?logo=traefikproxy&logoColor=white)
@@ -22,7 +22,7 @@ Solution de chatbot administrable : backend Symfony (API Platform) avec RAG (Ret
 | ------------------ | ---------------------- | --------------------------------------------- |
 | Backend            | Symfony + API Platform | Symfony 8.1, API Platform 4.3, PHP 8.4        |
 | Frontend           | Nuxt / Vue             | Nuxt 4.5, Vue 3.5, TypeScript 7.0, Node.js 24 |
-| Base relationnelle | MySQL                  | 8.0                                            |
+| Base relationnelle | MariaDB                | 11.4                                           |
 | Base vectorielle   | Qdrant                 | v1.19.0                                       |
 | Modèles IA         | Ollama (local)         | `qwen3.6`, `mxbai-embed-large`                |
 | Reverse proxy      | Traefik                | v3.5                                          |
@@ -41,7 +41,7 @@ Puis, depuis la racine :
 make start
 ```
 
-Cette commande démarre Traefik puis la stack Symfony (backend, MySQL, Qdrant, frontend Nuxt) via Docker Compose, et affiche les URLs des services.
+Cette commande démarre Traefik puis la stack Symfony (backend, MariaDB, Qdrant, frontend Nuxt) via Docker Compose, et affiche les URLs des services.
 
 Ollama doit tourner sur l'hôte au préalable, avec les modèles `mxbai-embed-large` et `qwen3.6` (ou équivalent) installés.
 
