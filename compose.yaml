@@ -1,0 +1,18 @@
+# Single entry point for the whole local dev stack (Traefik + Symfony
+# backend). `name:` pins the Compose project to the pre-existing one so
+# local volumes (backend_symfony_database_data, backend_symfony_qdrant_data)
+# and container names are unaffected by the switch from two separate `docker
+# compose` invocations (traefik/, backend/) to this single one.
+name: backend_symfony
+
+include:
+  - traefik/compose.yaml
+  - backend/compose.yaml
+
+networks:
+  # external: true -- chatbot-proxy is shared with other, unrelated stacks on
+  # this machine (not just this project), so Compose must never try to own
+  # its lifecycle (create/remove it). `make start` still ensures it exists.
+  proxy:
+    name: chatbot-proxy
+    external: true

@@ -15,8 +15,3 @@ services:
       - ./dynamic.yml:/etc/traefik/dynamic/dynamic.yml:ro
     networks:
       - proxy
-
-networks:
-  proxy:
-    name: chatbot-proxy
-    external: true
