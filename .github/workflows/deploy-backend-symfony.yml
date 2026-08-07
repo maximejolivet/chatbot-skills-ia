@@ -162,11 +162,16 @@ jobs:
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
             "cat > ${{ secrets.DEPLOY_PROJECT_PATH }}/.env" <<< "$ENV_FILE"
 
+      # --env=prod explicit, not left to DEPLOY_ENV_FILE containing
+      # APP_ENV=prod correctly -- an empty/misconfigured .env would
+      # otherwise silently fall back to dev, which references dev-only
+      # bundles (e.g. MakerBundle) stripped from the --no-dev vendor/ this
+      # rsynced, crashing the same way the runner-side prune step did.
       - name: Run database migrations
         if: ${{ !inputs.dry_run }}
         run: |
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console doctrine:migrations:migrate --no-interaction"
+            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console doctrine:migrations:migrate --env=prod --no-interaction"
 
       - name: Warm up the prod cache
         if: ${{ !inputs.dry_run }}
