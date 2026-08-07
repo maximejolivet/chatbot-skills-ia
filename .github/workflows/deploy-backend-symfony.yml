@@ -82,7 +82,16 @@ jobs:
 
       # Rebuilt here (on the runner), never on the server -- no vendor/ from
       # a previous deploy sits around to accidentally corrupt.
+      #
+      # APP_ENV=prod: composer's post-install auto-scripts run cache:clear
+      # against whatever APP_ENV the checked-out .env has (dev, from the
+      # "Prepare .env for the build" step above). --no-dev just removed
+      # dev-only bundles (e.g. MakerBundle) from vendor/, so warming the dev
+      # container fails with a ClassNotFoundError. Forcing prod here warms
+      # the prod container instead, which never references them.
       - name: Prune to production dependencies
+        env:
+          APP_ENV: prod
         run: composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction
 
       # Inline instead of a third-party action: haythem/public-ip is
