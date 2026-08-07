@@ -94,6 +94,17 @@ jobs:
           APP_ENV: prod
         run: composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction
 
+      # AssetMapper only serves assets on-the-fly in dev -- in prod it expects
+      # a precompiled public/assets/ (manifest + versioned files), or Twig's
+      # importmap()/asset() helpers throw at render time (admin/login.html.twig
+      # 500s). Not covered by the assets:install/importmap:install auto-scripts
+      # above, which only vendor the raw sources -- this is the separate
+      # "build" step.
+      - name: Compile AssetMapper assets for production
+        env:
+          APP_ENV: prod
+        run: php bin/console asset-map:compile
+
       # Inline instead of a third-party action: haythem/public-ip is
       # unmaintained (last release 2022, deprecated Node 16 runtime) and
       # does nothing more than call a public IP echo service.
