@@ -25,9 +25,9 @@ docker network inspect chatbot-proxy >/dev/null 2>&1 || docker network create ch
 docker compose up -d --build
 ```
 
-Le réseau Docker externe `chatbot-proxy` est requis (le service `app` échoue à démarrer sans lui) — normalement créé automatiquement par `make up` depuis la racine du dépôt ; la commande ci-dessus le crée à la main si ce backend est lancé de façon isolée, sans passer par le `Makefile` racine (voir aussi [`../traefik/`](../traefik/)).
+Le réseau Docker externe `chatbot-proxy` est requis (le service `app` échoue à démarrer sans lui) — normalement créé automatiquement par `make start` depuis la racine du dépôt ; la commande ci-dessus le crée à la main si ce backend est lancé de façon isolée, sans passer par le `Makefile` racine (voir aussi [`../traefik/`](../traefik/)).
 
-L'API est servie sur http://symfony.chatbot.localhost (via Traefik ; aucun port fixe n'est publié sur l'hôte), la documentation interactive sur `/api` (API Platform) et `/doc` (Swagger/OpenAPI pur), le backoffice sur `/admin`. `docker compose up` démarre aussi un frontend de démo Nuxt sur http://nuxt-symfony.chatbot.localhost (ou http://localhost:3010 ; service `nuxt`, voir [`frontend/README.md`](../frontend/README.md)).
+L'API est servie sur http://symfony.chatbot.localhost (via Traefik ; aucun port fixe n'est publié sur l'hôte), la documentation interactive sur `/api` (API Platform) et `/doc` (Swagger/OpenAPI pur), le backoffice sur `/admin`. `docker compose up` démarre aussi un frontend de démo Nuxt sur http://nuxt.chatbot.localhost (ou http://localhost:3010 ; service `nuxt`, voir [`frontend/README.md`](../frontend/README.md)).
 
 ### En local (PHP/Composer requis)
 
@@ -40,13 +40,13 @@ symfony server:start
 
 ## Domaines
 
-| Domaine            | Rôle                                                              |
-| ------------------ | ------------------------------------------------------------------ |
-| `ai_providers`     | Abstraction des providers LLM/embedding et sélection du provider actif |
+| Domaine            | Rôle                                                                    |
+| ------------------ | ----------------------------------------------------------------------- |
+| `ai_providers`     | Abstraction des providers LLM/embedding et sélection du provider actif  |
 | `vector_connector` | Wrapper Qdrant, embeddings, recherche vectorielle, analyse de documents |
-| `knowledge_base`   | Documents, chunking, collections, catégories, FAQ                  |
-| `workflows`        | Moteur d'exécution de workflows, utilisé comme outils par les agents |
-| `chat`             | Orchestration de la conversation : agents IA, RAG, tool-calling    |
+| `knowledge_base`   | Documents, chunking, collections, catégories, FAQ                       |
+| `workflows`        | Moteur d'exécution de workflows, utilisé comme outils par les agents    |
+| `chat`             | Orchestration de la conversation : agents IA, RAG, tool-calling         |
 
 ### `ai_providers`
 

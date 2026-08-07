@@ -43,7 +43,7 @@ Ordre de dépendance : `ai_providers` ← `vector_connector` ← `knowledge_base
 | Extraction de texte   | **smalot/pdfparser 2.12** (PDF), `ZipArchive` natif PHP (DOCX), fonctions natives (TXT/MD/HTML/JSON) | Pipeline d'ingestion documentaire                                                                                                                                                                                                                                                                                                 |
 | CORS                  | **NelmioCorsBundle 2.6**                                                                             | Origines autorisées configurables via `CORS_ALLOW_ORIGIN` (regex)                                                                                                                                                                                                                                                                 |
 | Style backoffice      | **Tailwind CSS via CDN**                                                                             | Pas de pipeline d'assets (pas d'AssetMapper/Webpack Encore installé)                                                                                                                                                                                                                                                              |
-| Conteneurisation      | **Docker** (`Dockerfile`, `compose.yaml`, `compose.override.yaml`)                                   | Services : `app` (Symfony), `database` (Postgres), `qdrant`, `nuxt` (frontend de démo)                                                                                                                                                                                                                                            |
+| Conteneurisation      | **Docker** (`Dockerfile`, `compose.yaml`, inclus depuis le `compose.yaml` racine)                    | Services : `app` (Symfony), `database` (Postgres), `qdrant`, `nuxt` (frontend de démo)                                                                                                                                                                                                                                            |
 | Reverse proxy (dev)   | **Traefik**                                                                                          | Routage par domaine (`*.chatbot.localhost`) via provider **fichier** (`traefik/dynamic.yml`), pas par labels Docker — les services rejoignent le réseau externe `chatbot-proxy` mais ne portent aucun label `traefik.*` (le client Docker embarqué dans l'image Traefik échoue à négocier sa version d'API avec ce moteur Docker) |
 
 **Ce qui n'est délibérément pas présent** (voir §12) :
@@ -585,11 +585,11 @@ Services démarrés (`compose.yaml`) :
 | Service    | Rôle                                                                 | Port hôte                                                      |
 | ---------- | -------------------------------------------------------------------- | -------------------------------------------------------------- |
 | `app`      | API Symfony (serveur PHP intégré, `php -S 0.0.0.0:8000`)             | aucun (retiré — accès uniquement via Traefik, voir ci-dessous) |
-| `database` | PostgreSQL (`postgres:${POSTGRES_VERSION:-16}-alpine`)               | port aléatoire (exposé via `compose.override.yaml`)            |
+| `database` | PostgreSQL (`postgres:${POSTGRES_VERSION:-16}-alpine`)               | port aléatoire                                                 |
 | `qdrant`   | Base vectorielle                                                     | ports aléatoires (REST/gRPC)                                   |
 | `nuxt`     | Frontend de démo Nuxt (`frontend/`), branché sur `app` via `API_URL` | `3010`                                                         |
 
-`OLLAMA_BASE_URL` est automatiquement pointé vers `http://host.docker.internal:11434` (Ollama tournant sur la machine hôte, hors conteneur). Un réseau Docker externe `chatbot-proxy` (Traefik) est requis (`networks.proxy.external: true`) ; le service échouera à démarrer sans lui, sauf à retirer ce bloc. Créé automatiquement par `make up` (racine du dépôt) ; à défaut, `docker network create chatbot-proxy` une fois.
+`OLLAMA_BASE_URL` est automatiquement pointé vers `http://host.docker.internal:11434` (Ollama tournant sur la machine hôte, hors conteneur). Un réseau Docker externe `chatbot-proxy` (Traefik) est requis (`networks.proxy.external: true`) ; le service échouera à démarrer sans lui, sauf à retirer ce bloc. Créé automatiquement par `make start` (racine du dépôt) ; à défaut, `docker network create chatbot-proxy` une fois.
 
 Le port hôte fixe `8000:8000` du service `app` a été retiré (pour permettre à d'autres stacks utilisant ce même port de tourner en parallèle) : l'API n'est plus joignable en direct via `localhost:8000`, uniquement via le domaine Traefik.
 
@@ -598,7 +598,7 @@ Accès une fois démarré :
 - Doc Hydra/JSON-LD (native API Platform) : `http://symfony.chatbot.localhost/api`
 - Doc Swagger/OpenAPI pure : `http://symfony.chatbot.localhost/doc`
 - Backoffice : `http://symfony.chatbot.localhost/admin`
-- Frontend démo : `http://nuxt-symfony.chatbot.localhost` (ou `http://localhost:3010`)
+- Frontend démo : `http://nuxt.chatbot.localhost` (ou `http://localhost:3010`)
 
 ### 11.3 En local (sans Docker)
 

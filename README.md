@@ -1,6 +1,6 @@
 # Chatbot Full-Stack
 
-[![Deploy chat-ia (backend)](https://github.com/maximejolivet/chatbot-ia/actions/workflows/deploy-backend-symfony.yml/badge.svg)](https://github.com/maximejolivet/chatbot-ia/actions/workflows/deploy-backend-symfony.yml)
+[![Deploy chat-ia (backend)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend-symfony.yml/badge.svg)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend-symfony.yml)
 ![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)
 ![Symfony](https://img.shields.io/badge/Symfony-8.1-000000?logo=symfony&logoColor=white)
 ![API Platform](https://img.shields.io/badge/API%20Platform-4.3-1F76C8)
@@ -18,14 +18,14 @@ Solution de chatbot administrable : backend Symfony (API Platform) avec RAG (Ret
 
 ## Stack
 
-| Composant          | Techno                  | Version                        |
-| ------------------- | ------------------------ | -------------------------------- |
-| Backend             | Symfony + API Platform   | Symfony 8.1, API Platform 4.3, PHP 8.4 |
-| Frontend            | Nuxt / Vue                | Nuxt 4.5, Vue 3.5, TypeScript 7.0, Node.js 24 |
-| Base relationnelle  | PostgreSQL                | 16                               |
-| Base vectorielle    | Qdrant                    | v1.19.0                          |
-| Modèles IA          | Ollama (local)             | `qwen3.6`, `mxbai-embed-large`  |
-| Reverse proxy       | Traefik                   | v3.5                             |
+| Composant          | Techno                 | Version                                       |
+| ------------------ | ---------------------- | --------------------------------------------- |
+| Backend            | Symfony + API Platform | Symfony 8.1, API Platform 4.3, PHP 8.4        |
+| Frontend           | Nuxt / Vue             | Nuxt 4.5, Vue 3.5, TypeScript 7.0, Node.js 24 |
+| Base relationnelle | PostgreSQL             | 16                                            |
+| Base vectorielle   | Qdrant                 | v1.19.0                                       |
+| Modèles IA         | Ollama (local)         | `qwen3.6`, `mxbai-embed-large`                |
+| Reverse proxy      | Traefik                | v3.5                                          |
 
 ## Démarrage rapide
 
@@ -38,7 +38,7 @@ cd backend && cp .env.example .env
 Puis, depuis la racine :
 
 ```bash
-make up
+make start
 ```
 
 Cette commande démarre Traefik puis la stack Symfony (backend, PostgreSQL, Qdrant, frontend Nuxt) via Docker Compose, et affiche les URLs des services.
@@ -60,13 +60,13 @@ make
 
 Tous les services sont routés par domaine via Traefik (`*.chatbot.localhost`, résolu automatiquement en local sans toucher `/etc/hosts`) :
 
-| Service              | URL                                                          |
-| --------------------- | -------------------------------------------------------------- |
-| Traefik (dashboard)  | http://traefik.chatbot.localhost (ou http://localhost:8090)   |
-| Symfony (admin)      | http://symfony.chatbot.localhost/admin                        |
-| Nuxt/Vue             | http://nuxt-symfony.chatbot.localhost                          |
-| Qdrant (dashboard)   | http://qdrant-symfony.chatbot.localhost/dashboard              |
-| Ollama (sur l'hôte)  | http://localhost:11434                                         |
+| Service             | URL                                                         |
+| ------------------- | ----------------------------------------------------------- |
+| Traefik (dashboard) | http://traefik.chatbot.localhost (ou http://localhost:8090) |
+| Symfony (admin)     | http://symfony.chatbot.localhost/admin                      |
+| Nuxt/Vue            | http://nuxt.chatbot.localhost                               |
+| Qdrant (dashboard)  | http://qdrant-symfony.chatbot.localhost/dashboard           |
+| Ollama (sur l'hôte) | http://localhost:11434                                      |
 
 ## Architecture
 
@@ -104,3 +104,4 @@ Voir [`SECURITY.md`](SECURITY.md) — politique de signalement et état des audi
 - [`backend/README.md`](backend/README.md) — installation et référence API du backend
 - [`docs/backend/SPECIFICATION.md`](docs/backend/SPECIFICATION.md)
 - [`docs/frontend/SPECIFICATION.md`](docs/frontend/SPECIFICATION.md)
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) — déploiement du backend (CI/CD, secrets, prérequis serveur)
