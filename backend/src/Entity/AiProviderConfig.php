@@ -47,7 +47,11 @@ class AiProviderConfig implements ResourceInterface
     #[ORM\Column(length: 200, unique: true)]
     private string $name;
 
-    #[ORM\Column(length: 20, enumType: AiProviderUsage::class)]
+    // Quoted column name: "usage" is a reserved word in MySQL/MariaDB (not in
+    // PostgreSQL, which is why this only broke after the DB engine switch --
+    // Doctrine only quotes reserved words in generated SQL when told to via
+    // backticks here, it doesn't know the target platform's reserved list).
+    #[ORM\Column(name: '`usage`', length: 20, enumType: AiProviderUsage::class)]
     private AiProviderUsage $usage;
 
     #[ORM\Column(length: 20, enumType: AiProvider::class)]
