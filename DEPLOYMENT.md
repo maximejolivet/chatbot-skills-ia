@@ -9,7 +9,7 @@ déclenché sur push vers `master` touchant `backend/**`, ou manuellement
 ### Pourquoi cette architecture
 
 - **Hébergement** : o2switch, hébergement mutualisé cPanel (domaine
-  `chat-ia.jolivetmaxime.fr`). Pas de registre Docker ni de conteneurs côté
+  `chatbot.jolivetmaxime.fr`). Pas de registre Docker ni de conteneurs côté
   serveur — le déploiement est un `rsync` de fichiers PHP bruts sur SSH.
 - **Un seul job** (pas de split build/deploy) : contrairement à un frontend
   statique, il n'y a pas de besoin "build once, ship to multiple targets"
@@ -34,7 +34,7 @@ déclenché sur push vers `master` touchant `backend/**`, ou manuellement
 `DEPLOY_PROJECT_PATH` doit être **en dehors** de la racine web (ex.
 `/home/{{user}}/repositories/chatbot-skills-ia/backend`) — seul
 `backend/public/` doit être exposé en HTTP. Pointer le document root du
-sous-domaine `chat-ia.jolivetmaxime.fr` (cPanel > Domaines) vers
+sous-domaine `chatbot.jolivetmaxime.fr` (cPanel > Domaines) vers
 `$DEPLOY_PROJECT_PATH/public`, jamais vers `$DEPLOY_PROJECT_PATH` lui-même
 (sinon `src/`, `vendor/`, `.env`, `config/` seraient servis directement).
 

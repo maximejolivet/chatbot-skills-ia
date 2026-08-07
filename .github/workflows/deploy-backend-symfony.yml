@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 15
     environment:
       name: production-backend
-      url: https://chat-ia.jolivetmaxime.fr
+      url: https://chatbot.jolivetmaxime.fr
     permissions:
       contents: read
     defaults:
@@ -187,7 +187,7 @@ jobs:
         if: ${{ !inputs.dry_run }}
         run: |
           for i in 1 2 3; do
-            STATUS=$(curl -sk -o /dev/null -w '%{http_code}' "https://chat-ia.jolivetmaxime.fr/api/ai_agents") && break
+            STATUS=$(curl -sk -o /dev/null -w '%{http_code}' "https://chatbot.jolivetmaxime.fr/api/ai_agents") && break
             echo "Attempt $i failed, retrying in 5s..."
             sleep 5
           done
