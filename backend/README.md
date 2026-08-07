@@ -74,16 +74,16 @@ App feuille (aucune dépendance sur `knowledge_base`/`chat`) qui ne connaît que
 - `App\Entity\Document` / `DocumentChunk` — upload multipart (`POST /api/documents`), CRUD (`GET`/`PATCH`/`DELETE`), actions `POST /documents/{id}/process` (réindexation) et `GET /documents/{id}/chunks`. Aucun champ `uploaded_by` (même raison)
 - `App\KnowledgeBase\DocumentProcessorService` — extraction de texte (PDF/TXT/DOCX/MD/HTML/JSON) + découpage en chunks avec chevauchement (1000/200 caractères)
 - `App\KnowledgeBase\CollectionService` — résout/bootstrap la collection Qdrant d'un document : au lieu de retomber sur un nom de collection codé en dur quand aucune « collection commune » n'existe, la collection commune est créée à la volée dès qu'elle est nécessaire
-- `App\KnowledgeBase\DocumentIndexingService` — orchestration chunk → vectorize → delete, branchée sur `vector_connector.VectorSearchService`. **Limite connue (infra manquante)** : ce backend n'a pas de message queue (Redis/Messenger), donc tout le chunking/la vectorisation tourne en synchrone dans la requête — bloquant. À revoir si la latence d'upload devient un problème
+- `App\KnowledgeBase\DocumentIndexingService` — orchestration chunk → vectorize → delete, branchée sur `vector_connector.VectorSearchService`. Appelée depuis `App\MessageHandler\IndexDocumentMessageHandler` (transport Messenger `async`, pas depuis la requête HTTP) — voir "File d'attente async" plus bas
 
 ### `workflows`
 
 Les domaines `workflows` et `chat` se référencent mutuellement (`chat.services.ChatOrchestrationService` appelle `workflows.services.WorkflowExecutionService` pour le tool-calling, et `workflows.models.WorkflowExecution.conversation` référence `chat.models.Conversation`).
 
 - `App\Entity\Workflow` / `WorkflowStep` — CRUD via `/api/workflows` (steps via `GET`/`POST /workflows/{id}/steps`, pas de ressource dédiée). Suppression = soft delete (`isActive=false`), pas de suppression réelle de la ligne
-- `App\Entity\WorkflowExecution` — lecture seule (`/api/workflow_executions`, `GET`/`GetCollection` seulement), lié à la `Conversation` (`chat`) qui a déclenché l'exécution via tool-calling, le cas échéant. Aucun champ `triggered_by` (pas de scoping par utilisateur, donc pas de « l'utilisateur ne voit que ses executions »)
+- `App\Entity\WorkflowExecution` — lecture seule (`/api/workflow_executions`, `GET`/`GetCollection` seulement), lié à la `Conversation` (`chat`) qui a déclenché l'exécution via tool-calling, le cas échéant. Champ `triggeredBy` (auto-renseigné, voir "Cloisonnement par utilisateur" plus bas) : un compte `ROLE_USER` ne voit que ses propres exécutions, `ROLE_ADMIN` voit tout
 - `App\Workflow\WorkflowExecutionService` — le moteur d'exécution des steps (`api_call`/`webhook` via Symfony HttpClient, `data_transform`, `condition`, `delay`, `email`/`notification` en stub loggé uniquement), avec substitution de placeholders `{{champ}}`
-- `POST /api/workflows/{id}/trigger` et `POST /api/workflows/{id}/test` — **Limite connue (infra manquante)** : sans message queue, les deux tournent en synchrone et renvoient l'exécution déjà terminée
+- `POST /api/workflows/{id}/trigger` et `POST /api/workflows/{id}/test` — asynchrones (transport Messenger `async`), répondent `202` avec l'exécution `pending` ; voir "File d'attente async" plus bas
 
 ### `chat`
 
@@ -102,7 +102,7 @@ Testé en réel de bout en bout : `quick-send` simple, mémoire conversationnell
 
 Construit avec **Sylius Resource Bundle** (CRUD générique piloté par config : routing, repository, formulaire) et **Sylius Grid Bundle** (définition des colonnes/actions des listes), avec des templates Twig maison (pas de thème Sylius packagé) stylés en **Tailwind CSS** (chargé via CDN, pas d'asset pipeline).
 
-Les 14 entités du domaine sont gérables : `AiProviderConfig`, `VectorIndex`, `DocumentCategory`, `Faq`, `Collection`, `Workflow` (+ `WorkflowStep` imbriqué), `AiAgent`, `Conversation`, `User` en CRUD complet ; `SearchQuery`, `WorkflowExecution`, `Message` en lecture seule (mêmes restrictions que côté API) ; `Document` en lecture/édition/suppression seulement (la création reste réservée à `POST /api/documents`, qui gère l'upload multipart et le pipeline d'indexation — pas reproduit dans un formulaire générique).
+Les 13 ressources du domaine sont gérables : `AiProviderConfig`, `VectorIndex`, `DocumentCategory`, `Faq`, `Collection`, `Workflow` (+ `WorkflowStep` imbriqué), `AiAgent`, `Conversation`, `User` en CRUD complet ; `SearchQuery`, `WorkflowExecution`, `Message` en lecture seule (mêmes restrictions que côté API) ; `Document` en lecture/édition/suppression seulement (la création reste réservée à `POST /api/documents`, qui gère l'upload multipart et le pipeline d'indexation — pas reproduit dans un formulaire générique).
 
 **`AiAgent` mérite une mention particulière** : son API REST est volontairement en lecture seule. Le backoffice est donc le *seul* moyen d'en créer/modifier.
 

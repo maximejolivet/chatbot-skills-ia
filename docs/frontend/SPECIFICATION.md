@@ -14,7 +14,7 @@ Ce frontend **ne contient aucune logique métier IA** : il n'appelle pas de LLM,
 
 ### 1.1 Identité visuelle
 
-Le head HTML (`nuxt.config.ts`) définit un titre **"3615 ASSISTANT — Chatbot IA"** et charge les polices Google Fonts *IBM Plex Sans* / *IBM Plex Mono*. La palette Tailwind personnalisée (`tailwind.config.js`) est un thème **"Minitel / terminal rétro"** : ambre phosphore (`primary`), fond encre (`ink`), fond papier (`paper`), vert signal (`signal`), avec des classes utilitaires dédiées (`.scanlines`, `.key-btn`) — même si les composants du widget actuel restent sur une palette bleu/gris plus neutre (voir §4).
+Le head HTML (`nuxt.config.ts`) définit un titre **"Maxime - Chatbot IA"** et charge les polices Google Fonts *IBM Plex Sans* / *IBM Plex Mono*. La palette Tailwind personnalisée (`tailwind.config.js`) est un thème **"Minitel / terminal rétro"** : ambre phosphore (`primary`), fond encre (`ink`), fond papier (`paper`), vert signal (`signal`), avec des classes utilitaires dédiées (`.scanlines`, `.key-btn`) — même si les composants du widget actuel restent sur une palette bleu/gris plus neutre (voir §4).
 
 ---
 

@@ -1,11 +1,11 @@
 {
-  "name": "chatbot-ia",
+  "name": "chatbot-skills-ia",
   "version": "1.0.0",
   "private": true,
   "description": "Chatbot IA — Symfony backend + Nuxt frontend, routed via Traefik",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/maximejolivet/chatbot-ia.git"
+    "url": "git+https://github.com/maximejolivet/chatbot-skills-ia.git"
   },
   "license": "ISC",
   "scripts": {

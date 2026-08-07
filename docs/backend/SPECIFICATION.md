@@ -9,7 +9,7 @@
 - un système d'**agents IA** capables d'appeler des **outils** (tool-calling) qui déclenchent des **workflows** métier configurables (appels API, webhooks, transformations de données, conditions, etc.) ;
 - un **backoffice** d'administration (CRUD) pour piloter les providers IA, les documents, les agents, les workflows, etc.
 
-Le backend est bâti en **Symfony 8 / API Platform 4 / PHP 8.4**, organisé en 5 domaines métier. Certaines limites d'architecture sont assumées (authentification mono-compte sans scoping multi-utilisateur, absence de file de messages asynchrone) — voir [§12](#12-écarts-connus-limites-et-roadmap).
+Le backend est bâti en **Symfony 8 / API Platform 4 / PHP 8.4**, organisé en 5 domaines métier. Multi-utilisateur (table `app_user`, rôles `ROLE_ADMIN`/`ROLE_USER`) avec cloisonnement par propriétaire sur `Conversation`/`WorkflowExecution` ; chunking de documents et déclenchement de workflow tournent en tâche de fond (Symfony Messenger). Une limite d'architecture reste assumée (pas de streaming token-par-token combiné au tool-calling) — voir [§12](#12-écarts-connus-limites-et-roadmap).
 
 ### 1.1 Les 5 domaines métier
 
@@ -42,14 +42,10 @@ Ordre de dépendance : `ai_providers` ← `vector_connector` ← `knowledge_base
 | Client HTTP           | **Symfony HttpClient**                                                                               | Utilisé pour tous les appels sortants : Ollama, endpoints OpenAI-compatibles, Qdrant, `api_call`/`webhook` des workflows                                                                                                                                                                                                          |
 | Extraction de texte   | **smalot/pdfparser 2.12** (PDF), `ZipArchive` natif PHP (DOCX), fonctions natives (TXT/MD/HTML/JSON) | Pipeline d'ingestion documentaire                                                                                                                                                                                                                                                                                                 |
 | CORS                  | **NelmioCorsBundle 2.6**                                                                             | Origines autorisées configurables via `CORS_ALLOW_ORIGIN` (regex)                                                                                                                                                                                                                                                                 |
-| Style backoffice      | **Tailwind CSS via CDN**                                                                             | Pas de pipeline d'assets (pas d'AssetMapper/Webpack Encore installé)                                                                                                                                                                                                                                                              |
-| Conteneurisation      | **Docker** (`Dockerfile`, `compose.yaml`, inclus depuis le `compose.yaml` racine)                    | Services : `app` (Symfony), `database` (Postgres), `qdrant`, `nuxt` (frontend de démo)                                                                                                                                                                                                                                            |
+| Style backoffice      | **Tailwind CSS v4** compilé localement (`symfonycasts/tailwind-bundle`)                             | Servi via `symfony/asset-mapper` + `symfony/stimulus-bundle` (`{{ importmap('app') }}`), plus de CDN                                                                                                                                                                                                                              |
+| File d'attente        | **Symfony Messenger** + **Redis**                                                                   | Transport `async` (`redis://`, dev) ; chunking/vectorisation de documents et déclenchement de workflow (hors tool-calling) tournent en tâche de fond                                                                                                                                                                             |
+| Conteneurisation      | **Docker** (`Dockerfile`, `compose.yaml`, inclus depuis le `compose.yaml` racine)                    | Services : `app` (Symfony), `database` (MariaDB), `qdrant`, `redis`, `worker` (consumer Messenger), `nuxt` (frontend de démo)                                                                                                                                                                                                     |
 | Reverse proxy (dev)   | **Traefik**                                                                                          | Routage par domaine (`*.chatbot.localhost`) via provider **fichier** (`traefik/dynamic.yml`), pas par labels Docker — les services rejoignent le réseau externe `chatbot-proxy` mais ne portent aucun label `traefik.*` (le client Docker embarqué dans l'image Traefik échoue à négocier sa version d'API avec ce moteur Docker) |
-
-**Ce qui n'est délibérément pas présent** (voir §12) :
-- Pas de système d'authentification **multi-utilisateur** (un seul compte admin partagé, provider `memory`, voir §10) — pas de modèle `User` en base, pas de rôles différenciés, pas de scoping des ressources par utilisateur.
-- Pas de file de messages / worker asynchrone (pas de Symfony Messenger, pas de Redis) — tout le pipeline d'ingestion documentaire et d'exécution de workflow tourne **de façon synchrone** dans la requête HTTP.
-- Pas de CSRF stateless sur les formulaires du backoffice (nécessiterait un asset pipeline) — seules les actions de suppression utilisent le CSRF classique basé session.
 
 ---
 
@@ -68,7 +64,11 @@ src/
 ├── KnowledgeBase/          # knowledge_base : documents, chunking, collections
 ├── Workflow/                # workflows : moteur d'exécution des steps
 ├── Chat/                    # chat : orchestration LLM + RAG + tool-calling
-├── Entity/                  # 14 entités Doctrine (voir §4)
+├── Entity/                  # 15 entités Doctrine (voir §4), dont OwnedResourceInterface
+├── Security/Voter/           # OwnershipVoter : cloisonnement par propriétaire (Conversation/WorkflowExecution)
+├── Doctrine/                  # OwnershipCollectionExtension : même cloisonnement, pour GetCollection
+├── Message/                   # messages Messenger (IndexDocumentMessage, ExecuteWorkflowMessage)
+├── MessageHandler/            # handlers correspondants, consommés par le worker Messenger
 ├── Enum/                    # enums PHP 8.1 pour chaque champ à choix fermé
 ├── Repository/               # repositories Doctrine (1 par entité)
 ├── Controller/               # contrôleurs API Platform custom + Admin/DashboardController
@@ -98,7 +98,7 @@ ai_providers  ──┐
 
 ## 4. Modèle de données
 
-14 entités Doctrine, toutes avec un ID auto-incrémenté. Sauf indication contraire, `createdAt`/`updatedAt` sont gérés automatiquement (`#[ORM\HasLifecycleCallbacks]` + `#[ORM\PreUpdate]`).
+15 entités Doctrine, toutes avec un ID auto-incrémenté. Sauf indication contraire, `createdAt`/`updatedAt` sont gérés automatiquement (`#[ORM\HasLifecycleCallbacks]` + `#[ORM\PreUpdate]`).
 
 ### 4.1 `ai_providers`
 
@@ -211,8 +211,9 @@ Contrainte d'unicité `(document_id, chunk_index)`.
 | `startedAt`, `completedAt` | datetime nullable                                                                                 |
 | `errorMessage`             | text                                                                                              |
 | `executionLog`             | array — détail par étape (statut, sortie, temps d'exécution)                                      |
+| `triggeredBy`               | `ManyToOne` nullable vers `User`, `onDelete: SET NULL` — non lisible/écrivable via l'API (voir §4.6) |
 
-Aucun champ `triggered_by`.
+Cloisonné par propriétaire : un compte `ROLE_USER` ne voit/modifie que les exécutions dont il est `triggeredBy` (`OwnershipVoter` + `OwnershipCollectionExtension`, voir §10) ; `ROLE_ADMIN` voit tout. Une exécution `triggeredBy = null` (déclenchée avant l'ajout du multi-utilisateur, ou par le tool-calling) n'est visible que par `ROLE_ADMIN`.
 
 ### 4.5 `chat`
 
@@ -222,8 +223,9 @@ Aucun champ `triggered_by`.
 | `title`    | string(200)                                                                |
 | `isActive` | bool                                                                       |
 | `messages` | `OneToMany` vers `Message`, ordonné par `createdAt`, `orphanRemoval: true` |
+| `user`     | `ManyToOne` nullable vers `User`, `onDelete: SET NULL` — non lisible/écrivable via l'API (voir §4.6) |
 
-**Limite la plus significative** du modèle actuel : aucun champ `user` — les conversations ne sont scopées par aucun utilisateur, quiconque connaît un ID peut le lire/écrire.
+Cloisonné par propriétaire : un compte `ROLE_USER` ne voit/modifie (y compris messages/stream) que ses propres conversations (`OwnershipVoter` + `OwnershipCollectionExtension` sur l'item/la collection, `#[IsGranted]` sur les contrôleurs de messages/stream, voir §10) ; `ROLE_ADMIN` voit tout. Une conversation `user = null` (créée avant l'ajout du multi-utilisateur) n'est visible que par `ROLE_ADMIN`.
 
 **`Message`** — pas de `#[ApiResource]` propre (exposé via les actions de `Conversation`).
 | Champ          | Type                                                                       |
@@ -242,7 +244,19 @@ Aucun champ `triggered_by`.
 | `collection`                   | `OneToOne` côté inverse vers `Collection` — la base de connaissance RAG de l'agent                                |
 | `isActive`                     | bool                                                                                                              |
 
-### 4.6 Enums PHP (backed enums, valeurs string)
+### 4.6 Sécurité (transverse)
+
+**`User`** (table `app_user`) — un compte opérateur, pour les firewalls `/admin` et `/api`. Non exposée via l'API (`#[ApiResource]` absent — porterait le hash de mot de passe), gérée uniquement via `/admin/users` et `bin/console app:user:create`.
+| Champ      | Type                                              |
+| ---------- | -------------------------------------------------- |
+| `email`    | string(180), unique — identifiant                  |
+| `password` | string — hash bcrypt                               |
+| `roles`    | array (JSON) — `getRoles()` ajoute toujours `ROLE_USER` ; `ROLE_ADMIN` est stocké explicitement |
+| `isActive` | bool                                               |
+
+`OwnedResourceInterface` (`getOwnerUser(): ?User`, `getOwnerFieldName(): string`) est implémentée par `Conversation` (`user`) et `WorkflowExecution` (`triggeredBy`) — voir §10 pour le mécanisme de cloisonnement.
+
+### 4.7 Enums PHP (backed enums, valeurs string)
 
 | Enum                      | Valeurs                                                                                |
 | ------------------------- | -------------------------------------------------------------------------------------- |
@@ -354,7 +368,7 @@ Nettoyage : normalisation des espaces, suppression des caractères non-alphanum�
 - `vectorize()` : résout la collection Qdrant cible, appelle `VectorSearchService::addDocumentChunks()`, persiste le `vector_id` résultant sur chaque chunk, passe le document en `indexed` (ou `error` avec un message si Qdrant échoue réellement).
 - `deleteVectorsAndChunks()` : nettoie Qdrant, puis les chunks en base, avant que le document lui-même soit supprimé.
 
-> **Synchrone par nécessité** : sans file de messages, tout le pipeline tourne **dans la requête HTTP d'upload** (`POST /api/documents`) — bloquant. À revoir avec Symfony Messenger si la latence d'upload devient un problème (voir §12).
+> **Asynchrone** : `POST /api/documents` et `POST /documents/{id}/process` dispatchent `App\Message\IndexDocumentMessage` sur le transport Messenger `async` (`IndexDocumentMessageHandler` appelle `chunkDocument()`+`vectorize()`) et répondent `202` avec le document en statut `pending` immédiatement — pas d'attente du pipeline complet. Poller `GET /api/documents/{id}` pour le statut final (`indexed`/`error`).
 
 ### 6.3 Résolution de collection — `CollectionService`
 
@@ -427,7 +441,9 @@ Types d'étapes supportés (`WorkflowStepType`) :
 
 ### 7.3 Synchronicité
 
-Sans file de messages, `execute()` tourne **toujours de façon synchrone**, que ce soit via `POST /api/workflows/{id}/trigger` (déclenchement manuel/API), `POST /api/workflows/{id}/test` (test), ou via le tool-calling du chat — la réponse HTTP attend la fin réelle de l'exécution.
+Deux chemins, volontairement différents :
+- **`POST /api/workflows/{id}/trigger`** (déclenchement manuel/API) et **`POST /api/workflows/{id}/test`** : `createPendingExecution()` persiste la `WorkflowExecution` (statut `pending`), dispatche `App\Message\ExecuteWorkflowMessage` sur le transport `async`, et répondent `202` immédiatement — `run()` s'exécute dans le worker Messenger. Poller `GET /api/workflow_executions/{id}`.
+- **Tool-calling** (`ChatOrchestrationService`) : reste **synchrone**, `execute()` (create + `run()` en ligne, sans passer par le bus) — la boucle de tool-calling a besoin du résultat immédiatement pour poursuivre la conversation avec le LLM ; le rendre asynchrone casserait le tool-calling. Choix délibéré, pas un oubli.
 
 ### 7.4 Suppression = soft delete
 
@@ -439,7 +455,7 @@ Sans file de messages, `execute()` tourne **toujours de façon synchrone**, que 
 
 Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les ressources API Platform sont sous **`/api`** ; documentation interactive Hydra/JSON-LD native sur `/api`, documentation Swagger/OpenAPI pure sur **`/doc`**.
 
-> ⚠️ **Authentification HTTP Basic requise** sur tous ces endpoints (compte admin unique, voir §10).
+> ⚠️ **Authentification HTTP Basic requise** sur tous ces endpoints. `Conversation`/`WorkflowExecution` acceptent `ROLE_USER` (cloisonné à ses propres lignes) ; toutes les autres ressources ci-dessous exigent `ROLE_ADMIN` explicitement — voir §10.
 
 ### 8.1 `ai_providers`
 
@@ -470,9 +486,9 @@ Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les res
 | `GET`                         | `/api/documents`                  | Liste des documents                                                                                                                                                                                               |
 | `GET`                         | `/api/documents/{id}`             | Détail                                                                                                                                                                                                            |
 | `PATCH`                       | `/api/documents/{id}`             | Mise à jour (métadonnées, pas le fichier)                                                                                                                                                                         |
-| `POST`                        | `/api/documents`                  | **Upload multipart** (`file`, `title`, `description?`, `category_id?`) — extensions autorisées : `pdf, txt, docx, md, html, json`, taille max **10 Mo**. Déclenche `chunkDocument()` + `vectorize()` en synchrone |
+| `POST`                        | `/api/documents`                  | **Upload multipart** (`file`, `title`, `description?`, `category_id?`) — extensions autorisées : `pdf, txt, docx, md, html, json`, taille max **10 Mo**. Répond `202`, statut `pending` ; `chunkDocument()`+`vectorize()` tournent en tâche de fond (Messenger) |
 | `DELETE`                      | `/api/documents/{id}`             | Supprime les vecteurs Qdrant + les chunks + le fichier physique + la ligne                                                                                                                                        |
-| `POST`                        | `/api/documents/{id}/process`     | Ré-indexation complète (supprime puis recrée les chunks/vecteurs), **synchrone**                                                                                                                                  |
+| `POST`                        | `/api/documents/{id}/process`     | Ré-indexation complète (supprime puis recrée les chunks/vecteurs), **asynchrone** — répond `202`                                                                                                                  |
 | `GET`                         | `/api/documents/{id}/chunks`      | Liste des chunks du document                                                                                                                                                                                      |
 
 ### 8.4 `workflows`
@@ -483,8 +499,8 @@ Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les res
 | `DELETE`             | `/api/workflows/{id}`           | **Soft delete** (`isActive = false`)                                                                    |
 | `GET`                | `/api/workflows/{id}/steps`     | Liste des étapes actives, ordonnées                                                                     |
 | `POST`               | `/api/workflows/{id}/steps`     | Création d'une étape (`name`, `step_type`, `order`, `configuration?`, `is_active?`)                     |
-| `POST`               | `/api/workflows/{id}/trigger`   | Déclenchement (rejette si le workflow n'est pas `active`) — **synchrone**, renvoie l'exécution terminée |
-| `POST`               | `/api/workflows/{id}/test`      | Exécution de test — **synchrone**, aucune vérification de statut                                        |
+| `POST`               | `/api/workflows/{id}/trigger`   | Déclenchement (rejette si le workflow n'est pas `active`) — **asynchrone**, répond `202` avec l'exécution `pending` (poller `GET /api/workflow_executions/{id}`) |
+| `POST`               | `/api/workflows/{id}/test`      | Exécution de test — **asynchrone**, même principe, aucune vérification de statut                        |
 | `GET`                | `/api/workflow_executions`      | Liste des exécutions (lecture seule)                                                                    |
 | `GET`                | `/api/workflow_executions/{id}` | Détail d'une exécution                                                                                  |
 
@@ -524,7 +540,7 @@ Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les res
 
 ## 9. Backoffice admin (`/admin`)
 
-Construit avec **Sylius Resource/Grid Bundle** — CRUD générique piloté par config YAML (`config/routes/admin.yaml`) + repository + form + grid, sans thème packagé (templates Twig maison, `templates/admin/crud/*.html.twig`), stylé en Tailwind CDN.
+Construit avec **Sylius Resource/Grid Bundle** — CRUD générique piloté par config YAML (`config/routes/admin.yaml`) + repository + form + grid, sans thème packagé (templates Twig maison, `templates/admin/crud/*.html.twig`), stylé en Tailwind compilé localement (AssetMapper, voir §2).
 
 | Ressource                              | URL                          | Opérations                                                                                   |
 | -------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------- |
@@ -540,25 +556,30 @@ Construit avec **Sylius Resource/Grid Bundle** — CRUD générique piloté par 
 | `AiAgent`                              | `/admin/ai-agents`           | CRUD complet — **seul moyen de créer/modifier un agent**, l'API REST étant en lecture seule  |
 | `Conversation`                         | `/admin/conversations`       | CRUD complet                                                                                 |
 | `Message`                              | `/admin/messages`            | Lecture seule                                                                                |
+| `User`                                 | `/admin/users`               | CRUD complet — gestion des comptes opérateurs (§10)                                          |
 
 Pour ajouter une 14ᵉ ressource : une entité `implements ResourceInterface`, un repository avec `ResourceRepositoryTrait`, une classe `App\Form\XType`, une classe `App\Grid\XGrid` (`#[AsGrid]`), une entrée dans `config/packages/sylius_resource.yaml` et `config/routes/admin.yaml`. Le rendu des champs est mutualisé via `App\Twig\AdminExtension::fieldValue()` (basé sur `PropertyAccessor`, gère nativement enums/dates/bools/relations/collections).
 
-**CSRF** : désactivé sur les formulaires (nécessiterait un asset pipeline non installé) ; les suppressions utilisent le CSRF classique basé session de Symfony.
+**CSRF** : activé (protection stateless par défaut de Symfony, `SameOriginCsrfTokenManager`) — chaque formulaire embarque un token, complété côté client par le contrôleur Stimulus `csrf-protection` (servi via AssetMapper) ; sans lui, la validation retombe sur la vérification d'origine (`Sec-Fetch-Site`/`Origin`/`Referer`). Les suppressions utilisent en plus le CSRF classique basé session, indépendant de ce qui précède.
 
 ---
 
 ## 10. Sécurité
 
-**État actuel : authentification HTTP requise partout (un seul compte admin), pas d'autorisation multi-utilisateur.**
+**État actuel : multi-utilisateur (table `app_user`), avec cloisonnement par propriétaire sur `Conversation`/`WorkflowExecution`.**
 
-- `config/packages/security.yaml` définit deux firewalls sur un provider `memory` unique (`ADMIN_USERNAME`/`ADMIN_PASSWORD_HASH`, env) :
+- `config/packages/security.yaml` définit deux firewalls sur un provider `entity` unique (`App\Entity\User`, identifiant = email) :
   - **`admin`** (`^/admin`) : `form_login` classique (session cookie) — page `/admin/login`, déconnexion via `/admin/logout`.
   - **`api`** (`^/`, catch-all) : `http_basic`, `stateless: true` — couvre `/api/*` et `/doc`, adapté à un client machine (curl, scripts, proxy serveur d'un frontend).
-- `access_control` : `ROLE_ADMIN` requis sur `^/admin` et `^/(api|doc)`, seule `^/admin/login` reste `PUBLIC_ACCESS`.
-- Conséquence : `/api/*`, `/doc` et `/admin/*` renvoient `401`/redirigent vers le login sans les identifiants du compte admin. Le frontend Nuxt (`frontend/`) s'authentifie de façon transparente pour l'utilisateur final via son proxy serveur (`ADMIN_USERNAME`/`ADMIN_PASSWORD` injectés en Basic Auth côté Nitro, voir le cahier des charges frontend).
-- **Limite assumée** : un seul compte partagé, pas de modèle `User` en base, pas de rôles différenciés, pas de scoping par utilisateur (voir §12 — les champs `user`/`uploaded_by`/`created_by`/`triggered_by` restent absents des entités : ce n'est pas un système multi-utilisateur, seulement un verrou d'accès global).
+- `access_control` : `^/admin` exige `ROLE_ADMIN` (seule `^/admin/login` reste `PUBLIC_ACCESS`) ; `^/(api|doc)` exige seulement `ROLE_USER` — le rôle de base que `User::getRoles()` ajoute toujours, donc "authentifié", pas "admin". L'autorisation fine se fait ressource par ressource (voir plus bas).
+- Comptes : `bin/console app:user:create <email> <password> [--role=ROLE_USER|ROLE_ADMIN]` (défaut `ROLE_ADMIN`), ou `/admin/users`. Le frontend Nuxt (`frontend/`) s'authentifie de façon transparente pour l'utilisateur final via son proxy serveur (`ADMIN_USERNAME`/`ADMIN_PASSWORD`, un compte `ROLE_ADMIN`, injectés en Basic Auth côté Nitro, voir le cahier des charges frontend).
+- **Cloisonnement par propriétaire** (`Conversation.user`, `WorkflowExecution.triggeredBy`, tous deux auto-renseignés au `prePersist` par `App\EventListener\UserStampListener`) :
+  - **Item** (`Get`/`Patch`/`Delete`) : `security: "is_granted('OWNER', object)"`, vérifié par `App\Security\Voter\OwnershipVoter` (`ROLE_ADMIN` bypass toujours ; propriétaire `null` = admin uniquement).
+  - **Collection** (`GetCollection`) : `App\Doctrine\OwnershipCollectionExtension` filtre la requête DQL (pas d'`object` unique pour un Voter).
+  - **Opérations à contrôleur personnalisé** (messages/stream de `Conversation`) : le `security:` déclaratif d'API Platform ne s'y applique pas de façon fiable (vérifié empiriquement) — `#[IsGranted('OWNER', subject: 'data')]` directement sur `ConversationMessagesController`/`ConversationStreamController`.
+  - **Toutes les autres ressources** (`Document`, `Workflow`, `AiAgent`, `AiProviderConfig`, `Collection`, `Faq`, `DocumentCategory`, `VectorIndex`) exigent explicitement `ROLE_ADMIN` sur leur propre `#[ApiResource(security: ...)]`, indépendamment de la règle `access_control` globale — un compte `ROLE_USER` ne peut ni les lire ni les modifier.
 - **CORS** (`nelmio_cors.yaml`) : origines autorisées via la regex `CORS_ALLOW_ORIGIN` (par défaut `^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$` — dev uniquement), méthodes `GET, OPTIONS, POST, PUT, PATCH, DELETE`, headers `Content-Type, Authorization`.
-- `AiProviderConfig.apiKey` est `#[ApiProperty(readable: false)]` : jamais renvoyé par l'API (`GET`/`GetCollection`), uniquement accepté en écriture (`POST`/`PATCH`). Reste visible dans le formulaire d'édition du backoffice (`/admin/ai-provider-configs/{id}/edit`), nécessaire pour le modifier — mais cette page est maintenant elle-même protégée par le firewall `admin`.
+- `AiProviderConfig.apiKey` est `#[ApiProperty(readable: false)]` : jamais renvoyé par l'API (`GET`/`GetCollection`), uniquement accepté en écriture (`POST`/`PATCH`). `Conversation.getOwnerUser()`/`getOwnerFieldName()` (et l'équivalent sur `WorkflowExecution`) portent la même annotation — sans elle, ces méthodes ajoutées pour `OwnedResourceInterface` seraient auto-découvertes comme propriétés API et embarqueraient le `User` complet, hash de mot de passe inclus (bug réel, trouvé et corrigé en cours de développement). Reste visible dans le formulaire d'édition du backoffice, nécessaire pour le modifier — mais cette page est protégée par le firewall `admin`.
 
 ---
 
@@ -615,7 +636,7 @@ Il faut alors fournir soi-même une base MariaDB et une instance Qdrant joignabl
 php bin/console doctrine:migrations:migrate
 ```
 
-(1 migration dans `migrations/`, couvrant l'ensemble du schéma des 14 entités.)
+(1 migration dans `migrations/`, couvrant l'ensemble du schéma des 15 entités.)
 
 ### 11.4 Variables d'environnement
 
@@ -625,7 +646,7 @@ Fichier de référence : `.env.example`.
 | ------------------------ | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `APP_ENV`                | `dev`                                                                             | Environnement Symfony                                                                      |
 | `APP_SECRET`             | (généré)                                                                          | Secret applicatif Symfony                                                                  |
-| `DATABASE_URL`           | `mysql://app:!ChangeMe!@127.0.0.1:3306/app?serverVersion=11.4.12&charset=utf8mb4` | Connexion Doctrine                                                                         |
+| `DATABASE_URL`           | `mysql://app:!ChangeMe!@127.0.0.1:3306/app?serverVersion=11.4.12-MariaDB&charset=utf8mb4` | Connexion Doctrine                                                                         |
 | `CORS_ALLOW_ORIGIN`      | `^https?://(localhost\|127\.0\.0\.1)(:[0-9]+)?$`                                  | Regex des origines autorisées                                                              |
 | `AI_PROVIDER`            | `ollama`                                                                          | `ollama` \| `api_endpoint` — fallback quand aucune `AiProviderConfig` active n'existe      |
 | `OLLAMA_BASE_URL`        | `http://localhost:11434`                                                          | URL du serveur Ollama                                                                      |
@@ -639,8 +660,9 @@ Fichier de référence : `.env.example`.
 | `QDRANT_HOST`            | `localhost`                                                                       | Hôte Qdrant                                                                                |
 | `QDRANT_PORT`            | `6333`                                                                            | Port REST Qdrant                                                                           |
 | `QDRANT_API_KEY`         | *(vide)*                                                                          | Clé API Qdrant (si sécurisé)                                                               |
-| `ADMIN_USERNAME`         | `admin`                                                                           | Identifiant du compte admin unique (§10), utilisé par les deux firewalls                   |
-| `ADMIN_PASSWORD_HASH`    | *(vide — à générer)*                                                              | Hash bcrypt du mot de passe admin (`bin/console security:hash-password`)                   |
+| `MESSENGER_TRANSPORT_DSN` | `redis://redis:6379/messages` (dev) ; `sync://` en prod tant qu'aucun Redis externe n'existe | Transport Messenger `async` (§2, §6.2, §7.3)                              |
+| `ADMIN_USERNAME`         | `admin`                                                                           | Ne seed que la première ligne `app_user` (migration) ; jamais lu par Symfony au runtime (§10) |
+| `ADMIN_PASSWORD_HASH`    | *(vide — à générer)*                                                              | Hash bcrypt (`bin/console security:hash-password`) — idem, seed uniquement                 |
 | `ADMIN_PASSWORD`         | *(vide — à générer)*                                                              | Contrepartie en clair, jamais lue par Symfony : uniquement pour le proxy Nuxt (Basic Auth) |
 
 > `DEFAULT_URI` (génération d'URL en CLI) est aussi présent, non lié à l'IA.
@@ -660,9 +682,8 @@ Toutes les requêtes ci-dessous nécessitent l'authentification HTTP Basic (`-u 
 
 ### 12.1 Limites d'architecture assumées
 
-| Limite                                    | Détail                                                                                                                                                                                                                                 | Impact                                                                                                                                                                               |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Authentification mono-compte**          | `security.yaml` protège `/api` (HTTP Basic) et `/admin` (form login) derrière un seul compte admin (provider `memory`) ; aucun scoping par utilisateur (pas de champ `user`/`uploaded_by`/`created_by`/`triggered_by` sur les entités) | `/api` et `/admin` nécessitent les identifiants admin, mais conversations, executions et documents restent visibles/modifiables par quiconque a ce compte (pas de multi-utilisateur) |
-| **Pas de file de messages**               | Pas de Symfony Messenger/Redis                                                                                                                                                                                                         | Chunking/vectorisation de documents et déclenchement de workflows tournent **en synchrone, bloquant** dans la requête HTTP, plutôt qu'en tâche de fond                               |
-| **Streaming non combiné au tool-calling** | `ConversationStreamController` génère la réponse complète puis l'émet en SSE                                                                                                                                                           | Pas de vrai streaming token-par-token pendant l'exécution d'outils                                                                                                                   |
-| **CSRF stateless désactivé**              | Nécessiterait un asset pipeline (AssetMapper) non installé                                                                                                                                                                             | Formulaires du backoffice sans protection CSRF stateless (seules les suppressions ont du CSRF session-based)                                                                         |
+| Limite                                    | Détail                                                                         | Impact                                                              |
+| ----------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Streaming non combiné au tool-calling** | `ConversationStreamController` génère la réponse complète puis l'émet en SSE   | Pas de vrai streaming token-par-token pendant l'exécution d'outils    |
+
+Résolues depuis : authentification multi-utilisateur avec cloisonnement par propriétaire (§10), file de messages asynchrone pour le chunking/la vectorisation et le déclenchement de workflow (§6.2, §7.3), CSRF stateless sur les formulaires du backoffice (§9).

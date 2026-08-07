@@ -22,7 +22,7 @@ Solution de chatbot administrable : backend Symfony (API Platform) avec RAG (Ret
 | ------------------ | ---------------------- | --------------------------------------------- |
 | Backend            | Symfony + API Platform | Symfony 8.1, API Platform 4.3, PHP 8.4        |
 | Frontend           | Nuxt / Vue             | Nuxt 4.5, Vue 3.5, TypeScript 7.0, Node.js 24 |
-| Base relationnelle | MariaDB                | 11.4                                           |
+| Base relationnelle | MariaDB                | 11.4                                          |
 | Base vectorielle   | Qdrant                 | v1.19.0                                       |
 | Modèles IA         | Ollama (local)         | `qwen3.6`, `mxbai-embed-large`                |
 | Reverse proxy      | Traefik                | v3.5                                          |
@@ -71,7 +71,7 @@ Tous les services sont routés par domaine via Traefik (`*.chatbot.localhost`, r
 ## Architecture
 
 ```
-chatbot-ia/
+chatbot-skills-ia/
 ├── backend/           # API Symfony + API Platform, backoffice /admin
 ├── frontend/                   # Composant chatbot Nuxt 4 + TailwindCSS
 ├── traefik/                   # Reverse proxy : domaines par service (*.chatbot.localhost)
