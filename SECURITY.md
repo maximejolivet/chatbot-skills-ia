@@ -26,7 +26,7 @@ found 0 vulnerabilities
 
 | Image           | Tag utilisé                      | Remarque                             |
 | --------------- | -------------------------------- | ------------------------------------ |
-| `postgres`      | `${POSTGRES_VERSION:-16}-alpine` | Version majeure épinglée (16)        |
+| `mysql`         | `${MYSQL_VERSION:-8.0}`          | Version majeure épinglée (8.0)       |
 | `qdrant/qdrant` | `v1.19.0`                        | Épinglé (2026-08-06, était `latest`) |
 | `traefik`       | `v3.5`                           | Épinglé                              |
 | `node`          | `24-alpine`                      | Version majeure épinglée (24)        |

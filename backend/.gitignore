@@ -9,6 +9,10 @@
 /vendor/
 ###< symfony/framework-bundle ###
 
+# Staging file for the DEPLOY_ENV_FILE GitHub secret (gh secret set
+# DEPLOY_ENV_FILE < .env.prod) -- real production credentials, never commit.
+/.env.prod
+
 ###> symfony/asset-mapper ###
 /public/assets/
 /assets/vendor/

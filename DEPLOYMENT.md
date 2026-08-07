@@ -41,8 +41,13 @@ sous-domaine `chat-ia.jolivetmaxime.fr` (cPanel > Domaines) vers
 ### Prérequis manuels (non automatisés)
 
 - Sélectionner PHP 8.4 pour le sous-domaine (cPanel > MultiPHP Manager).
-- Créer la base PostgreSQL et la collection Qdrant Cloud, et avoir leurs
-  informations de connexion prêtes pour `DEPLOY_ENV_FILE` (voir ci-dessous).
+- Créer la base MySQL (cPanel > Bases de données MySQL) et la collection
+  Qdrant Cloud, et avoir leurs informations de connexion prêtes pour
+  `DEPLOY_ENV_FILE` (voir ci-dessous). Vérifier aussi la version MySQL/
+  MariaDB réelle fournie (cPanel ou phpMyAdmin) avant de fixer
+  `serverVersion=` dans `DATABASE_URL` -- o2switch a fourni un PostgreSQL
+  9.6 (EOL depuis 2021) sur cette instance, d'où le passage à MySQL ; ne pas
+  supposer que la version par défaut est récente sans vérifier.
 
 ### Secrets requis (Settings > Secrets and variables > Actions)
 
@@ -53,7 +58,7 @@ sous-domaine `chat-ia.jolivetmaxime.fr` (cPanel > Domaines) vers
 | `DEPLOY_SSH_USER` | `{{user}}` (identifiant cPanel) |
 | `DEPLOY_PROJECT_PATH` | `/home/{{user}}/repositories/chatbot-skills-ia/backend` |
 | `DEPLOY_CPANEL_PASSWORD` | Mot de passe cPanel — utilisé **uniquement** pour l'API de whitelist SSH (port 2083), sans rapport avec la clé SSH ci-dessus |
-| `DEPLOY_ENV_FILE` | Contenu complet du `.env` de production : **`APP_ENV=prod`** (sans ça, un `.env` vide ou incomplet fait retomber Symfony en `dev`, qui référence des bundles dev-only absents du build `--no-dev` déployé -- le workflow force déjà `--env=prod` sur les migrations par défense en profondeur, mais mieux vaut ne pas en dépendre), `DATABASE_URL` (instance PostgreSQL o2switch), `ADMIN_USERNAME`/`ADMIN_PASSWORD_HASH` (`bin/console security:hash-password`), `QDRANT_HOST`/`QDRANT_PORT`/`QDRANT_API_KEY` (Qdrant Cloud), `AI_PROVIDER=api_endpoint` + `AI_API_*` (ou configurer une ligne `AiProviderConfig` après le premier déploiement), `CORS_ALLOW_ORIGIN` pour l'origine réelle du frontend |
+| `DEPLOY_ENV_FILE` | Contenu complet du `.env` de production : **`APP_ENV=prod`** (sans ça, un `.env` vide ou incomplet fait retomber Symfony en `dev`, qui référence des bundles dev-only absents du build `--no-dev` déployé -- le workflow force déjà `--env=prod` sur les migrations par défense en profondeur, mais mieux vaut ne pas en dépendre), `DATABASE_URL` (instance MySQL o2switch), `ADMIN_USERNAME`/`ADMIN_PASSWORD_HASH` (`bin/console security:hash-password`), `QDRANT_HOST`/`QDRANT_PORT`/`QDRANT_API_KEY` (Qdrant Cloud), `AI_PROVIDER=api_endpoint` + `AI_API_*` (ou configurer une ligne `AiProviderConfig` après le premier déploiement), `CORS_ALLOW_ORIGIN` pour l'origine réelle du frontend |
 
 Définir ces secrets via `gh secret set <NAME>` ou l'UI GitHub (Settings >
 Secrets and variables > Actions). **Ne jamais coller leur contenu dans une

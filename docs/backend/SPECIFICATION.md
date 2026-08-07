@@ -33,7 +33,7 @@ Ordre de dépendance : `ai_providers` ← `vector_connector` ← `knowledge_base
 | Framework             | **Symfony 8.1**                                                                                      | `framework-bundle`, `security-bundle`, `twig-bundle`, `console`, `dotenv`, `runtime`, `validator`, `serializer`, `form`, `expression-language`, `property-access`/`property-info`                                                                                                                                                 |
 | Couche API REST       | **API Platform 4.3** (`api-platform/symfony`, `api-platform/doctrine-orm`)                           | Génère des ressources REST/JSON-LD (Hydra) à partir des entités Doctrine, exposées sous `/api`                                                                                                                                                                                                                                    |
 | Documentation API     | **NelmioApiDocBundle 5.11**                                                                          | Miroir OpenAPI 3.0 « pur » (sans Hydra) des ressources API Platform, exposé sous `/doc`                                                                                                                                                                                                                                           |
-| ORM / Base de données | **Doctrine ORM 3.6** + **Doctrine Migrations 4.0**                                                   | **PostgreSQL 15/16** (`postgresql://...`)                                                                                                                                                                                                                                                                                         |
+| ORM / Base de données | **Doctrine ORM 3.6** + **Doctrine Migrations 4.0**                                                   | **MySQL 8.0** (`mysql://...`)                                                                                                                                                                                                                                                                                                      |
 | Backoffice / admin    | **Sylius Resource Bundle 1.14** + **Sylius Grid Bundle 1.16** + **Symfony Form**                     | CRUD générique piloté par configuration, exposé sous `/admin`                                                                                                                                                                                                                                                                     |
 | Pagination admin      | **Pagerfanta** (`pagerfanta/doctrine-orm-adapter`, `babdev/pagerfanta-bundle`)                       | Utilisé par les grilles Sylius                                                                                                                                                                                                                                                                                                    |
 | Base vectorielle      | **Qdrant** (image `qdrant/qdrant:v1.19.0`)                                                           | Stockage et recherche des embeddings, communication via REST (Symfony HttpClient)                                                                                                                                                                                                                                                 |
@@ -568,7 +568,7 @@ Pour ajouter une 14ᵉ ressource : une entité `implements ResourceInterface`, u
 
 - **Docker** + Docker Compose (méthode recommandée), **ou** PHP 8.4 + Composer + Symfony CLI en local.
 - Un serveur **Ollama** accessible (local ou distant) si `AI_PROVIDER=ollama`, avec les modèles `mxbai-embed-large`, `gpt-oss:20b` (ou équivalents) déjà `pull`és.
-- Accès réseau à **PostgreSQL 15/16** et **Qdrant**.
+- Accès réseau à **MySQL 8.0** et **Qdrant**.
 
 ### 11.2 Avec Docker (recommandé)
 
@@ -585,7 +585,7 @@ Services démarrés (`compose.yaml`) :
 | Service    | Rôle                                                                 | Port hôte                                                      |
 | ---------- | -------------------------------------------------------------------- | -------------------------------------------------------------- |
 | `app`      | API Symfony (serveur PHP intégré, `php -S 0.0.0.0:8000`)             | aucun (retiré — accès uniquement via Traefik, voir ci-dessous) |
-| `database` | PostgreSQL (`postgres:${POSTGRES_VERSION:-16}-alpine`)               | port aléatoire                                                 |
+| `database` | MySQL (`mysql:${MYSQL_VERSION:-8.0}`)                                | port aléatoire                                                 |
 | `qdrant`   | Base vectorielle                                                     | ports aléatoires (REST/gRPC)                                   |
 | `nuxt`     | Frontend de démo Nuxt (`frontend/`), branché sur `app` via `API_URL` | `3010`                                                         |
 
@@ -609,13 +609,13 @@ composer install
 symfony server:start
 ```
 
-Il faut alors fournir soi-même une base PostgreSQL et une instance Qdrant joignables aux URLs configurées dans `.env` (et y générer `ADMIN_PASSWORD_HASH`, voir §10 — requis quel que soit le mode d'installation), et lancer les migrations :
+Il faut alors fournir soi-même une base MySQL et une instance Qdrant joignables aux URLs configurées dans `.env` (et y générer `ADMIN_PASSWORD_HASH`, voir §10 — requis quel que soit le mode d'installation), et lancer les migrations :
 
 ```bash
 php bin/console doctrine:migrations:migrate
 ```
 
-(6 migrations présentes dans `migrations/`, couvrant l'ensemble du schéma des 14 entités.)
+(1 migration dans `migrations/`, couvrant l'ensemble du schéma des 14 entités.)
 
 ### 11.4 Variables d'environnement
 
@@ -625,7 +625,7 @@ Fichier de référence : `.env.example`.
 | ------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `APP_ENV`                | `dev`                                                                                    | Environnement Symfony                                                                      |
 | `APP_SECRET`             | (généré)                                                                                 | Secret applicatif Symfony                                                                  |
-| `DATABASE_URL`           | `postgresql://postgres:postgres@127.0.0.1:5432/chatbot_db?serverVersion=15&charset=utf8` | Connexion Doctrine                                                                         |
+| `DATABASE_URL`           | `mysql://app:!ChangeMe!@127.0.0.1:3306/app?serverVersion=8.0.32&charset=utf8mb4`         | Connexion Doctrine                                                                         |
 | `CORS_ALLOW_ORIGIN`      | `^https?://(localhost\|127\.0\.0\.1)(:[0-9]+)?$`                                         | Regex des origines autorisées                                                              |
 | `AI_PROVIDER`            | `ollama`                                                                                 | `ollama` \| `api_endpoint` — fallback quand aucune `AiProviderConfig` active n'existe      |
 | `OLLAMA_BASE_URL`        | `http://localhost:11434`                                                                 | URL du serveur Ollama                                                                      |

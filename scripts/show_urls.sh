@@ -15,5 +15,5 @@ echo "   - Qdrant (dashboard):          http://qdrant-symfony.chatbot.localhost/
 echo ""
 echo "   Hors Traefik :"
 echo "   - Ollama (local):              http://localhost:11434"
-echo "   - PostgreSQL:                  voir 'docker compose ps' pour le port"
+echo "   - MySQL:                       voir 'docker compose ps' pour le port"
 echo ""
