@@ -94,6 +94,16 @@ jobs:
           APP_ENV: prod
         run: composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction
 
+      # asset-map:compile requires the Tailwind output CSS to already exist on
+      # disk (symfonycasts/tailwind-bundle doesn't build it as a side effect
+      # of compiling the asset map) -- worked locally only because a dev
+      # container already had it built from an earlier session; a fresh
+      # runner checkout doesn't.
+      - name: Build Tailwind CSS
+        env:
+          APP_ENV: prod
+        run: php bin/console tailwind:build
+
       # AssetMapper only serves assets on-the-fly in dev -- in prod it expects
       # a precompiled public/assets/ (manifest + versioned files), or Twig's
       # importmap()/asset() helpers throw at render time (admin/login.html.twig
