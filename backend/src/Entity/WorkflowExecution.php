@@ -130,11 +130,17 @@ class WorkflowExecution implements ResourceInterface, OwnedResourceInterface
         return $this;
     }
 
+    // Not readable over the API -- same reason as $triggeredBy above
+    // (getters matching getXxx() are auto-discovered as virtual API
+    // properties by API Platform unless explicitly excluded; without this,
+    // getOwnerUser() would embed the full User, including the password hash).
+    #[ApiProperty(readable: false, writable: false)]
     public function getOwnerUser(): ?User
     {
         return $this->triggeredBy;
     }
 
+    #[ApiProperty(readable: false, writable: false)]
     public static function getOwnerFieldName(): string
     {
         return 'triggeredBy';
