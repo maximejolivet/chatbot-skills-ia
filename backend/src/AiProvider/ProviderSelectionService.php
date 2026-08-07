@@ -5,6 +5,7 @@ namespace App\AiProvider;
 use App\AiProvider\Client\ApiEndpoint\OpenAiCompatibleEmbeddingClient;
 use App\AiProvider\Client\ApiEndpoint\OpenAiCompatibleLlmClient;
 use App\AiProvider\Client\EmbeddingClientInterface;
+use App\AiProvider\Client\FallbackLlmClient;
 use App\AiProvider\Client\LlmClientInterface;
 use App\AiProvider\Client\Ollama\OllamaEmbeddingClient;
 use App\AiProvider\Client\Ollama\OllamaLlmClient;
@@ -46,12 +47,36 @@ final class ProviderSelectionService
     ) {
     }
 
+    /**
+     * When multiple AiProviderConfig rows are active for this usage, returns a
+     * FallbackLlmClient that tries them in priority order (isDefault DESC,
+     * updatedAt DESC) -- e.g. a local Ollama default with a cloud API-endpoint
+     * config as backup if Ollama is unreachable. With zero or one usable
+     * config, behavior is unchanged from before this chain existed.
+     */
     public function getLlmClient(AiProviderUsage $usage = AiProviderUsage::Chat): LlmClientInterface
     {
-        $config = $this->repository->getActiveForUsage($usage);
+        $configs = $this->repository->getAllActiveForUsage($usage);
 
-        if (!$config) {
-            $this->logger->info('No AiProviderConfig for usage "{usage}"; using env provider "{provider}".', [
+        // Keyed by config name, not appended in parallel to $configs -- a
+        // skipped config must not shift a later config's name out of sync
+        // with the client actually built from it.
+        $clients = [];
+        $usedNames = [];
+        foreach ($configs as $config) {
+            try {
+                $clients[] = $this->buildLlmClientFromConfig($config);
+                $usedNames[] = $config->getName();
+            } catch (\InvalidArgumentException $e) {
+                $this->logger->warning('AiProviderConfig "{name}" unusable, skipping: {error}', [
+                    'name' => $config->getName(),
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        if (!$clients) {
+            $this->logger->info('No usable AiProviderConfig for usage "{usage}"; using env provider "{provider}".', [
                 'usage' => $usage->value,
                 'provider' => $this->aiProvider,
             ]);
@@ -71,26 +96,19 @@ final class ProviderSelectionService
             return new OllamaLlmClient(baseUrl: $this->ollamaBaseUrl, model: $this->ollamaChatModel);
         }
 
-        $this->logger->info('Using AiProviderConfig "{name}" for {usage}.', ['name' => $config->getName(), 'usage' => $usage->value]);
-        if (AiProvider::ApiEndpoint === $config->getProvider()) {
-            try {
-                return new OpenAiCompatibleLlmClient(
-                    apiEndpoint: $config->getApiEndpoint() ?? $this->aiApiEndpoint,
-                    apiKey: $config->getApiKey() ?? '',
-                    model: $config->getModel() ?? $this->aiApiModel,
-                    timeout: $this->aiApiTimeout,
-                );
-            } catch (\InvalidArgumentException $e) {
-                $this->logger->warning('Configured API endpoint LLM client unavailable ({error}); falling back to Ollama.', ['error' => $e->getMessage()]);
+        if (1 === count($clients)) {
+            $this->logger->info('Using AiProviderConfig "{name}" for {usage}.', ['name' => $usedNames[0], 'usage' => $usage->value]);
 
-                return new OllamaLlmClient(baseUrl: $config->getBaseUrl() ?? $this->ollamaBaseUrl, model: $this->ollamaChatModel);
-            }
+            return $clients[0];
         }
 
-        return new OllamaLlmClient(
-            baseUrl: $config->getBaseUrl() ?? $this->ollamaBaseUrl,
-            model: $config->getModel() ?? $this->ollamaChatModel,
-        );
+        $this->logger->info('Using {count} AiProviderConfig(s) for {usage}, in priority order: {names}.', [
+            'count' => count($clients),
+            'usage' => $usage->value,
+            'names' => implode(' -> ', $usedNames),
+        ]);
+
+        return new FallbackLlmClient($clients, $this->logger);
     }
 
     public function getEmbeddingClient(): EmbeddingClientInterface

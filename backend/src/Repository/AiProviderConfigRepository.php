@@ -36,4 +36,22 @@ class AiProviderConfigRepository extends ServiceEntityRepository implements Syli
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    /**
+     * All active configs for a usage, highest-priority first (same ordering as
+     * getActiveForUsage) -- used to build a fallback chain instead of a single client.
+     *
+     * @return AiProviderConfig[]
+     */
+    public function getAllActiveForUsage(AiProviderUsage $usage): array
+    {
+        return $this->createQueryBuilder('c')
+            ->andWhere('c.usage = :usage')
+            ->andWhere('c.isActive = true')
+            ->setParameter('usage', $usage)
+            ->orderBy('c.isDefault', 'DESC')
+            ->addOrderBy('c.updatedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
 }
