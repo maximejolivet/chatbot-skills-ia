@@ -201,7 +201,3 @@ process persistant) : en production, il faudra soit une tâche cron
 invoquant `messenger:consume --limit=N --time-limit=X` périodiquement,
 soit un Redis externe managé (le mutualisé n'en fournit pas non plus) —
 même logique que Qdrant Cloud pour la base vectorielle.
-
-## Limites connues
-
-Tous documentées inline dans le code (recherchez `NOTE`/`Limite` dans les entités et services concernés) : aucune pour l'instant.
