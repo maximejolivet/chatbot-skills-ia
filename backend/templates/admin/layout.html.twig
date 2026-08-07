@@ -4,21 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{% block title %}Backoffice{% endblock %} · Chatbot Admin</title>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script>
-            tailwind.config = {
-                theme: {
-                    extend: {
-                        colors: {
-                            brand: {
-                                50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1',
-                                600: '#4f46e5', 700: '#4338ca', 900: '#312e81',
-                            },
-                        },
-                    },
-                },
-            };
-        </script>
+        {{ importmap('app') }}
         {% block stylesheets %}{% endblock %}
     </head>
     <body class="h-full">

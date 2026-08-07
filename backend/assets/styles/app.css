@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+/* Admin backoffice brand palette -- moved here from the inline
+   tailwind.config CDN script in templates/admin/layout.html.twig
+   (Tailwind v4 configures custom colors via @theme, not tailwind.config.js). */
+@theme {
+    --color-brand-50: #eef2ff;
+    --color-brand-100: #e0e7ff;
+    --color-brand-500: #6366f1;
+    --color-brand-600: #4f46e5;
+    --color-brand-700: #4338ca;
+    --color-brand-900: #312e81;
+}

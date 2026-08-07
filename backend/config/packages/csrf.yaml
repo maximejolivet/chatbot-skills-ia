@@ -1,9 +1,0 @@
-# Stateless CSRF protection (the Flex default) needs the Stimulus
-# "csrf-protection" controller, which needs an asset pipeline (Symfony UX /
-# AssetMapper) this app doesn't have set up. Rather than ship forms with a
-# CSRF token that silently never gets filled in, form CSRF protection is
-# disabled outright -- consistent with the rest of the backoffice, which has
-# no auth/User system either (see backend/README.md).
-framework:
-    form:
-        csrf_protection: false

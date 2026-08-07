@@ -110,7 +110,17 @@ Architecture, pour ajouter une 14e ressource : une entité `implements Sylius\Re
 
 **Authentification requise.** `/admin` est protégé par Symfony Security (firewall `admin`, `config/packages/security.yaml`) : formulaire de login sur `/admin/login`, session cookie. Multi-utilisateur : chaque opérateur a son propre compte (table `app_user`, gérable dans `/admin/users`), voir §Sécurité ci-dessous.
 
-**CSRF désactivé délibérément** (`config/packages/csrf.yaml`) : la protection CSRF « stateless » activée par défaut par Symfony Flex nécessite le contrôleur Stimulus `csrf-protection`, qui nécessite un asset pipeline (Symfony UX/AssetMapper) non installé ici. Plutôt que de livrer des formulaires avec un token qui ne serait jamais rempli, la protection CSRF des formulaires est désactivée. Seule exception : les actions de suppression (gérées directement par Sylius, pas par le composant Form) utilisent le CSRF **session-based classique** de Symfony (`csrf_token(id)` dans le Twig), qui lui fonctionne sans JS.
+**CSRF activé** (protection stateless par défaut de Symfony, `Symfony\Component\Security\Csrf\SameOriginCsrfTokenManager`) : chaque formulaire admin (créé via `form_start()`/`form_widget()`) embarque un champ `_token` avec `data-controller="csrf-protection"`. Ce contrôleur Stimulus (`assets/controllers/csrf_protection_controller.js`, fourni par `symfony/stimulus-bundle`, servi via AssetMapper) génère un cookie double-submit au moment de la soumission — sans lui, la validation retombe sur la vérification d'origine (`Sec-Fetch-Site`/`Origin`/`Referer`), donc reste protégée même si le JS échoue à charger, juste avec une garantie plus faible. Nécessite un asset pipeline pour servir ce contrôleur : voir §Asset pipeline ci-dessous. Les actions de suppression (gérées directement par Sylius, pas par le composant Form) utilisent en plus le CSRF **session-based classique** de Symfony (`csrf_token(id)` dans le Twig), indépendant de ce qui précède.
+
+## Asset pipeline (AssetMapper + Tailwind local)
+
+`symfony/asset-mapper` + `symfony/stimulus-bundle` + `symfonycasts/tailwind-bundle`, sans Node/npm. `assets/app.js` est l'entrypoint (`{{ importmap('app') }}` dans `templates/admin/layout.html.twig` et `login.html.twig`), qui importe `assets/styles/app.css` (`@import "tailwindcss";` + palette de marque via `@theme`, Tailwind v4 — remplace l'ancien `tailwind.config` inline chargé depuis le CDN). Compiler après toute modif de classes Tailwind utilisées dans les templates :
+
+```bash
+docker exec chatbot-symfony php bin/console tailwind:build
+```
+
+(`--watch` en développement actif). Les contrôleurs Stimulus dans `assets/controllers/*_controller.js` (dont `csrf_protection_controller.js`, fourni par le bundle) sont auto-découverts, pas besoin de les lister dans `assets/controllers.json`.
 
 ## Sécurité
 
@@ -195,7 +205,3 @@ même logique que Qdrant Cloud pour la base vectorielle.
 ## Limites connues
 
 Tous documentées inline dans le code (recherchez `NOTE`/`Limite` dans les entités et services concernés) : aucune pour l'instant.
-
-## Prochaines étapes possibles
-
-- Asset pipeline (AssetMapper) pour réactiver le CSRF stateless et remplacer le Tailwind CDN par un build local
