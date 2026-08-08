@@ -16,6 +16,9 @@ http:
     phpmyadmin:
       rule: Host(`phpmyadmin.chatbot.localhost`)
       service: phpmyadmin
+    mailhog:
+      rule: Host(`mailhog.chatbot.localhost`)
+      service: mailhog
 
   services:
     symfony:
@@ -30,6 +33,10 @@ http:
       loadBalancer:
         servers:
           - url: http://chatbot-phpmyadmin:80
+    mailhog:
+      loadBalancer:
+        servers:
+          - url: http://chatbot-mailhog:8025
     qdrant:
       loadBalancer:
         servers:

@@ -82,7 +82,7 @@ Les domaines `workflows` et `chat` se référencent mutuellement (`chat.services
 
 - `App\Entity\Workflow` / `WorkflowStep` — CRUD via `/api/workflows` (steps via `GET`/`POST /workflows/{id}/steps`, pas de ressource dédiée). Suppression = soft delete (`isActive=false`), pas de suppression réelle de la ligne
 - `App\Entity\WorkflowExecution` — lecture seule (`/api/workflow_executions`, `GET`/`GetCollection` seulement), lié à la `Conversation` (`chat`) qui a déclenché l'exécution via tool-calling, le cas échéant. Champ `triggeredBy` (auto-renseigné, voir "Cloisonnement par utilisateur" plus bas) : un compte `ROLE_USER` ne voit que ses propres exécutions, `ROLE_ADMIN` voit tout
-- `App\Workflow\WorkflowExecutionService` — le moteur d'exécution des steps (`api_call`/`webhook` via Symfony HttpClient, `data_transform`, `condition`, `delay`, `email`/`notification` en stub loggé uniquement), avec substitution de placeholders `{{champ}}`
+- `App\Workflow\WorkflowExecutionService` — le moteur d'exécution des steps (`api_call`/`webhook` via Symfony HttpClient, `data_transform`, `condition`, `delay`, `email` via Symfony Mailer, `notification` via webhook Slack/Discord-compatible si `webhook_url` est configuré, sinon loggé), avec substitution de placeholders `{{champ}}`
 - `POST /api/workflows/{id}/trigger` et `POST /api/workflows/{id}/test` — asynchrones (transport Messenger `async`), répondent `202` avec l'exécution `pending` ; voir "File d'attente async" plus bas
 
 ### `chat`

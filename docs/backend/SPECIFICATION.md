@@ -438,8 +438,8 @@ Types d'étapes supportés (`WorkflowStepType`) :
 | `data_transform` | Applique une liste de transformations (`set`, `remove`, `add`) aux données courantes                                                                                                                    |
 | `condition`      | Évalue une condition (`equals`, `not_equals`, `contains`, `greater_than`, `less_than`) sur un champ, exécute une `true_action`/`false_action` (seule l'action `set_field` est actuellement implémentée) |
 | `delay`          | `sleep()` bloquant pendant le nombre de secondes configuré                                                                                                                                              |
-| `email`          | **Stub** : journalise seulement, aucun backend d'envoi réel configuré                                                                                                                                   |
-| `notification`   | **Stub** : journalise seulement                                                                                                                                                                         |
+| `email`          | Envoi réel via **Symfony Mailer** (`MAILER_DSN`), expéditeur `MAILER_FROM_ADDRESS`. En dev Docker, pointe vers un catcher **MailHog** local (`http://mailhog.chatbot.localhost`) -- rien ne part réellement tant que `MAILER_DSN` n'est pas configuré vers un vrai provider en prod                    |
+| `notification`   | POST vers `webhook_url` (payload `{"text": ..., "channel": ...}`, compatible Slack/Discord/Mattermost) si configuré dans le step ; sinon journalise seulement (`status: logged`)                        |
 
 ### 7.3 Synchronicité
 
@@ -667,6 +667,8 @@ Fichier de référence : `.env.example`.
 | `QDRANT_PORT`            | `6333`                                                                            | Port REST Qdrant                                                                           |
 | `QDRANT_API_KEY`         | *(vide)*                                                                          | Clé API Qdrant (si sécurisé)                                                               |
 | `MESSENGER_TRANSPORT_DSN` | `redis://redis:6379/messages` (dev) ; `sync://` en prod tant qu'aucun Redis externe n'existe | Transport Messenger `async` (§2, §6.2, §7.3)                              |
+| `MAILER_DSN`              | `null://null` (défaut) ; `smtp://mailer:1025` en dev Docker (override dans `compose.yaml`, catcher MailHog) | Transport Symfony Mailer utilisé par le step `email` (§7.2) -- à pointer vers un vrai provider en prod |
+| `MAILER_FROM_ADDRESS`     | `noreply@chatbot.localhost`                                                       | Expéditeur des emails envoyés par le step `email`                                          |
 | `ADMIN_USERNAME`         | `admin`                                                                           | Ne seed que la première ligne `app_user` (migration) ; jamais lu par Symfony au runtime (§10) |
 | `ADMIN_PASSWORD_HASH`    | *(vide — à générer)*                                                              | Hash bcrypt (`bin/console security:hash-password`) — idem, seed uniquement                 |
 | `ADMIN_PASSWORD`         | *(vide — à générer)*                                                              | Contrepartie en clair, jamais lue par Symfony : uniquement pour le proxy Nuxt (Basic Auth) |

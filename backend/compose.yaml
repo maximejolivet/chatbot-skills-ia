@@ -8,6 +8,10 @@ services:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       QDRANT_HOST: qdrant
       QDRANT_PORT: "6333"
+      # Local dev catches every outgoing email in MailHog instead of a real
+      # inbox -- MAILER_FROM_ADDRESS stays whatever .env/.env.example says
+      # (not infra-specific, unlike the host below).
+      MAILER_DSN: smtp://mailer:1025
     volumes:
       - .:/app
     depends_on:
@@ -79,6 +83,16 @@ services:
     networks:
       - default
 
+  # SMTP catcher for local dev -- `app`/`worker` above send here instead of a
+  # real inbox; view caught mail at http://mailhog.chatbot.localhost
+  # (Traefik, see traefik/dynamic.yml).
+  mailer:
+    image: mailhog/mailhog
+    container_name: chatbot-mailhog
+    networks:
+      - default
+      - proxy
+
   # Persistent Messenger consumer for the `async` transport (document
   # indexing, API-triggered workflow runs -- see config/packages/messenger.yaml).
   # Same image/env as `app`, different command. Not viable as-is in production
@@ -91,6 +105,7 @@ services:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       QDRANT_HOST: qdrant
       QDRANT_PORT: "6333"
+      MAILER_DSN: smtp://mailer:1025
     command: php bin/console messenger:consume async -vv --time-limit=3600
     restart: unless-stopped
     volumes:

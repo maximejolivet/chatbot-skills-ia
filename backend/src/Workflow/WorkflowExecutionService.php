@@ -12,7 +12,11 @@ use App\Repository\WorkflowRepository;
 use App\Repository\WorkflowStepRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -44,6 +48,9 @@ final class WorkflowExecutionService
         private readonly WorkflowStepRepository $workflowStepRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
+        private readonly MailerInterface $mailer,
+        #[Autowire(env: 'MAILER_FROM_ADDRESS')]
+        private readonly string $mailerFromAddress,
         ?HttpClientInterface $httpClient = null,
     ) {
         $this->httpClient = $httpClient ?? HttpClient::create();
@@ -197,9 +204,6 @@ final class WorkflowExecutionService
     }
 
     /**
-     * Stub: logs only. No email backend is configured -- implementing real
-     * sending is out of scope for this rewrite.
-     *
      * @param array<string, mixed> $inputData
      *
      * @return array<string, mixed>
@@ -213,13 +217,28 @@ final class WorkflowExecutionService
         }
         $subject = $this->replacePlaceholders($config['subject'] ?? '', $inputData);
         $body = $this->replacePlaceholders($config['body'] ?? '', $inputData);
-        $this->logger->info('Email would be sent to {to}: {subject}', ['to' => $toEmail, 'subject' => $subject]);
+
+        $email = (new Email())
+            ->from($this->mailerFromAddress)
+            ->to($toEmail)
+            ->subject($subject)
+            ->text($body);
+
+        try {
+            $this->mailer->send($email);
+        } catch (TransportExceptionInterface $e) {
+            throw new \RuntimeException("Failed to send email to {$toEmail}: {$e->getMessage()}", previous: $e);
+        }
 
         return ['to_email' => $toEmail, 'subject' => $subject, 'body' => $body, 'status' => 'sent'];
     }
 
     /**
-     * Stub: logs only, same caveat as handleEmail.
+     * Posts to a Slack/Discord/Mattermost-style incoming webhook (`{"text": ...}`)
+     * when `webhook_url` is configured; otherwise just logs, same as before --
+     * "notification" has no single real channel of its own (that's what the
+     * `webhook` step type is for), so this only becomes real once a caller
+     * opts in with a URL.
      *
      * @param array<string, mixed> $inputData
      *
@@ -230,7 +249,19 @@ final class WorkflowExecutionService
         $config = $step->getConfiguration();
         $message = $this->replacePlaceholders($config['message'] ?? '', $inputData);
         $channel = $config['channel'] ?? 'general';
-        $this->logger->info('Notification to {channel}: {message}', ['channel' => $channel, 'message' => $message]);
+        $webhookUrl = $config['webhook_url'] ?? null;
+
+        if (!$webhookUrl) {
+            $this->logger->info('Notification to {channel}: {message}', ['channel' => $channel, 'message' => $message]);
+
+            return ['channel' => $channel, 'message' => $message, 'status' => 'logged'];
+        }
+
+        $webhookUrl = $this->replacePlaceholders($webhookUrl, $inputData);
+        $this->httpClient->request('POST', $webhookUrl, [
+            'json' => ['text' => $message, 'channel' => $channel],
+            'timeout' => 30,
+        ])->getContent(); // throws on 4xx/5xx
 
         return ['channel' => $channel, 'message' => $message, 'status' => 'sent'];
     }
