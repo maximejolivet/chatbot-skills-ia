@@ -12,12 +12,10 @@ Index de tous les fichiers Markdown du dépôt.
 
 - [backend/README.md](../backend/README.md) — stack, installation et organisation du backend Symfony
 - [docs/backend/SPECIFICATION.md](backend/SPECIFICATION.md) — cahier des charges du backend
-
-## Frontend
-
-- [frontend/README.md](../frontend/README.md) — stack, installation et organisation du frontend Nuxt/Vue
-- [docs/frontend/SPECIFICATION.md](frontend/SPECIFICATION.md) — cahier des charges du frontend
+- [docs/backend/ADMIN.md](backend/ADMIN.md) — guide des pages du backoffice `/admin` (Menu et Pages hors menu)
 
 ## Outillage
 
 - [.claude/skills/semantic-commit-messages/SKILL.md](../.claude/skills/semantic-commit-messages/SKILL.md) — format des messages de commit sémantiques
+- [docs/backend/bruno/](backend/bruno/) — collection [Bruno](https://www.usebruno.com/) de l'API
+  (`IA & Vecteurs`, `Base de connaissances`, `Workflows`, `Chat`, `Hors menu`)
