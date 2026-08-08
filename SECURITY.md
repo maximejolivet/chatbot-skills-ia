@@ -1,5 +1,10 @@
 # Sécurité
 
+![composer audit](https://img.shields.io/badge/composer%20audit-0%20advisories-brightgreen)
+![npm audit](https://img.shields.io/badge/npm%20audit-0%20vulnerabilities-brightgreen)
+![Last audit](https://img.shields.io/badge/last%20audit-2026--08--07-blue)
+[![Security Policy](https://img.shields.io/badge/security%20policy-see%20below-informational)](#signalement-dune-vulnérabilité)
+
 ## Signalement d'une vulnérabilité
 
 Ce dépôt est un projet personnel (portfolio/démo), sans processus de disclosure formel. Pour signaler un problème de sécurité, contacter directement le mainteneur plutôt que d'ouvrir une issue publique.

@@ -13,6 +13,7 @@
 ![Ollama](https://img.shields.io/badge/Ollama-qwen3.6-000000?logo=ollama&logoColor=white)
 ![Traefik](https://img.shields.io/badge/Traefik-v3.5-24A1C1?logo=traefikproxy&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+[![Bruno](https://img.shields.io/badge/Bruno-API%20collection-F4AA41?logo=bruno&logoColor=white)](docs/backend/bruno/)
 
 Solution de chatbot administrable : backend Symfony (API Platform) avec RAG (Retrieval-Augmented Generation) sur Qdrant et **tool-calling LLM réel** (le modèle peut déclencher des workflows métier pendant la conversation), exposé à un frontend Nuxt/Vue qui consomme l'API. Les services sont routés par domaine via Traefik.
 

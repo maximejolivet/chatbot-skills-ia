@@ -1,5 +1,10 @@
 # Déploiement
 
+[![Deploy chat-ia (backend)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend-symfony.yml/badge.svg)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend-symfony.yml)
+![Hosting](https://img.shields.io/badge/hosting-o2switch-FF6600)
+![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)
+![Frontend deploy](https://img.shields.io/badge/frontend%20deploy-not%20automated-lightgrey)
+
 ## Backend (Symfony)
 
 CI/CD : [`.github/workflows/deploy-backend-symfony.yml`](.github/workflows/deploy-backend-symfony.yml),
