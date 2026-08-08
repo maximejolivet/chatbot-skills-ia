@@ -39,3 +39,17 @@ Le backend (`backend/`) est protégé par Symfony Security depuis le 2026-08-06,
 `Conversation`/`WorkflowExecution` sont cloisonnées par propriétaire : un compte `ROLE_USER` ne voit/modifie que ses propres lignes (`OwnershipVoter` + `OwnershipCollectionExtension`), `ROLE_ADMIN` voit tout. Toutes les autres ressources (`Document`, `Workflow`, `AiAgent`, etc.) restent réservées à `ROLE_ADMIN`.
 
 `AiProviderConfig.apiKey` (clés des providers IA, ex. OpenRouter) n'est jamais renvoyé par l'API (`#[ApiProperty(readable: false)]`) — accepté en écriture uniquement, via le backoffice désormais authentifié.
+
+## Secrets locaux (collection Bruno)
+
+La collection [Bruno](https://www.usebruno.com/) (`docs/backend/bruno/`) sépare les requêtes
+versionnées des identifiants réels : les mots de passe admin ne vivent que dans
+`docs/backend/bruno/environments/*.bru` (`production.bru`, `local.bru`), exclus du dépôt via
+`.gitignore` (`**/bruno/environments/`).
+
+Le 2026-08-08, le déplacement de la collection de `bruno/` (racine) vers `docs/backend/bruno/` a
+révélé que la règle `.gitignore` était alors écrite `bruno/environments/` — une forme ancrée à la
+racine du dépôt, qui a cessé de matcher le nouveau chemin plus profond. Corrigée en `**/bruno/environments/`
+(matching à toute profondeur) avant tout commit ; vérifié qu'aucun `environments/*.bru` n'a été
+versionné à aucun moment (`git log --all --full-history -- '**/bruno/environments/**'` ne remonte
+rien).
