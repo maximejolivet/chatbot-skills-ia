@@ -40,6 +40,7 @@ final class QuickSendController
             'status' => 'success',
             'token_usage' => $result->usage,
             'tool_calls' => $result->toolCalls,
+            'sources' => $result->sources,
         ]);
     }
 }

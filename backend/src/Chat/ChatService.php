@@ -39,7 +39,7 @@ final class ChatService
         $assistantMsg = (new Message())
             ->setRole(MessageRole::Assistant)
             ->setContent($result->content)
-            ->setMetadata(['token_usage' => $result->usage, 'tool_calls' => $result->toolCalls]);
+            ->setMetadata(['token_usage' => $result->usage, 'tool_calls' => $result->toolCalls, 'sources' => $result->sources]);
         $conversation->addMessage($assistantMsg);
         $this->entityManager->persist($assistantMsg);
         $this->entityManager->flush();

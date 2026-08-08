@@ -58,6 +58,7 @@ final class ChatOrchestrationService
         $ragResults = $this->ragContextService->buildContext($userMessage, $agent);
         $messages = $this->buildMessages($agent, $history, $userMessage, $ragResults);
         $toolSpecs = $this->buildToolSpecs($agent);
+        $sources = $this->buildSources($ragResults);
 
         $toolTrace = [];
 
@@ -66,7 +67,7 @@ final class ChatOrchestrationService
             $messages[] = $result->message;
 
             if (!$result->message->toolCalls) {
-                return new ChatReplyResult($result->message->content, $result->usage, $toolTrace);
+                return new ChatReplyResult($result->message->content, $result->usage, $toolTrace, $sources);
             }
 
             foreach ($result->message->toolCalls as $call) {
@@ -100,7 +101,33 @@ final class ChatOrchestrationService
         // Iteration budget exhausted -- force a final answer without further tool access.
         $final = $llmClient->complete($messages);
 
-        return new ChatReplyResult($final->message->content, $final->usage, $toolTrace);
+        return new ChatReplyResult($final->message->content, $final->usage, $toolTrace, $sources);
+    }
+
+    /**
+     * Documents backing the RAG context, deduplicated by document (a document
+     * can contribute several chunks), highest-scoring chunk first.
+     *
+     * @param array<int, array<string, mixed>> $ragResults
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildSources(array $ragResults): array
+    {
+        $sources = [];
+        foreach ($ragResults as $doc) {
+            $id = $doc['document_id'] ?? null;
+            if (null === $id || isset($sources[$id])) {
+                continue;
+            }
+            $sources[$id] = [
+                'document_id' => $id,
+                'document_title' => $doc['document_title'] ?? null,
+                'score' => $doc['score'] ?? null,
+            ];
+        }
+
+        return array_values($sources);
     }
 
     /**
