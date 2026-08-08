@@ -50,6 +50,19 @@ services:
       # - ./docker/db/data:/var/lib/mysql:rw
 ###< doctrine/doctrine-bundle ###
 
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: chatbot-phpmyadmin
+    environment:
+      PMA_HOST: database
+      PMA_PORT: "3306"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - default
+      - proxy
+
   qdrant:
     image: qdrant/qdrant:v1.19.0
     ports:

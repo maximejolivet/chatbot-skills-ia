@@ -13,6 +13,9 @@ http:
     qdrant:
       rule: Host(`qdrant.chatbot.localhost`)
       service: qdrant
+    phpmyadmin:
+      rule: Host(`phpmyadmin.chatbot.localhost`)
+      service: phpmyadmin
 
   services:
     symfony:
@@ -23,6 +26,10 @@ http:
       loadBalancer:
         servers:
           - url: http://chatbot-symfony-nuxt:3000
+    phpmyadmin:
+      loadBalancer:
+        servers:
+          - url: http://chatbot-phpmyadmin:80
     qdrant:
       loadBalancer:
         servers:
