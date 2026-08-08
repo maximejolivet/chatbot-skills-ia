@@ -154,10 +154,23 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
 
+      # ControlMaster/ControlPersist: the rsync + 3 ssh steps below each open
+      # a fresh TCP+SSH handshake to a shared host that's likely not
+      # geographically close to the runner -- multiplexing them over one
+      # persistent connection (opened by whichever step runs first) avoids
+      # paying that handshake 4 times. ControlPersist 60s keeps the socket
+      # alive past the last command; harmless, the runner VM is destroyed
+      # right after this job anyway.
       - name: Trust the remote host key
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -v "${{ secrets.DEPLOY_SSH_HOST }}" >> ~/.ssh/known_hosts
+          cat >> ~/.ssh/config <<EOF
+          Host ${{ secrets.DEPLOY_SSH_HOST }}
+            ControlMaster auto
+            ControlPath ~/.ssh/cm-%r@%h:%p
+            ControlPersist 60s
+          EOF
 
       # var/ (cache/logs/uploaded documents) and .env are excluded from
       # --delete too, not just from the sync source: --delete removes
