@@ -16,11 +16,12 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
- * Mirrors knowledge_base.views.DocumentViewSet.create() + DocumentUploadSerializer
- * validation. Chunking/vectorization is dispatched to the `async` transport
- * (see IndexDocumentMessageHandler) rather than run inline -- the response
- * below reflects the document as just-uploaded (status 'pending'), not
- * indexed; poll GET /api/documents/{id} for the final status.
+ * Custom upload endpoint (multipart), not API Platform's generated Post --
+ * validates the file inline (extension, size). Chunking/vectorization is
+ * dispatched to the `async` transport (see IndexDocumentMessageHandler)
+ * rather than run inline -- the response below reflects the document as
+ * just-uploaded (status 'pending'), not indexed; poll GET
+ * /api/documents/{id} for the final status.
  */
 #[AsController]
 final class DocumentUploadController

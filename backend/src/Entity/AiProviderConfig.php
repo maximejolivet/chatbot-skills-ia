@@ -61,8 +61,10 @@ class AiProviderConfig implements ResourceInterface
     private ?string $apiEndpoint = null;
 
     /**
-     * Never exposed via the API in read operations (GetCollection/Get) -- write-only,
-     * since this backend has no auth and the API is publicly readable.
+     * Never exposed via the API in read operations (GetCollection/Get) -- write-only.
+     * Defense in depth: the `api` firewall already requires HTTP Basic auth
+     * and this resource requires ROLE_ADMIN, but a key like this shouldn't
+     * round-trip through a JSON response regardless.
      */
     #[ApiProperty(readable: false)]
     #[ORM\Column(type: Types::TEXT, nullable: true)]

@@ -13,7 +13,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * LLM client for OpenAI-compatible API endpoints (Chat Completions format) --
- * the local alternative to Ollama for chat generation.
+ * the remote/cloud alternative to Ollama for chat generation (requires an
+ * apiKey; used for hosted endpoints like OVHcloud AI Endpoints or
+ * OpenRouter, see .env.example / .env.prod).
  */
 final class OpenAiCompatibleLlmClient implements LlmClientInterface
 {

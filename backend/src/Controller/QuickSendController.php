@@ -9,8 +9,8 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 /**
- * Anonymous, single-turn chat -- what the 3 demo frontend widgets use. No
- * conversation is persisted, but tool-calling still runs.
+ * Anonymous, single-turn chat -- what the demo frontend's ChatWidget uses.
+ * No conversation is persisted, but tool-calling still runs.
  */
 #[AsController]
 final class QuickSendController

@@ -8,8 +8,9 @@ use Doctrine\ORM\Mapping as ORM;
 use Sylius\Resource\Model\ResourceInterface;
 
 /**
- * NOTE: no `created_by` attribution, same as Document.uploaded_by -- no
- * auth/User system yet.
+ * NOTE: no `created_by` attribution, same as Document.uploaded_by -- the
+ * User system exists (see Conversation.user), this entity just hasn't been
+ * extended with an owner field, restricted to ROLE_ADMIN as a whole instead.
  */
 #[ORM\Entity(repositoryClass: FaqRepository::class)]
 #[ORM\HasLifecycleCallbacks]

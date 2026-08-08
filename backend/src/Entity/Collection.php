@@ -26,7 +26,9 @@ class Collection implements ResourceInterface
     private string $description = '';
 
     /**
-     * AI Agent associated with this collection. If null, this is the common collection.
+     * AI Agent associated with this collection, if any -- independent of
+     * `isCommon` below (a collection can have neither, e.g. a generic
+     * knowledge base not tied to a specific agent).
      */
     #[ORM\OneToOne(inversedBy: 'collection', targetEntity: AiAgent::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]

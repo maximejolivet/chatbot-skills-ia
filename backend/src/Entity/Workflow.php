@@ -23,8 +23,10 @@ use Sylius\Resource\Model\ResourceInterface;
 /**
  * A workflow that can be triggered via the API or as an agent tool.
  *
- * NOTE: no `created_by` attribution, same as Document.uploaded_by -- no
- * auth/User system yet, so there are no ownership checks either.
+ * NOTE: no `created_by` attribution, same as Document.uploaded_by, and no
+ * ownership checks -- the User system exists (see WorkflowExecution.
+ * triggeredBy), this entity just hasn't been extended with an owner field,
+ * restricted to ROLE_ADMIN as a whole instead.
  */
 #[ORM\Entity(repositoryClass: WorkflowRepository::class)]
 #[ORM\HasLifecycleCallbacks]

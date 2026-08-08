@@ -23,8 +23,10 @@ use Sylius\Resource\Model\ResourceInterface;
 /**
  * Represents a document in the knowledge base.
  *
- * NOTE: this backend has no auth/User system yet, so there is no
- * `uploaded_by` attribution, same as SearchQuery.user and FAQ.created_by.
+ * NOTE: no `uploaded_by` attribution, same as SearchQuery.user and
+ * FAQ.created_by -- the User system exists (see Conversation.user,
+ * WorkflowExecution.triggeredBy), this entity just hasn't been extended
+ * with an owner field, restricted to ROLE_ADMIN as a whole instead.
  */
 #[ORM\Entity(repositoryClass: DocumentRepository::class)]
 #[ApiResource(

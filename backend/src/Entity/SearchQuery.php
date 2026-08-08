@@ -12,8 +12,9 @@ use Sylius\Resource\Model\ResourceInterface;
  * CRUD for SearchQuery). Also read-only in the admin backoffice (see
  * config/routes/admin.yaml).
  *
- * NOTE: no `user` attribution -- this backend has no auth/User system yet,
- * so that link is dropped for now rather than half-built.
+ * NOTE: no `user` attribution -- the User system exists (see
+ * Conversation.user), this entity just hasn't been extended with an owner
+ * field, that link is dropped for now rather than half-built.
  */
 #[ORM\Entity(repositoryClass: SearchQueryRepository::class)]
 class SearchQuery implements ResourceInterface
