@@ -66,7 +66,7 @@ Tous les services sont routés par domaine via Traefik (`*.chatbot.localhost`, r
 | Traefik (dashboard) | http://traefik.chatbot.localhost (ou http://localhost:8090) |
 | Symfony (admin)     | http://symfony.chatbot.localhost/admin                      |
 | Nuxt/Vue            | http://nuxt.chatbot.localhost                               |
-| Qdrant (dashboard)  | http://qdrant-symfony.chatbot.localhost/dashboard           |
+| Qdrant (dashboard)  | http://qdrant.chatbot.localhost/dashboard                   |
 | Ollama (sur l'hôte) | http://localhost:11434                                      |
 
 ## Architecture

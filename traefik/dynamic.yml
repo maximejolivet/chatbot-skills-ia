@@ -10,9 +10,9 @@ http:
     nuxt:
       rule: Host(`nuxt.chatbot.localhost`)
       service: nuxt
-    qdrant-symfony:
-      rule: Host(`qdrant-symfony.chatbot.localhost`)
-      service: qdrant-symfony
+    qdrant:
+      rule: Host(`qdrant.chatbot.localhost`)
+      service: qdrant
 
   services:
     symfony:
@@ -23,7 +23,7 @@ http:
       loadBalancer:
         servers:
           - url: http://chatbot-symfony-nuxt:3000
-    qdrant-symfony:
+    qdrant:
       loadBalancer:
         servers:
           # Compose service-name alias, not the auto-generated container name
