@@ -74,10 +74,10 @@ Tous les services sont routés par domaine via Traefik (`*.chatbot.localhost`, r
 ```
 chatbot-skills-ia/
 ├── backend/           # API Symfony + API Platform, backoffice /admin
-├── frontend/                   # Composant chatbot Nuxt 4 + TailwindCSS
-├── traefik/                   # Reverse proxy : domaines par service (*.chatbot.localhost)
-├── docs/                      # Cahiers des charges
-└── scripts/                   # Scripts d'installation et d'affichage des URLs
+├── frontend/          # Composant chatbot Nuxt 4 + TailwindCSS
+├── traefik/           # Reverse proxy : domaines par service (*.chatbot.localhost)
+├── docs/              # Cahiers des charges
+└── scripts/           # Scripts d'installation et d'affichage des URLs
 ```
 
 Détail de l'architecture backend (entités, services, domaines métier) dans [`backend/README.md`](backend/README.md).
