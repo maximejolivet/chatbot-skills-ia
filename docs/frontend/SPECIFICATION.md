@@ -215,6 +215,7 @@ Aucune autre route serveur n'est définie. `pages/index.vue` est une page vide (
 | `POST`  | `/api/chat/quick-send` | `useChatbot().sendMessage()`              | Envoi d'un message (chat anonyme, non persisté), body `{ message: string, agent_id?: number }` |
 | `GET`   | `/api/ai_agents`       | `useChatbot().fetchAgents()` (au montage) | Liste des agents IA disponibles, pour sélectionner automatiquement le premier actif            |
 
+> [!NOTE]
 > Voir [le cahier des charges backend](../backend/SPECIFICATION.md#8-référence-api-complète) pour le détail complet de l'API Symfony (bien plus large que ces deux endpoints).
 
 ### 7.3 Configuration de la cible API
@@ -235,7 +236,10 @@ Aucune autre route serveur n'est définie. `pages/index.vue` est une page vide (
 
 - **Node.js 24**.
 - Un backend Symfony accessible (voir [cahier des charges backend](../backend/SPECIFICATION.md#11-installation-et-mise-en-place)), via `http://symfony.chatbot.localhost` (Traefik) ou via le réseau Docker de `backend/compose.yaml`.
-- Les identifiants du compte admin backend (`ADMIN_USERNAME`/`ADMIN_PASSWORD`, voir `backend/.env`) : depuis que `/api/*` exige une authentification HTTP Basic (cahier des charges backend, §10), le proxy Nitro doit les connaître pour relayer les appels — sans eux, tout appel `/api/*` échoue en `401`.
+- Les identifiants du compte admin backend (`ADMIN_USERNAME`/`ADMIN_PASSWORD`, voir `backend/.env`) : depuis que `/api/*` exige une authentification HTTP Basic (cahier des charges backend, §10), le proxy Nitro doit les connaître pour relayer les appels.
+
+> [!WARNING]
+> Sans `ADMIN_USERNAME`/`ADMIN_PASSWORD` renseignés, tout appel `/api/*` échoue en `401` — le widget de chat reste silencieusement cassé pour tous les visiteurs.
 
 ### 8.2 Installation
 
@@ -297,4 +301,5 @@ import { Chatbot } from '~/components/Chatbot';
 | `className`   | `string`            | `''`                       | Classes CSS supplémentaires sur le conteneur racine                                                                   |
 | `showClose`   | `boolean`           | `false`                    | Affiche un bouton de fermeture (utilisé par `ChatWidget`)                                                             |
 
+> [!TIP]
 > Pour le widget flottant complet (bulle + tooltip + panneau), utiliser directement `<ChatWidget />` (déjà monté globalement dans `app.vue`) plutôt que `<Chatbot />` seul.

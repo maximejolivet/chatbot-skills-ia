@@ -43,7 +43,7 @@ feat(ui): ✨ add hat wobble
 | `style` | 💄 | Formatting only, no logic change |
 | `test` | ✅ | Adds or fixes tests |
 | `build` | 📦 | Dependencies, build config |
-| `ci` | 👷 | CI/CD pipelines (none currently configured in this repo — no `.github/workflows/`) |
+| `ci` | 👷 | CI/CD pipelines (`.github/workflows/deploy-backend.yml`, `.github/scripts/`) |
 | `chore` | 🔧 | Misc maintenance/config, everything else |
 | `revert` | ⏪ | Reverts a previous commit |
 | `security` | 🔒 | Fix that specifically closes a vulnerability |
@@ -162,3 +162,5 @@ BREAKING CHANGE: ticket endpoints no longer support listing all entities.
 ## References
 
 - https://www.conventionalcommits.org/
+- https://github.com/ikatyang/emoji-cheat-sheet — GitHub `:shortcode:` → emoji mapping, useful for
+  picking additional emojis (PR titles, doc callouts) beyond the per-type table above.

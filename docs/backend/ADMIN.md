@@ -157,6 +157,13 @@ Elle crée un **`VectorIndex`** : `name = "kb-rh"`, `collectionId = "kb_rh"`,
 
 ### 4. Organiser la base de connaissances
 
+> [!IMPORTANT]
+> `POST /api/documents` n'accepte pas de `collection` à l'upload — seulement `category_id`. Si on
+> rattache la collection *après* que le worker ait déjà vectorisé (quasi instantané en local), les
+> vecteurs finissent dans la mauvaise collection Qdrant. Il faut alors rappeler
+> `POST /api/documents/{id}/process` pour re-vectoriser au bon endroit. Vécu en pratique en
+> exécutant ce scénario — voir le détail dans la puce ci-dessous.
+
 - Une **`DocumentCategory`** : `name = "Congés & absences"`.
 - Une **`Collection`** : `name = "RH"`, `vectorIndex = kb-rh`, `agent = null` pour l'instant
   (elle sera reliée à l'agent à l'étape 6), `isCommon = false`.

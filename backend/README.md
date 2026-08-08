@@ -89,7 +89,7 @@ Les domaines `workflows` et `chat` se référencent mutuellement (`chat.services
 
 Câble les champs différés des domaines précédents (`AiAgent.workflows`, `Collection.agent`, `WorkflowExecution.conversation`).
 
-- `App\Entity\Conversation` / `Message` — CRUD sur `/api/conversations`, messages via `GET`/`POST /conversations/{id}/messages`. **Limite la plus significative** : aucun champ `user` — les conversations ne sont scopées par aucun utilisateur ; quiconque a les identifiants admin et connaît un id peut le lire/écrire
+- `App\Entity\Conversation` / `Message` — CRUD sur `/api/conversations`, messages via `GET`/`POST /conversations/{id}/messages`. Cloisonnée par propriétaire (champ `user`, voir "Cloisonnement par utilisateur" plus bas) : un compte `ROLE_USER` ne voit/modifie que ses propres conversations, `ROLE_ADMIN` voit tout
 - `App\Entity\AiAgent` — lecture seule côté REST (`GetCollection`/`Get` sur `/api/ai_agents`, pagination désactivée) ; géré en écriture via le [backoffice](#backoffice-admin) (`/admin/ai-agents`). Voir `getActiveWorkflows()`/`getCollection()`
 - `App\Chat\ChatOrchestrationService` — la vraie boucle de tool-calling (jusqu'à 3 itérations) : demande une completion au LLM, si le modèle appelle un outil, exécute le `Workflow` correspondant via `workflows.WorkflowExecutionService`, réinjecte le résultat, redemande, jusqu'à obtenir une réponse finale
 - `App\Chat\RagContextService` — résout la collection Qdrant de l'agent (`CollectionService::getQdrantCollectionNameForAgent`) et effectue la recherche vectorielle contextuelle
@@ -104,7 +104,8 @@ Construit avec **Sylius Resource Bundle** (CRUD générique piloté par config :
 
 Les 13 ressources du domaine sont gérables : `AiProviderConfig`, `VectorIndex`, `DocumentCategory`, `Faq`, `Collection`, `Workflow` (+ `WorkflowStep` imbriqué), `AiAgent`, `Conversation`, `User` en CRUD complet ; `SearchQuery`, `WorkflowExecution`, `Message` en lecture seule (mêmes restrictions que côté API) ; `Document` en lecture/édition/suppression seulement (la création reste réservée à `POST /api/documents`, qui gère l'upload multipart et le pipeline d'indexation — pas reproduit dans un formulaire générique).
 
-**`AiAgent` mérite une mention particulière** : son API REST est volontairement en lecture seule. Le backoffice est donc le *seul* moyen d'en créer/modifier.
+> [!IMPORTANT]
+> `AiAgent` : son API REST est volontairement en lecture seule (`POST /api/ai_agents` répond `405`). Le backoffice (`/admin/ai-agents`) est donc le *seul* moyen d'en créer/modifier.
 
 Architecture, pour ajouter une 14e ressource : une entité `implements Sylius\Resource\Model\ResourceInterface`, un repository avec `Sylius\Bundle\ResourceBundle\Doctrine\ORM\ResourceRepositoryTrait`, une classe `App\Form\XType`, une classe `App\Grid\XGrid` (`#[AsGrid]`), une entrée dans `config/packages/sylius_resource.yaml` et `config/routes/admin.yaml`. Les templates (`templates/admin/crud/*.html.twig`) et le rendu des champs (`App\Twig\AdminExtension::fieldValue()`, basé sur `PropertyAccessor` — gère nativement enums/dates/bools/relations/collections) sont partagés par toutes les ressources, sans rien à écrire de plus.
 
@@ -195,9 +196,11 @@ immédiatement pour poursuivre la conversation ; la rendre asynchrone
 casserait le tool-calling. Ce n'est pas un oubli.
 
 En local, un service `worker` dédié (`backend/compose.yaml`, `php
-bin/console messenger:consume async`) consomme en continu. **Non
-transposable tel quel sur o2switch** (hébergement mutualisé, pas de
-process persistant) : en production, il faudra soit une tâche cron
-invoquant `messenger:consume --limit=N --time-limit=X` périodiquement,
-soit un Redis externe managé (le mutualisé n'en fournit pas non plus) —
-même logique que Qdrant Cloud pour la base vectorielle.
+bin/console messenger:consume async`) consomme en continu.
+
+> [!CAUTION]
+> Non transposable tel quel en production (pas de process persistant) : il
+> faudra soit une tâche cron invoquant `messenger:consume --limit=N
+> --time-limit=X` périodiquement, soit un Redis externe managé — voir
+> [`DEPLOYMENT.md`](../DEPLOYMENT.md) pour le détail de l'hébergement,
+> même logique que Qdrant Cloud pour la base vectorielle.

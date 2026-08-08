@@ -134,6 +134,7 @@ ai_providers  ──┐
 | `executionTime` | float (secondes)                         |
 | `metadata`      | array                                    |
 
+> [!NOTE]
 > Non exposée en CRUD direct — consultable uniquement via `GET /vector/stats`. Aucun champ `user` : pas de scoping par utilisateur.
 
 ### 4.3 `knowledge_base`
@@ -368,6 +369,7 @@ Nettoyage : normalisation des espaces, suppression des caractères non-alphanum�
 - `vectorize()` : résout la collection Qdrant cible, appelle `VectorSearchService::addDocumentChunks()`, persiste le `vector_id` résultant sur chaque chunk, passe le document en `indexed` (ou `error` avec un message si Qdrant échoue réellement).
 - `deleteVectorsAndChunks()` : nettoie Qdrant, puis les chunks en base, avant que le document lui-même soit supprimé.
 
+> [!IMPORTANT]
 > **Asynchrone** : `POST /api/documents` et `POST /documents/{id}/process` dispatchent `App\Message\IndexDocumentMessage` sur le transport Messenger `async` (`IndexDocumentMessageHandler` appelle `chunkDocument()`+`vectorize()`) et répondent `202` avec le document en statut `pending` immédiatement — pas d'attente du pipeline complet. Poller `GET /api/documents/{id}` pour le statut final (`indexed`/`error`).
 
 ### 6.3 Résolution de collection — `CollectionService`
@@ -455,7 +457,8 @@ Deux chemins, volontairement différents :
 
 Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les ressources API Platform sont sous **`/api`** ; documentation interactive Hydra/JSON-LD native sur `/api`, documentation Swagger/OpenAPI pure sur **`/doc`**.
 
-> ⚠️ **Authentification HTTP Basic requise** sur tous ces endpoints. `Conversation`/`WorkflowExecution` acceptent `ROLE_USER` (cloisonné à ses propres lignes) ; toutes les autres ressources ci-dessous exigent `ROLE_ADMIN` explicitement — voir §10.
+> [!WARNING]
+> **Authentification HTTP Basic requise** sur tous ces endpoints. `Conversation`/`WorkflowExecution` acceptent `ROLE_USER` (cloisonné à ses propres lignes) ; toutes les autres ressources ci-dessous exigent `ROLE_ADMIN` explicitement — voir §10.
 
 ### 8.1 `ai_providers`
 
@@ -579,7 +582,10 @@ Pour ajouter une 14ᵉ ressource : une entité `implements ResourceInterface`, u
   - **Opérations à contrôleur personnalisé** (messages/stream de `Conversation`) : le `security:` déclaratif d'API Platform ne s'y applique pas de façon fiable (vérifié empiriquement) — `#[IsGranted('OWNER', subject: 'data')]` directement sur `ConversationMessagesController`/`ConversationStreamController`.
   - **Toutes les autres ressources** (`Document`, `Workflow`, `AiAgent`, `AiProviderConfig`, `Collection`, `Faq`, `DocumentCategory`, `VectorIndex`) exigent explicitement `ROLE_ADMIN` sur leur propre `#[ApiResource(security: ...)]`, indépendamment de la règle `access_control` globale — un compte `ROLE_USER` ne peut ni les lire ni les modifier.
 - **CORS** (`nelmio_cors.yaml`) : origines autorisées via la regex `CORS_ALLOW_ORIGIN` (par défaut `^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$` — dev uniquement), méthodes `GET, OPTIONS, POST, PUT, PATCH, DELETE`, headers `Content-Type, Authorization`.
-- `AiProviderConfig.apiKey` est `#[ApiProperty(readable: false)]` : jamais renvoyé par l'API (`GET`/`GetCollection`), uniquement accepté en écriture (`POST`/`PATCH`). `Conversation.getOwnerUser()`/`getOwnerFieldName()` (et l'équivalent sur `WorkflowExecution`) portent la même annotation — sans elle, ces méthodes ajoutées pour `OwnedResourceInterface` seraient auto-découvertes comme propriétés API et embarqueraient le `User` complet, hash de mot de passe inclus (bug réel, trouvé et corrigé en cours de développement). Reste visible dans le formulaire d'édition du backoffice, nécessaire pour le modifier — mais cette page est protégée par le firewall `admin`.
+- `AiProviderConfig.apiKey` est `#[ApiProperty(readable: false)]` : jamais renvoyé par l'API (`GET`/`GetCollection`), uniquement accepté en écriture (`POST`/`PATCH`). `Conversation.getOwnerUser()`/`getOwnerFieldName()` (et l'équivalent sur `WorkflowExecution`) portent la même annotation. Reste visible dans le formulaire d'édition du backoffice, nécessaire pour le modifier — mais cette page est protégée par le firewall `admin`.
+
+> [!CAUTION]
+> Sans `#[ApiProperty(readable: false)]` sur `getOwnerUser()`/`getOwnerFieldName()`, ces méthodes ajoutées pour `OwnedResourceInterface` seraient auto-découvertes comme propriétés API et embarqueraient le `User` complet — hash de mot de passe inclus — dans chaque réponse JSON exposant une `Conversation`/`WorkflowExecution`. Bug réel, trouvé et corrigé en cours de développement plutôt qu'en production.
 
 ---
 

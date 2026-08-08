@@ -44,7 +44,8 @@ make start
 
 Cette commande démarre Traefik puis la stack Symfony (backend, MariaDB, Qdrant, frontend Nuxt) via Docker Compose, et affiche les URLs des services.
 
-Ollama doit tourner sur l'hôte au préalable, avec les modèles `mxbai-embed-large` et `qwen3.6` (ou équivalent) installés.
+> [!IMPORTANT]
+> Ollama doit tourner sur l'hôte **avant** `make start` (`make check-ollama` le vérifie automatiquement), avec les modèles `mxbai-embed-large` et `qwen3.6` (ou équivalent) installés — Ollama n'est pas conteneurisé ici.
 
 Pour lister toutes les commandes Make disponibles :
 

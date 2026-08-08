@@ -7,7 +7,8 @@
 
 ## Signalement d'une vulnérabilité
 
-Ce dépôt est un projet personnel (portfolio/démo), sans processus de disclosure formel. Pour signaler un problème de sécurité, contacter directement le mainteneur plutôt que d'ouvrir une issue publique.
+> [!NOTE]
+> Ce dépôt est un projet personnel (portfolio/démo), sans processus de disclosure formel. Pour signaler un problème de sécurité, contacter directement le mainteneur plutôt que d'ouvrir une issue publique.
 
 ## État des audits de dépendances
 
@@ -58,3 +59,6 @@ racine du dépôt, qui a cessé de matcher le nouveau chemin plus profond. Corri
 (matching à toute profondeur) avant tout commit ; vérifié qu'aucun `environments/*.bru` n'a été
 versionné à aucun moment (`git log --all --full-history -- '**/bruno/environments/**'` ne remonte
 rien).
+
+> [!CAUTION]
+> Si la collection Bruno est de nouveau déplacée, vérifier que `git check-ignore -v <nouveau_chemin>/environments/<fichier>.bru` matche bien **avant** tout commit — une règle `.gitignore` ancrée à un chemin fixe cesse silencieusement de protéger les identifiants dès que ce chemin change.

@@ -23,7 +23,7 @@ services:
 
 ###> doctrine/doctrine-bundle ###
   database:
-    # Matches production (o2switch provides MariaDB 11.4.12, not MySQL --
+    # Matches production (the hosting provider provides MariaDB 11.4.12, not MySQL --
     # see backend/.env.prod). The mariadb image accepts the same MYSQL_*
     # env vars as the mysql image, kept for consistency with DATABASE_URL's
     # mysql:// scheme (DBAL has no separate "mariadb://" scheme; it detects
@@ -81,9 +81,9 @@ services:
 
   # Persistent Messenger consumer for the `async` transport (document
   # indexing, API-triggered workflow runs -- see config/packages/messenger.yaml).
-  # Same image/env as `app`, different command. Not viable as-is on o2switch
-  # (shared hosting has no persistent-process support) -- production needs a
-  # cron-invoked `messenger:consume --limit=N --time-limit=X` instead.
+  # Same image/env as `app`, different command. Not viable as-is in production
+  # (no persistent-process support there, see DEPLOYMENT.md) -- production
+  # needs a cron-invoked `messenger:consume --limit=N --time-limit=X` instead.
   worker:
     build: .
     environment:
