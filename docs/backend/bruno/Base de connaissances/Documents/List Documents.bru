@@ -1,0 +1,16 @@
+meta {
+  name: List Documents
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/documents
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}

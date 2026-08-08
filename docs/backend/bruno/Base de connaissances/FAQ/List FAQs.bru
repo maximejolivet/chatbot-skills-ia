@@ -1,0 +1,22 @@
+meta {
+  name: List FAQs
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/faqs
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+docs {
+  FAQ is a standalone CRUD, not wired into the chat/RAG pipeline: no
+  reference to Faq in src/Chat/, src/KnowledgeBase/ or src/VectorConnector/.
+  An agent never sees these entries when answering.
+}

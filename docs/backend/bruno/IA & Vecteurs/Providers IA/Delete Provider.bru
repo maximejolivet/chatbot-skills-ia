@@ -1,0 +1,16 @@
+meta {
+  name: Delete Provider
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{base_url}}/api/ai_provider_configs/{{ai_provider_config_chat_id}}
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}

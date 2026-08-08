@@ -1,0 +1,38 @@
+meta {
+  name: Trigger Workflow
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/api/workflows/{{workflow_id}}/trigger
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "input_data": {
+      "date_souhaitee": "15 mars 2026",
+      "contact_email": "recruteur@entreprise-demo.fr"
+    }
+  }
+}
+
+docs {
+  Body must wrap params under "input_data" (WorkflowTriggerController reads
+  body['input_data'], not top-level keys). Workflow.status must be "active"
+  or this returns 400. Async: creates a WorkflowExecution (status: pending)
+  and dispatches ExecuteWorkflowMessage -- poll "Get Workflow Execution" for
+  the final status. Manual trigger -- conversation stays null on the
+  resulting execution (only a tool call from a chat message sets it).
+}

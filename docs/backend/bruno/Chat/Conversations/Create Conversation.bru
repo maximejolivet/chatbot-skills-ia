@@ -1,0 +1,31 @@
+meta {
+  name: Create Conversation
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/conversations
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/ld+json
+}
+
+body:json {
+  {
+    "title": "Question recruteur sur le CV de Maxime Jolivet"
+  }
+}
+
+docs {
+  `user` (owner) is stamped automatically server-side from whoever is
+  authenticated (UserStampListener) -- not settable in the body.
+}

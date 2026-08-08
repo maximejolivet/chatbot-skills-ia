@@ -1,0 +1,26 @@
+meta {
+  name: Update Category
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{base_url}}/api/document_categories/{{document_category_id}}
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/merge-patch+json
+}
+
+body:json {
+  {
+    "description": "Documents lies aux candidatures et au recrutement"
+  }
+}

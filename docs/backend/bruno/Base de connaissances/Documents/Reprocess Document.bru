@@ -1,0 +1,22 @@
+meta {
+  name: Reprocess Document
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/api/documents/{{document_id}}/process
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+docs {
+  Deletes existing chunks, resets status to pending, and re-dispatches
+  chunking + vectorization against the document's current category/
+  collection. Async: returns 202 immediately, poll "Get Document".
+}

@@ -1,0 +1,37 @@
+meta {
+  name: Create Workflow Step
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/api/workflows/{{workflow_id}}/steps
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Notifier Maxime",
+    "step_type": "notification",
+    "order": 0,
+    "configuration": {"channel": "email", "to": "maximejolivet.pro@gmail.com", "template": "nouvelle_demande_entretien"},
+    "is_active": true
+  }
+}
+
+docs {
+  Custom controller (WorkflowStepsController), not API Platform's serializer
+  -- unlike the rest of the API this one is snake_case: step_type, order,
+  is_active. step_type must be one of: api_call, email, notification,
+  data_transform, condition, delay, webhook.
+}

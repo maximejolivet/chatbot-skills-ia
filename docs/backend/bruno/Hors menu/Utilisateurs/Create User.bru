@@ -1,0 +1,30 @@
+meta {
+  name: Create User
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/admin/users/new
+  body: formUrlEncoded
+  auth: none
+}
+
+body:form-urlencoded {
+  user[email]: recruteur-demo@entreprise.fr
+  user[plainPassword]: ChangeMe123!
+  user[roles][]: ROLE_ADMIN
+  user[isActive]: 1
+  user[_token]: {{user_form_token}}
+}
+
+docs {
+  User has no REST API (#[ApiResource] deliberately omitted -- would expose
+  password hashes). This admin form (or `bin/console app:user:create`) is
+  the only way to create an operator account. Run "Login" then "Get New
+  User Form" first, in that order, so the session cookie is attached and
+  {{user_form_token}} holds a fresh CSRF token (each page load issues a new
+  one -- reusing an old value fails). On success: 302 to /admin/users.
+  Every account gets ROLE_ADMIN plus the implicit ROLE_USER (see
+  User::getRoles()) -- there's no lesser-privileged tier yet.
+}

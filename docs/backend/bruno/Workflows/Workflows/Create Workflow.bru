@@ -1,0 +1,45 @@
+meta {
+  name: Create Workflow
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/workflows
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/ld+json
+}
+
+body:json {
+  {
+    "name": "planifier_entretien",
+    "description": "Planifie un entretien de recrutement avec Maxime Jolivet a une date donnee.",
+    "triggerType": "agent_tool",
+    "status": "active",
+    "isActive": true,
+    "parametersSchema": {
+      "type": "object",
+      "properties": {
+        "date_souhaitee": {"type": "string", "description": "Date souhaitee pour l entretien, format libre"},
+        "contact_email": {"type": "string", "description": "Email du recruteur pour confirmation"}
+      },
+      "required": ["date_souhaitee"]
+    }
+  }
+}
+
+docs {
+  triggerType: manual | api | agent_tool. When agent_tool, parametersSchema
+  (JSON Schema) is what gets exposed to the LLM as this tool's definition --
+  attach the workflow to an AiAgent (admin form) for the model to be able to
+  call it during a conversation.
+}

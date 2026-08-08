@@ -1,0 +1,16 @@
+meta {
+  name: Get Workflow
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/api/workflows/{{workflow_id}}
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}

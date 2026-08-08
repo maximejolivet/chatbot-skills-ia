@@ -1,0 +1,24 @@
+meta {
+  name: Get Agent
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/ai_agents/{{ai_agent_id}}
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+docs {
+  AiAgent is read-only over the REST API (GetCollection + Get only).
+  POST /api/ai_agents responds 405 Method Not Allowed -- creating or editing
+  an agent, or attaching workflows to it, only happens through the admin
+  backoffice form (/admin/ai-agents/new and /admin/ai-agents/{id}/edit,
+  session + CSRF), not this API.
+}

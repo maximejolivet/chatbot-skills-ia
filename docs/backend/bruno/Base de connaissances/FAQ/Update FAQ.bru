@@ -1,0 +1,26 @@
+meta {
+  name: Update FAQ
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{base_url}}/api/faqs/{{faq_id}}
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/merge-patch+json
+}
+
+body:json {
+  {
+    "isActive": false
+  }
+}

@@ -1,0 +1,35 @@
+meta {
+  name: Send Message
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/conversations/{{conversation_id}}/messages
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "message": "Combien d'annees d'experience a Maxime Jolivet et sur quelles technologies backend est-il expert ?",
+    "agent_id": {{ai_agent_id}}
+  }
+}
+
+docs {
+  Synchronous: runs RAG (searches the agent's Collection -> VectorIndex,
+  logs a SearchQuery), calls the LLM, and returns the full assistant Message
+  -- including metadata.tool_calls if the model decided to call one of the
+  agent's workflows. agent_id is optional; omit it to chat without an
+  agent/RAG context.
+}

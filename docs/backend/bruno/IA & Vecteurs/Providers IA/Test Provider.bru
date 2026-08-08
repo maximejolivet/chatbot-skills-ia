@@ -1,0 +1,22 @@
+meta {
+  name: Test Provider
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/api/ai_provider_configs/{{ai_provider_config_chat_id}}/test
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+docs {
+  Sends a real request to the configured provider ("Respond with just OK" for
+  chat providers, an embedding request for embedding providers) and persists
+  the result to lastTestStatus / lastTestedAt.
+}

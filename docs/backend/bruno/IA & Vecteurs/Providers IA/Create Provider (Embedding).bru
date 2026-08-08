@@ -1,0 +1,31 @@
+meta {
+  name: Create Provider (Embedding)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/api/ai_provider_configs
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/ld+json
+}
+
+body:json {
+  {
+    "name": "ollama-embed-cv-demo",
+    "usage": "embedding",
+    "provider": "ollama",
+    "model": "mxbai-embed-large:latest",
+    "isActive": true,
+    "isDefault": true
+  }
+}

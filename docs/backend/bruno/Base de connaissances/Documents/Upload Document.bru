@@ -1,0 +1,35 @@
+meta {
+  name: Upload Document
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/documents
+  body: multipartForm
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+body:multipart-form {
+  file: @file(/absolute/path/to/your/file.pdf)
+  title: CV - Maxime Jolivet
+  description: CV ATS de Maxime Jolivet, Developpeur Web Full-Stack Senior / Lead Dev / Tech Lead
+  category_id: {{document_category_id}}
+}
+
+docs {
+  Allowed extensions: pdf, txt, docx, md, html, json. Max 10MB.
+  No `collection` field here -- DocumentUploadController only accepts
+  file/title/description/category_id. To land the document in a specific
+  knowledge-base Collection, attach it afterwards via "Update Document
+  (Attach Collection)", THEN call "Reprocess Document" if chunking/
+  vectorization already ran (the async worker is near-instant locally) --
+  otherwise the vectors land in the default/common Qdrant collection instead
+  of the one you meant. Response is 202 with status: "pending"; poll
+  "Get Document" for the final status.
+}

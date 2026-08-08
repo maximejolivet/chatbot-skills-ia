@@ -1,0 +1,16 @@
+meta {
+  name: Delete Conversation
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{base_url}}/api/conversations/{{conversation_id}}
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}

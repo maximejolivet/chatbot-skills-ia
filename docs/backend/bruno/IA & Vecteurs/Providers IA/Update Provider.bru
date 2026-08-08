@@ -1,0 +1,27 @@
+meta {
+  name: Update Provider
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{base_url}}/api/ai_provider_configs/{{ai_provider_config_chat_id}}
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/merge-patch+json
+}
+
+body:json {
+  {
+    "isActive": true,
+    "isDefault": true
+  }
+}

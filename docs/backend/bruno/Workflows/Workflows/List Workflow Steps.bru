@@ -1,0 +1,16 @@
+meta {
+  name: List Workflow Steps
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{base_url}}/api/workflows/{{workflow_id}}/steps
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}

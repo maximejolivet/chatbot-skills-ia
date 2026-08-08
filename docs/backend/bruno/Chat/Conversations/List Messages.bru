@@ -1,0 +1,22 @@
+meta {
+  name: List Messages
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/conversations/{{conversation_id}}/messages
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+docs {
+  Message has no ApiResource of its own -- this is the only way to read
+  messages over the API. Restricted to the conversation's owner (or
+  ROLE_ADMIN) via #[IsGranted('OWNER', ...)] on the controller.
+}

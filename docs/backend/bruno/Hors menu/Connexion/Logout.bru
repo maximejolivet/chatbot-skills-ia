@@ -1,0 +1,18 @@
+meta {
+  name: Logout
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/admin/logout
+  body: none
+  auth: none
+}
+
+docs {
+  Intercepted by the `logout` key on the `admin` firewall (Symfony's
+  LogoutListener) before it ever reaches SecurityController::logout(),
+  which only exists to satisfy the route name -- it always throws if hit
+  directly.
+}

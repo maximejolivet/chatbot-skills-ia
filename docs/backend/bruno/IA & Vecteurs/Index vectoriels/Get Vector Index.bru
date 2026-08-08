@@ -1,0 +1,16 @@
+meta {
+  name: Get Vector Index
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/vector_indices/{{vector_index_id}}
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}

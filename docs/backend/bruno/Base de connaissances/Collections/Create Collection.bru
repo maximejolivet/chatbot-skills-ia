@@ -1,0 +1,29 @@
+meta {
+  name: Create Collection
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/api/collections
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/ld+json
+}
+
+body:json {
+  {
+    "name": "CV Maxime Jolivet",
+    "description": "Base de connaissances contenant le CV de Maxime Jolivet, pour repondre aux questions de recrutement le concernant.",
+    "vectorIndex": "/api/vector_indices/{{vector_index_id}}",
+    "isCommon": false
+  }
+}

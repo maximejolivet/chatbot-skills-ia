@@ -1,0 +1,16 @@
+meta {
+  name: Get Document Chunks
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/documents/{{document_id}}/chunks
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}

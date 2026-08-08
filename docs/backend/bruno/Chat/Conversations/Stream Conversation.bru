@@ -1,0 +1,32 @@
+meta {
+  name: Stream Conversation
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url}}/api/conversations/{{conversation_id}}/stream
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "message": "Peux-tu resumer le profil de Maxime Jolivet ?",
+    "agent_id": {{ai_agent_id}}
+  }
+}
+
+docs {
+  SSE variant of Send Message -- same body shape. Bruno will show the raw
+  event stream rather than replaying it incrementally.
+}

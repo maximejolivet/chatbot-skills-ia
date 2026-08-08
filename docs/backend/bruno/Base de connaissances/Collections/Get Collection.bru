@@ -1,0 +1,16 @@
+meta {
+  name: Get Collection
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/api/collections/{{collection_id}}
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}

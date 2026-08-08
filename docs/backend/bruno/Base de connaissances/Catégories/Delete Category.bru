@@ -1,11 +1,11 @@
 meta {
-  name: Get AI Agents
+  name: Delete Category
   type: http
-  seq: 1
+  seq: 5
 }
 
-get {
-  url: {{base_url}}/api/ai_agents
+delete {
+  url: {{base_url}}/api/document_categories/{{document_category_id}}
   body: none
   auth: basic
 }

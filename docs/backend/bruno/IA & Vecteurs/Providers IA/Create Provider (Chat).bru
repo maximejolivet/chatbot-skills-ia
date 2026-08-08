@@ -1,0 +1,38 @@
+meta {
+  name: Create Provider (Chat)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/ai_provider_configs
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/ld+json
+}
+
+body:json {
+  {
+    "name": "ollama-chat-cv-demo",
+    "usage": "chat",
+    "provider": "ollama",
+    "model": "gpt-oss:20b",
+    "isActive": true,
+    "isDefault": true
+  }
+}
+
+docs {
+  usage: "chat" | "embedding"
+  provider: "ollama" | "api_endpoint"
+  apiKey is write-only (never returned by GET/Get).
+  baseUrl can be left unset -- falls back to the app's OLLAMA_BASE_URL env var.
+}

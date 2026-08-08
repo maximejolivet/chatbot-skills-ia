@@ -1,0 +1,17 @@
+meta {
+  name: List Users
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/admin/users
+  body: none
+  auth: none
+}
+
+docs {
+  Admin backoffice HTML page (Sylius grid), not a JSON API -- User has no
+  #[ApiResource] at all (it would leak the password hash). Requires an
+  active session: run "Hors menu/Connexion/Login" first.
+}

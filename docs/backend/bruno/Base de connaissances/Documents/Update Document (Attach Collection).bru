@@ -1,0 +1,32 @@
+meta {
+  name: Update Document (Attach Collection)
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{base_url}}/api/documents/{{document_id}}
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/merge-patch+json
+}
+
+body:json {
+  {
+    "collection": "/api/collections/{{collection_id}}"
+  }
+}
+
+docs {
+  If chunking/vectorization already happened before this PATCH, the vectors
+  are sitting in the wrong Qdrant collection -- call "Reprocess Document"
+  right after this to re-vectorize into the newly attached collection.
+}

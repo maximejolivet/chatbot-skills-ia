@@ -1,0 +1,35 @@
+meta {
+  name: Test Workflow
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/api/workflows/{{workflow_id}}/test
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "input_data": {
+      "date_souhaitee": "15 mars 2026",
+      "contact_email": "recruteur@entreprise-demo.fr"
+    }
+  }
+}
+
+docs {
+  Same async pattern as Trigger Workflow (body wrapped under "input_data"),
+  except it skips the "status must be active" check -- usable on a draft
+  workflow.
+}

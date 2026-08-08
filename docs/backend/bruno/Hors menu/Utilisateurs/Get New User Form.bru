@@ -1,0 +1,26 @@
+meta {
+  name: Get New User Form
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/admin/users/new
+  body: none
+  auth: none
+}
+
+script:post-response {
+  const html = res.getBody();
+  const match = typeof html === "string" ? html.match(/name="user\[_token\]"[^>]*value="([^"]+)"/) : null;
+  if (match) {
+    bru.setVar("user_form_token", match[1]);
+  }
+}
+
+docs {
+  Requires an active admin session (run "Login" first). Symfony's Form
+  component generates a fresh CSRF token per page load -- this scrapes it
+  from the hidden user[_token] input into {{user_form_token}}, consumed by
+  "Create User" right after.
+}
