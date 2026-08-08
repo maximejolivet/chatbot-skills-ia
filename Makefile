@@ -36,8 +36,9 @@ rebuild:
 		echo "   Services disponibles:"; \
 		echo "   - app (Symfony backend)"; \
 		echo "   - nuxt"; \
-		echo "   - database (PostgreSQL)"; \
+		echo "   - database (MariaDB)"; \
 		echo "   - qdrant"; \
+		echo "   - phpmyadmin"; \
 		exit 1; \
 	fi
 	@echo "🔨 Rebuild du service $(SERVICE)..."

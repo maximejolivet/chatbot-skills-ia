@@ -1,16 +1,8 @@
 #!/usr/bin/env bash
-# Whitelists the current GitHub Actions runner's IP for SSH on o2switch,
-# removing the 2 most recently whitelisted addresses first (quota cap --
-# rationale in ../../DEPLOYMENT.md). Named "-backend-symfony" to avoid
-# colliding with the unrelated WordPress project's own whitelist script on
-# this same o2switch account.
-#
-# Known trade-off: "remove the last 2 entries" assumes they're stale CI
-# runner IPs -- a human IP whitelisted right before a CI run could get
-# swept up too. Accepted rather than adding state-tracking for a narrow edge case.
-#
-# Required env vars: CPANEL_USER, CPANEL_PASSWORD, CPANEL_HOST, RUNNER_IP
-
+# This script is used to whitelist the GitHub Actions runner's public IP on the o2switch server, 
+# and drop the two oldest whitelisted IPs (o2switch only allows 3 at a time). 
+# The whitelist script is idempotent, so if the runner's IP is already whitelisted it won't be 
+# added again, and the two oldest IPs will still be dropped.
 set -euo pipefail
 
 : "${CPANEL_USER:?missing}" "${CPANEL_PASSWORD:?missing}" "${CPANEL_HOST:?missing}" "${RUNNER_IP:?missing}"
