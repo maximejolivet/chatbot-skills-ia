@@ -12,7 +12,7 @@ use Doctrine\ORM\Mapping as ORM;
  * (no direct CRUD for WorkflowStep).
  */
 #[ORM\Entity(repositoryClass: WorkflowStepRepository::class)]
-#[ORM\UniqueConstraint(name: 'workflow_step_order_unique', columns: ['workflow_id', '"order"'])]
+#[ORM\UniqueConstraint(name: 'workflow_step_order_unique', columns: ['workflow_id', '`order`'])]
 class WorkflowStep
 {
     #[ORM\Id]
@@ -30,7 +30,10 @@ class WorkflowStep
     #[ORM\Column(length: 20, enumType: WorkflowStepType::class)]
     private WorkflowStepType $stepType;
 
-    #[ORM\Column(name: '"order"')]
+    // Quoted column name: "order" is a reserved word in MySQL/MariaDB, same
+    // fix as AiProviderConfig.usage -- Doctrine only quotes reserved words in
+    // generated SQL when told to via backticks here.
+    #[ORM\Column(name: '`order`')]
     private int $order;
 
     /**
