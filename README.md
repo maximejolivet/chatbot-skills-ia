@@ -78,7 +78,7 @@ chatbot-skills-ia/
 ├── frontend/          # Composant chatbot Nuxt 4 + TailwindCSS
 ├── traefik/           # Reverse proxy : domaines par service (*.chatbot.localhost)
 ├── docs/              # Cahiers des charges
-└── scripts/           # Scripts d'installation et d'affichage des URLs
+└── .github/scripts/   # Scripts d'installation, d'affichage des URLs et de déploiement CI
 ```
 
 Détail de l'architecture backend (entités, services, domaines métier) dans [`backend/README.md`](backend/README.md).

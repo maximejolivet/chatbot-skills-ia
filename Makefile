@@ -1,5 +1,5 @@
 MAKEFLAGS += --no-print-directory
-.PHONY: help up down purge rebuild logs services-url format audit
+.PHONY: help start stop purge rebuild logs services-url format audit actionlint check-ollama
 
 help:
 	@echo "\033[4mCommandes disponibles\033[0m:"
@@ -11,8 +11,10 @@ help:
 	@echo "   services-url               : Affiche la liste des urls des différents services actifs"
 	@echo "   format                     : Formate le frontend Nuxt (Prettier)"
 	@echo "   audit                      : Audit des dépendances (composer audit + npm outdated/audit)"
+	@echo "   actionlint                 : Lint des workflows GitHub Actions (.github/workflows/)"
+	@echo "   check-ollama               : Vérifie qu'Ollama tourne et expose les modèles requis"
 
-start:
+start: check-ollama
 	@docker network inspect chatbot-proxy >/dev/null 2>&1 || docker network create chatbot-proxy
 	docker compose up -d
 	$(MAKE) services-url
@@ -55,7 +57,7 @@ format:
 	docker exec chatbot-symfony-nuxt npm run format
 
 services-url:
-	@bash scripts/show_urls.sh
+	@bash .github/scripts/show-urls.sh
 
 audit:
 	@echo "🔎 Backend Symfony (composer audit)..."
@@ -63,3 +65,15 @@ audit:
 	@echo ""
 	@echo "🔎 Frontend Nuxt (npm outdated + npm audit)..."
 	@cd frontend && npm outdated; npm audit
+
+actionlint:
+	@command -v actionlint >/dev/null 2>&1 || { \
+		echo "❌ actionlint n'est pas installé -- voir https://github.com/rhysd/actionlint (brew install actionlint)"; \
+		exit 1; \
+	}
+	@echo "🔎 Lint des workflows GitHub Actions..."
+	@actionlint
+	@echo "✅ Aucun problème détecté"
+
+check-ollama:
+	@bash .github/scripts/check-ollama.sh
