@@ -1,13 +1,13 @@
 # Déploiement
 
-[![Deploy chat-ia (backend)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend-symfony.yml/badge.svg)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend-symfony.yml)
+[![Deploy chat-ia (backend)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend.yml/badge.svg)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend.yml)
 ![Hosting](https://img.shields.io/badge/hosting-o2switch-FF6600)
 ![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)
 ![Frontend deploy](https://img.shields.io/badge/frontend%20deploy-not%20automated-lightgrey)
 
 ## Backend (Symfony)
 
-CI/CD : [`.github/workflows/deploy-backend-symfony.yml`](.github/workflows/deploy-backend-symfony.yml),
+CI/CD : [`.github/workflows/deploy-backend.yml`](.github/workflows/deploy-backend.yml),
 déclenché sur push vers `master` touchant `backend/**`, ou manuellement
 (`workflow_dispatch`, avec une option `dry_run`).
 
@@ -119,7 +119,7 @@ gh secret list
 ### Lancer un dry-run
 
 ```bash
-gh workflow run deploy-backend-symfony.yml -f dry_run=true
+gh workflow run deploy-backend.yml -f dry_run=true
 ```
 
 Exécute tout le pipeline (build, whitelist, SSH) mais passe `--dry-run` à
