@@ -23,12 +23,19 @@ body:json {
   {
     "query": "experience et technologies backend de Maxime Jolivet",
     "collection_name": "cv_maxime_jolivet",
+    "language": "fr",
+    "complexity": "expert",
     "limit": 5
   }
 }
 
 docs {
   Custom controller, not an ApiResource -- snake_case fields (collection_name,
-  category_id), plain application/json. Every successful call here is logged
-  as a SearchQuery row (visible only in /admin/search-queries, no API for it).
+  category_id, document_type, language, complexity), plain application/json.
+  The intelligent-analysis filters (document_type/language/complexity) only
+  match documents that went through DocumentAnalysisService -- check a
+  chunk's metadata (List Messages / this response) for the actual values
+  indexed for your documents before filtering on them. All filters present
+  combine with AND. Every successful call here is logged as a SearchQuery
+  row (visible only in /admin/search-queries, no API for it).
 }

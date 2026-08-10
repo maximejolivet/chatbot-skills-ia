@@ -31,6 +31,9 @@ final class VectorSearchController
             ? (string) $data['collection_name']
             : null;
         $dto->categoryId = isset($data['category_id']) ? (int) $data['category_id'] : null;
+        $dto->documentType = isset($data['document_type']) && '' !== $data['document_type'] ? (string) $data['document_type'] : null;
+        $dto->language = isset($data['language']) && '' !== $data['language'] ? (string) $data['language'] : null;
+        $dto->complexity = isset($data['complexity']) && '' !== $data['complexity'] ? (string) $data['complexity'] : null;
         $dto->limit = isset($data['limit']) ? (int) $data['limit'] : 10;
 
         $violations = $this->validator->validate($dto);
@@ -43,7 +46,13 @@ final class VectorSearchController
             return new JsonResponse(['errors' => $errors], 400);
         }
 
-        $filterConditions = null !== $dto->categoryId ? ['category_id' => $dto->categoryId] : null;
+        $filterConditions = array_filter([
+            'category_id' => $dto->categoryId,
+            'document_type' => $dto->documentType,
+            'language' => $dto->language,
+            'complexity' => $dto->complexity,
+        ], static fn (mixed $v) => null !== $v);
+        $filterConditions = $filterConditions ?: null;
 
         $results = $this->vectorSearchService->search(
             query: $dto->query,

@@ -476,7 +476,7 @@ Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les res
 | Méthode                       | URL                          | Description                                                                                  |
 | ----------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------- |
 | `GET`/`POST`/`PATCH`/`DELETE` | `/api/vector_indices[/{id}]` | CRUD des index vectoriels connus                                                             |
-| `POST`                        | `/api/vector/search`         | **Recherche vectorielle canonique** — body `{query, collection_name?, category_id?, limit?}` |
+| `POST`                        | `/api/vector/search`         | **Recherche vectorielle canonique** — body `{query, collection_name?, category_id?, document_type?, language?, complexity?, limit?}`, les filtres se combinent en ET |
 | `GET`                         | `/api/vector/stats`          | Nombre d'index actifs, total des requêtes journalisées, 10 `SearchQuery` les plus récentes   |
 
 ### 8.3 `knowledge_base`
