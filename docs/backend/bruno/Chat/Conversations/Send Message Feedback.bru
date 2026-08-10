@@ -1,0 +1,33 @@
+meta {
+  name: Send Message Feedback
+  type: http
+  seq: 9
+}
+
+patch {
+  url: {{base_url}}/api/conversations/{{conversation_id}}/messages/{{message_id}}/feedback
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "feedback": "positive"
+  }
+}
+
+docs {
+  Thumbs up/down on a single assistant message. "feedback" accepts
+  "positive", "negative", or null to clear it. message_id must belong to
+  conversation_id (see List Messages) -- run Send Message first and copy
+  the returned "id" into the message_id env var.
+}

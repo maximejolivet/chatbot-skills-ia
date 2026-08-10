@@ -89,7 +89,7 @@ Les domaines `workflows` et `chat` se référencent mutuellement (`chat.services
 
 Câble les champs différés des domaines précédents (`AiAgent.workflows`, `Collection.agent`, `WorkflowExecution.conversation`).
 
-- `App\Entity\Conversation` / `Message` — CRUD sur `/api/conversations`, messages via `GET`/`POST /conversations/{id}/messages`. Cloisonnée par propriétaire (champ `user`, voir "Cloisonnement par utilisateur" plus bas) : un compte `ROLE_USER` ne voit/modifie que ses propres conversations, `ROLE_ADMIN` voit tout
+- `App\Entity\Conversation` / `Message` — CRUD sur `/api/conversations`, messages via `GET`/`POST /conversations/{id}/messages`, thumbs up/down via `PATCH /conversations/{id}/messages/{messageId}/feedback`. Cloisonnée par propriétaire (champ `user`, voir "Cloisonnement par utilisateur" plus bas) : un compte `ROLE_USER` ne voit/modifie que ses propres conversations, `ROLE_ADMIN` voit tout
 - `App\Entity\AiAgent` — lecture seule côté REST (`GetCollection`/`Get` sur `/api/ai_agents`, pagination désactivée) ; géré en écriture via le [backoffice](#backoffice-admin) (`/admin/ai-agents`). Voir `getActiveWorkflows()`/`getCollection()`
 - `App\Chat\ChatOrchestrationService` — la vraie boucle de tool-calling (jusqu'à 3 itérations) : demande une completion au LLM, si le modèle appelle un outil, exécute le `Workflow` correspondant via `workflows.WorkflowExecutionService`, réinjecte le résultat, redemande, jusqu'à obtenir une réponse finale
 - `App\Chat\RagContextService` — résout la collection Qdrant de l'agent (`CollectionService::getQdrantCollectionNameForAgent`) et effectue la recherche vectorielle contextuelle

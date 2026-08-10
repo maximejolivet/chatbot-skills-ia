@@ -229,12 +229,13 @@ Cloisonné par propriétaire : un compte `ROLE_USER` ne voit/modifie que les ex�
 Cloisonné par propriétaire : un compte `ROLE_USER` ne voit/modifie (y compris messages/stream) que ses propres conversations (`OwnershipVoter` + `OwnershipCollectionExtension` sur l'item/la collection, `#[IsGranted]` sur les contrôleurs de messages/stream, voir §10) ; `ROLE_ADMIN` voit tout. Une conversation `user = null` (créée avant l'ajout du multi-utilisateur) n'est visible que par `ROLE_ADMIN`.
 
 **`Message`** — pas de `#[ApiResource]` propre (exposé via les actions de `Conversation`).
-| Champ          | Type                                                                       |
-| -------------- | -------------------------------------------------------------------------- |
-| `conversation` | `ManyToOne`, `onDelete: CASCADE`                                           |
-| `role`         | enum `MessageRole` : `user` \| `assistant` \| `system` \| `tool`           |
-| `content`      | text                                                                       |
-| `metadata`     | array — contient `token_usage` et `tool_calls` pour les messages assistant |
+| Champ          | Type                                                                                          |
+| -------------- | ----------------------------------------------------------------------------------------------- |
+| `conversation` | `ManyToOne`, `onDelete: CASCADE`                                                                |
+| `role`         | enum `MessageRole` : `user` \| `assistant` \| `system` \| `tool`                                |
+| `content`      | text                                                                                             |
+| `metadata`     | array — contient `token_usage`, `tool_calls` et `sources` (documents RAG utilisés) pour les messages assistant |
+| `feedback`     | enum `MessageFeedback` nullable : `positive` \| `negative` — thumbs up/down opérateur, `null` par défaut, réglé via `PATCH /conversations/{id}/messages/{messageId}/feedback` |
 
 **`AiAgent`** — lecture seule via REST (`GetCollection(paginationEnabled: false)` + `Get` uniquement), écriture réservée au backoffice.
 | Champ                          | Type                                                                                                              |
@@ -267,6 +268,7 @@ Cloisonné par propriétaire : un compte `ROLE_USER` ne voit/modifie (y compris 
 | `DocumentFileType`        | `pdf`, `txt`, `docx`, `md`, `html`, `json`                                             |
 | `DocumentStatus`          | `pending`, `processing`, `indexed`, `error`                                            |
 | `MessageRole`             | `user`, `assistant`, `system`, `tool`                                                  |
+| `MessageFeedback`         | `positive`, `negative`                                                                |
 | `WorkflowExecutionStatus` | `pending`, `running`, `completed`, `failed`, `cancelled`                               |
 | `WorkflowStatus`          | `draft`, `active`, `inactive`                                                          |
 | `WorkflowStepType`        | `api_call`, `email`, `notification`, `data_transform`, `condition`, `delay`, `webhook` |
@@ -515,6 +517,7 @@ Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les res
 | `GET`                         | `/api/conversations/{id}/messages` | Historique des messages                                                                                        |
 | `POST`                        | `/api/conversations/{id}/messages` | Envoie un message utilisateur, le persiste + renvoie la réponse de l'assistant (body : `{message, agent_id?}`) |
 | `POST`                        | `/api/conversations/{id}/stream`   | Idem, réponse en **SSE** (`text/event-stream`)                                                                 |
+| `PATCH`                       | `/api/conversations/{id}/messages/{messageId}/feedback` | Thumbs up/down sur un message (body : `{feedback: "positive"\|"negative"\|null}`)             |
 | `GET`                         | `/api/ai_agents`                   | Liste des agents (lecture seule, pagination désactivée)                                                        |
 | `GET`                         | `/api/ai_agents/{id}`              | Détail d'un agent                                                                                              |
 | `POST`                        | `/api/chat/quick-send`             | Chat **anonyme, non persisté** (body : `{message, agent_id?}`) — utilisé par les frontends de démo             |

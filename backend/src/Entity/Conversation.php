@@ -11,6 +11,7 @@ use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use App\Controller\ConversationMessagesController;
 use App\Controller\ConversationStreamController;
+use App\Controller\MessageFeedbackController;
 use App\Repository\ConversationRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection as DoctrineCollection;
@@ -65,6 +66,14 @@ use Sylius\Resource\Model\ResourceInterface;
             deserialize: false,
             output: false,
             name: 'conversation_stream',
+        ),
+        new Patch(
+            uriTemplate: '/conversations/{id}/messages/{messageId}/feedback',
+            controller: MessageFeedbackController::class,
+            read: true,
+            deserialize: false,
+            output: false,
+            name: 'conversation_message_feedback',
         ),
     ],
 )]
