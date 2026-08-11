@@ -2,6 +2,13 @@ MAKEFLAGS += --no-print-directory
 .PHONY: help start stop purge rebuild logs services-url format audit actionlint check-ollama
 
 help:
+	@echo "Projet          : $$(grep -m1 '"name"' package.json | sed -E 's/.*: *"([^"]+)".*/\1/')"
+	@echo "Version         : $$(grep -m1 '"version"' package.json | sed -E 's/.*: *"([^"]+)".*/\1/')"
+	@echo "Node requis     : $$(grep -oE 'node:[0-9]+' backend/compose.yaml | head -1 | cut -d: -f2).x.x"
+	@echo "Node actuel     : $$(node -v 2>/dev/null || echo 'non installé')"
+	@echo "Branche         : $$(git branch --show-current)"
+	@echo "Dernier commit  : $$(git log -1 --pretty=format:'%h %s')"
+	@echo ""
 	@echo "\033[4mCommandes disponibles\033[0m:"
 	@echo "   start                      : Démarrer Traefik + la stack Symfony"
 	@echo "   stop                       : Arrêter Traefik + la stack Symfony"
