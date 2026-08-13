@@ -37,7 +37,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 final class WorkflowExecutionService
 {
     /**
-     * @var array<string, callable(WorkflowStep, array<string, mixed>): array<string, mixed>>
+     * @var array<string, callable(WorkflowStep, array<string, mixed>, ?Conversation): array<string, mixed>>
      */
     private array $stepHandlers;
 
@@ -62,6 +62,7 @@ final class WorkflowExecutionService
             WorkflowStepType::Condition->value => $this->handleCondition(...),
             WorkflowStepType::Delay->value => $this->handleDelay(...),
             WorkflowStepType::Webhook->value => $this->handleWebhook(...),
+            WorkflowStepType::SetConversation->value => $this->handleSetConversation(...),
         ];
     }
 
@@ -109,7 +110,7 @@ final class WorkflowExecutionService
 
         try {
             foreach ($this->workflowStepRepository->findActiveOrdered($execution->getWorkflow()->getId()) as $step) {
-                $stepResult = $this->executeStep($step, $currentData);
+                $stepResult = $this->executeStep($step, $currentData, $execution->getConversation());
                 $results[] = $stepResult;
                 if ('failed' === $stepResult['status']) {
                     $status = WorkflowExecutionStatus::Failed;
@@ -141,7 +142,7 @@ final class WorkflowExecutionService
      *
      * @return array<string, mixed>
      */
-    private function executeStep(WorkflowStep $step, array $inputData): array
+    private function executeStep(WorkflowStep $step, array $inputData, ?Conversation $conversation): array
     {
         $start = microtime(true);
         try {
@@ -149,7 +150,9 @@ final class WorkflowExecutionService
             if (!$handler) {
                 throw new \RuntimeException("Unknown step type: {$step->getStepType()->value}");
             }
-            $result = $handler($step, $inputData);
+            // Every handler except handleSetConversation() ignores this 3rd
+            // argument -- fine, PHP doesn't enforce arity on excess args.
+            $result = $handler($step, $inputData, $conversation);
 
             return [
                 'step_id' => $step->getId(),
@@ -189,7 +192,7 @@ final class WorkflowExecutionService
         $data = $this->replacePlaceholders($config['data'] ?? [], $inputData);
         $url = $this->replacePlaceholders($url, $inputData);
 
-        $options = ['headers' => $config['headers'] ?? []];
+        $options = ['headers' => $this->resolveEnvHeaders($config['headers'] ?? [])];
         if (in_array($method, ['POST', 'PUT', 'PATCH'], true)) {
             $options['json'] = $data;
         }
@@ -201,6 +204,26 @@ final class WorkflowExecutionService
             'status_code' => $response->getStatusCode(),
             'response_data' => '' !== $content ? $response->toArray(false) : null,
         ];
+    }
+
+    /**
+     * Resolves `%env(VAR_NAME)%` header values against the real environment
+     * (never against $inputData) -- lets a step's stored `configuration`
+     * reference a secret (e.g. a third-party API key) by name instead of
+     * embedding it in plaintext in the workflow_step row / admin API.
+     *
+     * @param array<string, string> $headers
+     *
+     * @return array<string, string>
+     */
+    private function resolveEnvHeaders(array $headers): array
+    {
+        return array_map(
+            static fn ($value) => is_string($value) && preg_match('/^%env\((\w+)\)%$/', $value, $m)
+                ? (string) ($_ENV[$m[1]] ?? getenv($m[1]) ?: '')
+                : $value,
+            $headers,
+        );
     }
 
     /**
@@ -360,7 +383,7 @@ final class WorkflowExecutionService
         $method = mb_strtoupper($config['method'] ?? 'POST');
 
         $response = $this->httpClient->request($method, $url, [
-            'headers' => $config['headers'] ?? [],
+            'headers' => $this->resolveEnvHeaders($config['headers'] ?? []),
             'json' => $inputData,
             'timeout' => 30,
         ]);
@@ -370,6 +393,47 @@ final class WorkflowExecutionService
             'status_code' => $response->getStatusCode(),
             'response_data' => '' !== $content ? $response->toArray(false) : null,
         ];
+    }
+
+    /**
+     * Writes whitelisted fields onto the execution's Conversation -- lets the
+     * agent capture free-form facts about the visitor (e.g. their name) via
+     * tool arguments and persist them structurally, which no other step type
+     * can do (they only ever touch $inputData / external services).
+     *
+     * `configuration.fields` maps a Conversation field name to the
+     * $inputData key holding its value, e.g.
+     * {"visitor_first_name": "first_name", "visitor_last_name": "last_name"}.
+     *
+     * @param array<string, mixed> $inputData
+     *
+     * @return array<string, mixed>
+     */
+    private function handleSetConversation(WorkflowStep $step, array $inputData, ?Conversation $conversation): array
+    {
+        if (!$conversation) {
+            return ['status' => 'skipped', 'reason' => 'no conversation in context'];
+        }
+
+        $setters = [
+            'visitor_first_name' => $conversation->setVisitorFirstName(...),
+            'visitor_last_name' => $conversation->setVisitorLastName(...),
+        ];
+
+        $updated = [];
+        foreach ($step->getConfiguration()['fields'] ?? [] as $conversationField => $inputKey) {
+            if (!isset($setters[$conversationField]) || !isset($inputData[$inputKey])) {
+                continue;
+            }
+            $setters[$conversationField]((string) $inputData[$inputKey]);
+            $updated[$conversationField] = $inputData[$inputKey];
+        }
+
+        if ($updated) {
+            $this->entityManager->flush();
+        }
+
+        return ['status' => $updated ? 'updated' : 'skipped', 'fields' => $updated];
     }
 
     /**

@@ -6,16 +6,22 @@ use App\Chat\ChatService;
 use App\Chat\MessageSerializer;
 use App\Entity\Conversation;
 use Symfony\Bundle\FrameworkBundle\Controller\AsController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[AsController]
 final class ConversationMessagesController
 {
-    public function __construct(private readonly ChatService $chatService)
-    {
+    public function __construct(
+        private readonly ChatService $chatService,
+        #[Autowire(service: 'limiter.chat_message')]
+        private readonly RateLimiterFactory $chatMessageLimiter,
+    ) {
     }
 
     // ApiResource's declarative `security: "is_granted('OWNER', object)"` on
@@ -28,6 +34,10 @@ final class ConversationMessagesController
     {
         if ($request->isMethod('GET')) {
             return new JsonResponse(array_map(MessageSerializer::serialize(...), $data->getMessages()->toArray()));
+        }
+
+        if (!$this->chatMessageLimiter->create($request->getClientIp())->consume()->isAccepted()) {
+            throw new TooManyRequestsHttpException(60, 'Too many messages, please slow down.');
         }
 
         $body = json_decode($request->getContent(), true) ?? [];

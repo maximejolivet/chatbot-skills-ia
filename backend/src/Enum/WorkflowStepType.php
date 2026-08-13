@@ -11,4 +11,5 @@ enum WorkflowStepType: string
     case Condition = 'condition';
     case Delay = 'delay';
     case Webhook = 'webhook';
+    case SetConversation = 'set_conversation';
 }

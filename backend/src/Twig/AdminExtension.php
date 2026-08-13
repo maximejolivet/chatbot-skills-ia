@@ -2,6 +2,8 @@
 
 namespace App\Twig;
 
+use App\Entity\WorkflowStep;
+use App\Enum\WorkflowStepType;
 use Doctrine\Common\Collections\Collection;
 use Sylius\Component\Grid\Definition\Field;
 use Sylius\Component\Grid\Provider\GridProviderInterface;
@@ -35,7 +37,65 @@ final class AdminExtension extends AbstractExtension
             new TwigFunction('admin_route', $this->route(...)),
             new TwigFunction('admin_nav', $this->nav(...)),
             new TwigFunction('admin_grid_fields', $this->gridFields(...)),
+            new TwigFunction('admin_step_type_label', $this->stepTypeLabel(...)),
+            new TwigFunction('admin_step_summary', $this->stepSummary(...)),
         ];
+    }
+
+    public function stepTypeLabel(WorkflowStep $step): string
+    {
+        return match ($step->getStepType()) {
+            WorkflowStepType::ApiCall => 'Appel API',
+            WorkflowStepType::Email => 'Email',
+            WorkflowStepType::Notification => 'Notification',
+            WorkflowStepType::DataTransform => 'Transformation de données',
+            WorkflowStepType::Condition => 'Condition',
+            WorkflowStepType::Delay => 'Délai',
+            WorkflowStepType::Webhook => 'Webhook',
+        };
+    }
+
+    /**
+     * One-line, plain-French description of what a step actually does when
+     * it runs -- built from its real configuration (App\Workflow\
+     * WorkflowExecutionService's handle*() methods), not a free-text field
+     * an editor could let drift out of sync with the behavior.
+     */
+    public function stepSummary(WorkflowStep $step): string
+    {
+        $c = $step->getConfiguration();
+
+        return match ($step->getStepType()) {
+            WorkflowStepType::Email => \sprintf(
+                'Envoie un email à %s — sujet : « %s »',
+                $c['to_email'] ?? '?',
+                $c['subject'] ?? '?',
+            ),
+            WorkflowStepType::ApiCall => \sprintf(
+                '%s %s',
+                mb_strtoupper($c['method'] ?? 'GET'),
+                $c['url'] ?? '?',
+            ),
+            WorkflowStepType::Webhook => \sprintf(
+                '%s vers %s, avec les données reçues en entrée',
+                mb_strtoupper($c['method'] ?? 'POST'),
+                $c['url'] ?? '?',
+            ),
+            WorkflowStepType::Notification => isset($c['webhook_url'])
+                ? \sprintf('Envoie « %s » au webhook %s (canal : %s)', $c['message'] ?? '?', $c['webhook_url'], $c['channel'] ?? 'general')
+                : \sprintf('Log uniquement (canal : %s) — aucun envoi réel, faute de webhook_url configuré', $c['channel'] ?? 'general'),
+            WorkflowStepType::DataTransform => \sprintf(
+                'Modifie les données : %s',
+                implode(', ', array_map(
+                    static fn (array $t) => \sprintf('%s(%s)', $t['operation'] ?? '?', $t['field'] ?? '?'),
+                    $c['transformations'] ?? [],
+                )) ?: 'aucune transformation configurée',
+            ),
+            WorkflowStepType::Condition => isset($c['condition'])
+                ? \sprintf('Si %s %s %s, exécute une action, sinon une autre', $c['condition']['field'] ?? '?', $c['condition']['operator'] ?? '?', $c['condition']['value'] ?? '?')
+                : 'Aucune condition configurée — laisse passer les données telles quelles',
+            WorkflowStepType::Delay => \sprintf('Attend %d secondes avant l\'étape suivante', (int) ($c['delay_seconds'] ?? 0)),
+        };
     }
 
     /**

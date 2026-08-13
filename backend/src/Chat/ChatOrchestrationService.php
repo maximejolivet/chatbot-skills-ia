@@ -30,7 +30,7 @@ final class ChatOrchestrationService
 
         Instructions importantes:
         - Utilise les documents pertinents fournis dans le contexte pour donner des réponses précises et informées
-        - Si les documents contiennent des informations utiles, cite-les dans ta réponse
+        - Ne mentionne jamais tes sources ni les documents en tant que tels (pas de "selon le document X", pas de nom de fichier) -- intègre l'information directement dans ta réponse
         - Si tu ne trouves pas d'informations pertinentes dans les documents, dis-le clairement
         - Reste factuel et basé sur les informations fournies
         - Si tu ne connais pas la réponse, dis-le honnêtement
@@ -106,7 +106,11 @@ final class ChatOrchestrationService
 
     /**
      * Documents backing the RAG context, deduplicated by document (a document
-     * can contribute several chunks), highest-scoring chunk first.
+     * can contribute several chunks), highest-scoring chunk first. UI-only
+     * metadata -- the system prompt explicitly forbids the model from citing
+     * these in its own prose (no "selon le document X"), so this is the only
+     * way a source ever reaches the visitor, as a separate "Sources" affordance
+     * under the message rather than inline text.
      *
      * @param array<int, array<string, mixed>> $ragResults
      *
@@ -172,6 +176,10 @@ final class ChatOrchestrationService
     private function buildMessages(?AiAgent $agent, array $history, string $userMessage, array $ragResults): array
     {
         $systemPrompt = $agent && '' !== $agent->getSystemPrompt() ? $agent->getSystemPrompt() : self::DEFAULT_SYSTEM_PROMPT;
+        // Tool-calling agents (e.g. scheduling) need "today" to turn relative
+        // dates ("la semaine prochaine") into the absolute ones tool
+        // arguments require -- the model has no other source of the current date.
+        $systemPrompt = "{$systemPrompt}\n\nNous sommes le ".(new \DateTimeImmutable())->format('Y-m-d').' (format AAAA-MM-JJ).';
 
         if ($ragResults) {
             $docsText = "Documents pertinents trouvés dans la base de connaissances:\n".implode("\n", array_map(

@@ -4,23 +4,36 @@ namespace App\Controller;
 
 use App\Chat\ChatService;
 use Symfony\Bundle\FrameworkBundle\Controller\AsController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 
 /**
- * Anonymous, single-turn chat -- what the demo frontend's ChatWidget uses.
- * No conversation is persisted, but tool-calling still runs.
+ * Anonymous, single-turn chat, no conversation persisted (tool-calling still
+ * runs). NOT used by this repo's own ChatWidget/useChatbot.ts (which talks
+ * to real, persisted Conversations via ConversationMessagesController) --
+ * kept as a lighter-weight entry point for other embedders of the reusable
+ * widget who don't need history.
  */
 #[AsController]
 final class QuickSendController
 {
-    public function __construct(private readonly ChatService $chatService)
-    {
+    public function __construct(
+        private readonly ChatService $chatService,
+        #[Autowire(service: 'limiter.chat_message')]
+        private readonly RateLimiterFactory $chatMessageLimiter,
+    ) {
     }
 
     public function __invoke(Request $request): JsonResponse
     {
+        if (!$this->chatMessageLimiter->create($request->getClientIp())->consume()->isAccepted()) {
+            throw new TooManyRequestsHttpException(60, 'Too many messages, please slow down.');
+        }
+
         $body = json_decode($request->getContent(), true) ?? [];
         $message = trim((string) ($body['message'] ?? ''));
         if ('' === $message) {

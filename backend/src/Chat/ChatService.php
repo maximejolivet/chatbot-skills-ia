@@ -9,6 +9,11 @@ use App\Enum\MessageRole;
 use App\Repository\AiAgentRepository;
 use App\Repository\MessageRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Symfony\Component\Mailer\MailerInterface;
+use Symfony\Component\Mime\Email;
 
 /**
  * Thin façade over ChatOrchestrationService for the two entry points:
@@ -21,6 +26,12 @@ final class ChatService
         private readonly AiAgentRepository $agentRepository,
         private readonly ChatOrchestrationService $orchestrator,
         private readonly EntityManagerInterface $entityManager,
+        private readonly MailerInterface $mailer,
+        private readonly LoggerInterface $logger,
+        #[Autowire(env: 'MAILER_FROM_ADDRESS')]
+        private readonly string $mailerFromAddress,
+        #[Autowire(env: 'OWNER_NOTIFICATION_EMAIL')]
+        private readonly string $ownerNotificationEmail,
     ) {
     }
 
@@ -30,6 +41,10 @@ final class ChatService
         $conversation->addMessage($userMsg);
         $this->entityManager->persist($userMsg);
         $this->entityManager->flush();
+
+        if (1 === $conversation->getMessages()->count()) {
+            $this->notifyNewConversation($conversation, $userMessage);
+        }
 
         $agent = $agentId ? $this->agentRepository->getActive($agentId) : null;
         $history = $this->historyAsChatMessages($conversation->getId());
@@ -52,6 +67,35 @@ final class ChatService
         $agent = $agentId ? $this->agentRepository->getActive($agentId) : null;
 
         return $this->orchestrator->generateReply($userMessage, [], $agent);
+    }
+
+    /**
+     * Best-effort ping the moment a visitor's first message lands -- lets
+     * Maxime jump into a live conversation, not just learn about it after an
+     * interview gets booked (see the "planifier_entretien" workflow, which
+     * sends its own separate confirmation). Never breaks the chat reply if
+     * the mailer is down/misconfigured.
+     */
+    private function notifyNewConversation(Conversation $conversation, string $firstMessage): void
+    {
+        if ('' === $this->ownerNotificationEmail) {
+            return;
+        }
+
+        $email = (new Email())
+            ->from($this->mailerFromAddress)
+            ->to($this->ownerNotificationEmail)
+            ->subject('Nouvelle conversation sur le chatbot')
+            ->text(
+                "Un visiteur vient de démarrer une conversation (#{$conversation->getId()}).\n\n".
+                "Premier message :\n{$firstMessage}",
+            );
+
+        try {
+            $this->mailer->send($email);
+        } catch (TransportExceptionInterface $e) {
+            $this->logger->error('Failed to send new-conversation notification: {error}', ['error' => $e->getMessage()]);
+        }
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
@@ -18,14 +19,21 @@ use Sylius\Resource\Model\ResourceInterface;
  * through the /admin backoffice instead (see config/routes/admin.yaml).
  * Pagination disabled on the API: a small, bounded list that frontends
  * expect to receive in full.
+ *
+ * GetCollection/Get are deliberately public (PUBLIC_ACCESS): the public chat
+ * widget calls GET /api/ai_agents anonymously to pick which agent to talk to
+ * (see frontend/composables/useChatbot.ts::fetchAgents). systemPrompt,
+ * workflows, and the linked knowledge-base Collection are marked
+ * `readable: false` below so that public endpoint can't leak
+ * prompt-engineering internals.
  */
 #[ORM\Entity(repositoryClass: AiAgentRepository::class)]
 #[ORM\HasLifecycleCallbacks]
 #[ApiResource(
     security: "is_granted('ROLE_ADMIN')",
     operations: [
-        new GetCollection(paginationEnabled: false),
-        new Get(),
+        new GetCollection(paginationEnabled: false, security: "is_granted('PUBLIC_ACCESS')"),
+        new Get(security: "is_granted('PUBLIC_ACCESS')"),
     ],
 )]
 class AiAgent implements ResourceInterface
@@ -47,6 +55,7 @@ class AiAgent implements ResourceInterface
     private string $description = '';
 
     #[ORM\Column(type: 'text')]
+    #[ApiProperty(readable: false)]
     private string $systemPrompt = self::DEFAULT_SYSTEM_PROMPT;
 
     /**
@@ -54,9 +63,11 @@ class AiAgent implements ResourceInterface
      */
     #[ORM\ManyToMany(targetEntity: Workflow::class, inversedBy: 'agents')]
     #[ORM\JoinTable(name: 'ai_agent_workflow')]
+    #[ApiProperty(readable: false)]
     private DoctrineCollection $workflows;
 
     #[ORM\OneToOne(mappedBy: 'agent', targetEntity: Collection::class)]
+    #[ApiProperty(readable: false)]
     private ?Collection $collection = null;
 
     #[ORM\Column]
@@ -110,6 +121,7 @@ class AiAgent implements ResourceInterface
         return $this;
     }
 
+    #[ApiProperty(readable: false)]
     public function getSystemPrompt(): string
     {
         return $this->systemPrompt;
@@ -125,6 +137,7 @@ class AiAgent implements ResourceInterface
     /**
      * @return DoctrineCollection<int, Workflow>
      */
+    #[ApiProperty(readable: false)]
     public function getWorkflows(): DoctrineCollection
     {
         return $this->workflows;
@@ -149,11 +162,13 @@ class AiAgent implements ResourceInterface
     /**
      * @return DoctrineCollection<int, Workflow>
      */
+    #[ApiProperty(readable: false)]
     public function getActiveWorkflows(): DoctrineCollection
     {
         return $this->workflows->filter(static fn (Workflow $w) => $w->isActive());
     }
 
+    #[ApiProperty(readable: false)]
     public function getCollection(): ?Collection
     {
         return $this->collection;
@@ -171,11 +186,13 @@ class AiAgent implements ResourceInterface
         return $this;
     }
 
+    #[ApiProperty(readable: false)]
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
     }
 
+    #[ApiProperty(readable: false)]
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;

@@ -22,6 +22,8 @@ final class ConversationGrid
             ->orderBy('updatedAt', 'desc')
             ->withFields(
                 StringField::create('title')->setLabel('Titre')->setSortable(true),
+                StringField::create('visitorFirstName')->setLabel('Prénom'),
+                StringField::create('visitorLastName')->setLabel('Nom'),
                 StringField::create('messageCount')->setLabel('Messages'),
                 StringField::create('isActive')->setLabel('Actif'),
                 StringField::create('updatedAt')->setLabel('Modifiée le')->setSortable(true),

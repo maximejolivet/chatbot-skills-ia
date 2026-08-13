@@ -25,7 +25,13 @@ final class RagContextService
      */
     public function buildContext(string $query, ?AiAgent $agent = null, int $limit = 5): array
     {
+        // The agent's own collection is the primary source (e.g. a CV
+        // vectorized under a recruitment agent). When no agent is resolved,
+        // or the agent has no dedicated collection, fall back to the real
+        // common collection instead of VectorSearchService's hardcoded
+        // default name, which no ingestion path ever writes to.
         $collectionName = $agent ? $this->collectionService->getQdrantCollectionNameForAgent($agent->getId()) : null;
+        $collectionName ??= $this->collectionService->ensureCommonCollection()->getCollectionNameForQdrant();
 
         try {
             return $this->vectorSearchService->search(query: $query, collectionName: $collectionName, limit: $limit);

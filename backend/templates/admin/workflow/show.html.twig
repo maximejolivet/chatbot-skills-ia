@@ -1,0 +1,31 @@
+{% extends 'admin/crud/show.html.twig' %}
+
+{% block content %}
+    {{ parent() }}
+
+    <div class="bg-white rounded-lg border border-slate-200 p-6 max-w-2xl mt-6">
+        <h2 class="text-sm font-medium text-slate-500 mb-4">Étapes ({{ resource.steps|length }})</h2>
+
+        {% if resource.steps|length == 0 %}
+            <p class="text-sm text-slate-400">Aucune étape configurée.</p>
+        {% else %}
+            <ol class="space-y-3">
+                {% for step in resource.steps %}
+                    <li class="border border-slate-100 rounded-md p-3 {{ step.isActive ? '' : 'opacity-50' }}">
+                        <div class="flex items-center gap-2 text-sm">
+                            <span class="text-slate-400 font-mono">{{ loop.index }}.</span>
+                            <span class="font-medium text-slate-900">{{ step.name }}</span>
+                            <span class="inline-flex items-center rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                {{ admin_step_type_label(step) }}
+                            </span>
+                            {% if not step.isActive %}
+                                <span class="text-xs text-slate-400">(désactivée)</span>
+                            {% endif %}
+                        </div>
+                        <p class="text-sm text-slate-600 mt-1.5">{{ admin_step_summary(step) }}</p>
+                    </li>
+                {% endfor %}
+            </ol>
+        {% endif %}
+    </div>
+{% endblock %}

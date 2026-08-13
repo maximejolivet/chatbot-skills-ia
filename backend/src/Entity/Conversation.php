@@ -10,8 +10,8 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
 use App\Controller\ConversationMessagesController;
+use App\Controller\ConversationSourcesController;
 use App\Controller\ConversationStreamController;
-use App\Controller\MessageFeedbackController;
 use App\Repository\ConversationRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection as DoctrineCollection;
@@ -67,13 +67,12 @@ use Sylius\Resource\Model\ResourceInterface;
             output: false,
             name: 'conversation_stream',
         ),
-        new Patch(
-            uriTemplate: '/conversations/{id}/messages/{messageId}/feedback',
-            controller: MessageFeedbackController::class,
+        new Get(
+            uriTemplate: '/conversations/{id}/sources',
+            controller: ConversationSourcesController::class,
             read: true,
-            deserialize: false,
             output: false,
-            name: 'conversation_message_feedback',
+            name: 'conversation_sources',
         ),
     ],
 )]
@@ -95,6 +94,17 @@ class Conversation implements ResourceInterface, OwnedResourceInterface
 
     #[ORM\Column]
     private bool $isActive = true;
+
+    // Set internally by the "set_conversation" workflow step (App\Workflow\
+    // WorkflowExecutionService::handleSetConversation) once the agent has
+    // asked for it in-chat -- never written directly by an API client.
+    #[ApiProperty(writable: false)]
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $visitorFirstName = null;
+
+    #[ApiProperty(writable: false)]
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $visitorLastName = null;
 
     // Not readable/writable over the API: User has no serialization groups
     // configured, so embedding it here would otherwise leak User::password
@@ -128,6 +138,30 @@ class Conversation implements ResourceInterface, OwnedResourceInterface
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    public function getVisitorFirstName(): ?string
+    {
+        return $this->visitorFirstName;
+    }
+
+    public function setVisitorFirstName(?string $visitorFirstName): static
+    {
+        $this->visitorFirstName = $visitorFirstName;
+
+        return $this;
+    }
+
+    public function getVisitorLastName(): ?string
+    {
+        return $this->visitorLastName;
+    }
+
+    public function setVisitorLastName(?string $visitorLastName): static
+    {
+        $this->visitorLastName = $visitorLastName;
+
+        return $this;
     }
 
     public function getTitle(): string
