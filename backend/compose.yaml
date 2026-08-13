@@ -131,7 +131,12 @@ services:
     working_dir: /app
     volumes:
       - ../frontend:/app
-    command: sh -c "npm ci && npm run build && HOST=0.0.0.0 PORT=3000 node .output/server/index.mjs"
+    # Real dev server (Vite HMR), not a one-shot `npm run build` + static
+    # serve -- the latter never picks up source changes without manually
+    # recreating the container. --host 0.0.0.0 so it's reachable from
+    # outside the container (both the 3010 port mapping and the Traefik
+    # "nuxt" route, which proxies HTTP/WS transparently to :3000).
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 3000"
     ports:
       - "3010:3000"
     environment:
