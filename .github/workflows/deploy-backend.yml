@@ -73,12 +73,14 @@ jobs:
       - name: Lint container
         run: php bin/console lint:container
 
+      - name: Run tests
+        run: php bin/phpunit
+
       - name: Composer audit -- CVE scan
         run: composer audit
 
-      # No PHPUnit/PHPStan suite is configured yet in this project -- add a
-      # `test`/static-analysis step here once one exists, rather than
-      # fabricating one.
+      # No PHPStan/static-analysis suite is configured yet in this project --
+      # add a step here once one exists, rather than fabricating one.
 
       # Rebuilt here (on the runner), never on the server -- no vendor/ from
       # a previous deploy sits around to accidentally corrupt.
