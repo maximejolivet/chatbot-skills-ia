@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Enum\MessageFeedback;
 use App\Enum\MessageRole;
 use App\Repository\MessageRepository;
 use Doctrine\ORM\Mapping as ORM;
@@ -38,6 +39,14 @@ class Message implements ResourceInterface
      */
     #[ORM\Column]
     private array $metadata = [];
+
+    /**
+     * Operator-facing thumbs up/down on an assistant reply, set via
+     * PATCH /conversations/{id}/messages/{messageId}/feedback. Null means
+     * no feedback given yet.
+     */
+    #[ORM\Column(length: 10, nullable: true, enumType: MessageFeedback::class)]
+    private ?MessageFeedback $feedback = null;
 
     public function __construct()
     {
@@ -104,6 +113,18 @@ class Message implements ResourceInterface
     public function setMetadata(array $metadata): static
     {
         $this->metadata = $metadata;
+
+        return $this;
+    }
+
+    public function getFeedback(): ?MessageFeedback
+    {
+        return $this->feedback;
+    }
+
+    public function setFeedback(?MessageFeedback $feedback): static
+    {
+        $this->feedback = $feedback;
 
         return $this;
     }

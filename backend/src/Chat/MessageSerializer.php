@@ -22,6 +22,7 @@ final class MessageSerializer
             'content' => $message->getContent(),
             'created_at' => $message->getCreatedAt()->format(\DATE_ATOM),
             'metadata' => $metadata,
+            'feedback' => $message->getFeedback()?->value,
         ];
     }
 }
