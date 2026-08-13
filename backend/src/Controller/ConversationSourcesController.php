@@ -27,10 +27,9 @@ final class ConversationSourcesController
             if (!empty($metadata['sources']) && is_array($metadata['sources'])) {
                 foreach ($metadata['sources'] as $source) {
                     $sources[] = [
-                        'content' => $source['content'] ?? '',
-                        'source_url' => $source['source_url'] ?? '',
-                        'score' => $source['score'] ?? 0.0,
                         'document_id' => $source['document_id'] ?? null,
+                        'document_title' => $source['document_title'] ?? null,
+                        'score' => $source['score'] ?? null,
                         'message_id' => $message->getId(),
                         'message_created_at' => $message->getCreatedAt()->format(\DATE_ATOM),
                     ];
