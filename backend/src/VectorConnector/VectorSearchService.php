@@ -13,7 +13,7 @@ use Symfony\Component\Uid\Uuid;
  * provided by the caller -- this service does not know about agents, documents,
  * or collections as domain concepts (that's knowledge_base's job).
  */
-final class VectorSearchService
+class VectorSearchService
 {
     public const DEFAULT_COLLECTION_NAME = 'chatbot_embeddings';
 

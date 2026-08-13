@@ -18,7 +18,7 @@ use Psr\Log\LoggerInterface;
  * diverge from the DB if a bootstrap step was never run), the common
  * collection is created lazily and eagerly here on first need.
  */
-final class CollectionService
+class CollectionService
 {
     public function __construct(
         private readonly CollectionRepository $collectionRepository,
