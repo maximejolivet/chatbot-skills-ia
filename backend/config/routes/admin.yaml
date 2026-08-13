@@ -105,7 +105,7 @@ app_admin_conversation:
         alias: app.conversation
         section: admin
         path: /admin/conversations
-        templates: admin/crud
+        templates: admin/conversation
         redirect: index
         grid: app_conversation
     type: sylius.resource

@@ -1,0 +1,49 @@
+{% extends 'admin/crud/show.html.twig' %}
+
+{% block content %}
+    {{ parent() }}
+
+    <div class="bg-white rounded-lg border border-slate-200 p-6 max-w-2xl mt-6">
+        <h2 class="text-sm font-medium text-slate-500 mb-4">Messages ({{ resource.messages|length }})</h2>
+
+        {% if resource.messages|length == 0 %}
+            <p class="text-sm text-slate-400">Aucun message.</p>
+        {% else %}
+            <ol class="space-y-3">
+                {% for message in resource.messages %}
+                    <li class="border border-slate-100 rounded-md p-3">
+                        <div class="flex items-center gap-2 text-sm">
+                            <span class="inline-flex items-center rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                {{ message.role.value }}
+                            </span>
+                            <span class="text-xs text-slate-400">{{ message.createdAt|date('d/m/Y H:i') }}</span>
+                            {% if message.feedback %}
+                                <span class="text-xs {{ message.feedback.value == 'positive' ? 'text-emerald-600' : 'text-red-600' }}">
+                                    {{ message.feedback.value == 'positive' ? '👍' : '👎' }}
+                                </span>
+                            {% endif %}
+                        </div>
+                        <p class="text-sm text-slate-700 mt-1.5 whitespace-pre-wrap">{{ message.content }}</p>
+
+                        {% set sources = message.metadata.sources|default([]) %}
+                        {% if sources|length > 0 %}
+                            <div class="mt-2 pt-2 border-t border-slate-100">
+                                <p class="text-xs font-medium text-slate-500 mb-1">Sources</p>
+                                <ul class="space-y-0.5">
+                                    {% for source in sources %}
+                                        <li class="text-xs text-slate-500">
+                                            · {{ source.document_title ?? 'Document' }}
+                                            {% if source.score is not null %}
+                                                <span class="text-slate-400">({{ (source.score * 100)|round }}%)</span>
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ol>
+        {% endif %}
+    </div>
+{% endblock %}
