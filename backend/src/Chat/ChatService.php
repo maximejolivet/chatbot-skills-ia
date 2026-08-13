@@ -28,6 +28,7 @@ final class ChatService
         private readonly EntityManagerInterface $entityManager,
         private readonly MailerInterface $mailer,
         private readonly LoggerInterface $logger,
+        private readonly ConversationHistoryCache $historyCache,
         #[Autowire(env: 'MAILER_FROM_ADDRESS')]
         private readonly string $mailerFromAddress,
         #[Autowire(env: 'OWNER_NOTIFICATION_EMAIL')]
@@ -58,6 +59,8 @@ final class ChatService
         $conversation->addMessage($assistantMsg);
         $this->entityManager->persist($assistantMsg);
         $this->entityManager->flush();
+
+        $this->historyCache->invalidate($conversation->getId());
 
         return $assistantMsg;
     }
@@ -103,9 +106,12 @@ final class ChatService
      */
     private function historyAsChatMessages(int $conversationId): array
     {
-        return array_map(
-            static fn (Message $m) => new LlmChatMessage(role: $m->getRole()->value, content: $m->getContent()),
-            $this->messageRepository->recentHistory($conversationId),
+        return $this->historyCache->remember(
+            $conversationId,
+            fn () => array_map(
+                static fn (Message $m) => new LlmChatMessage(role: $m->getRole()->value, content: $m->getContent()),
+                $this->messageRepository->recentHistory($conversationId),
+            ),
         );
     }
 }

@@ -12,12 +12,15 @@ services:
       # inbox -- MAILER_FROM_ADDRESS stays whatever .env/.env.example says
       # (not infra-specific, unlike the host below).
       MAILER_DSN: smtp://mailer:1025
+      REDIS_URL: redis://redis:6379
     volumes:
       - .:/app
     depends_on:
       database:
         condition: service_healthy
       qdrant:
+        condition: service_started
+      redis:
         condition: service_started
     extra_hosts:
       - "host.docker.internal:host-gateway"
