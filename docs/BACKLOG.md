@@ -992,6 +992,16 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       (`isImage`) en conséquence. Vérifié en conditions réelles (Chrome
       headless, logo Wikipedia) : image affichée correctement dans la
       carte.
+- [x] **Mode compact** — bascule dans l'en-tête (widget et plein écran,
+      `isCompact`/`toggleCompact`, `composables/useCompactMode.ts`, même
+      schéma `localStorage` que le thème/le son) qui réduit le padding
+      (`px-3 py-1.5` au lieu de `px-4 py-2.5`) et les marges entre bulles
+      de `MessageBubble.vue`, sans toucher à la taille du texte — plus de
+      messages visibles à l'écran sans scroller. 3 nouveaux tests
+      (`useCompactMode.test.ts`, même trio que `useNotificationSound`) —
+      suite passée de 43 à 46 tests. Vérifié en conditions réelles (Chrome
+      headless) : padding de bulle bien `6px 12px` après bascule (contre
+      `10px 16px` par défaut).
 
 ---
 
