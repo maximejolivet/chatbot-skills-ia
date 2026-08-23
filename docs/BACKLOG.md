@@ -775,6 +775,20 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       messages) : page 200, les 3 cibles Stimulus (`search`/`role`/`item`)
       bien présentes, `<select>` peuplé de `user`/`assistant`, asset JS servi
       (200) à son URL versionnée par AssetMapper.
+- [x] **Annuler une réponse en cours au clavier (Échap)** — le widget de
+      chat n'avait aucun raccourci clavier : Entrée pour envoyer marchait
+      déjà nativement (`<input>` simple dans un `<form>`), mais rien
+      n'interrompait une génération en cours. `useChatbot.ts` gagne un
+      `AbortController` (`activeRequest`) passé en `signal` au `fetch` du
+      flux SSE, et une fonction `cancelReply()` qui l'annule ; tout ce qui a
+      déjà streamé (`liveMessage`) reste affiché tel quel, pas de retour
+      arrière sur le contenu partiel. `Chatbot.vue` écoute Échap sur
+      `window` et ferme la couche la plus au premier plan dans l'ordre :
+      sélecteur d'emoji ouvert → plein écran → sinon annule la génération en
+      cours (`isLoading`). Un nouveau test (`useChatbot.test.ts`, fetch stub
+      qui ne se résout qu'à l'abandon du signal) vérifie qu'annuler ne pose
+      pas d'erreur et laisse le fil dans un état cohérent — suite passée de
+      33 à 34 tests.
 
 ---
 
