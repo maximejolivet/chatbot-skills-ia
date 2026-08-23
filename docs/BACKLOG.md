@@ -802,6 +802,22 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       widget flottant) : identique en apparence à une ligne (le rayon
       coïncide avec `hauteur/2` à ce stade), mais évite la forme "stade"
       extrême une fois le champ étiré sur plusieurs lignes.
+- [x] **Pastille "nouveau message"** — un message qui arrivait pendant que
+      le visiteur avait remonté dans l'historique le ramenait brutalement en
+      bas (`scrollToBottom()` inconditionnel). `useChatbot.ts` gagne un ref
+      `autoScroll` : `Chatbot.vue` le désactive via `onMessagesScroll`
+      (`@scroll` sur le conteneur, distance au bas > 48px) et le réactive
+      automatiquement si le visiteur reredescend lui-même ; `scrollToBottom()`
+      ne fait plus rien tant qu'il est désactivé. Un `watch` profond sur
+      `messages` détecte alors qu'une réponse est arrivée pendant ce temps et
+      affiche une pastille flottante "Nouveau message" plutôt que de forcer
+      le défilement — cliquer dessus (`jumpToLatest`) réactive `autoScroll`
+      et descend. Envoyer/réessayer/régénérer réactive aussi `autoScroll`
+      d'office (action explicite du visiteur = "ramène-moi au direct"), donc
+      la pastille n'apparaît jamais pour les propres messages du visiteur.
+      Deux nouveaux tests (`useChatbot.test.ts`) vérifient le gate de
+      `scrollToBottom()` et la réactivation par `sendMessage()` — suite
+      passée de 34 à 36 tests.
 
 ---
 
