@@ -894,6 +894,17 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       un `/` tapé légitimement dans le message ou la recherche d'emoji).
       Vérifié en conditions réelles (Chrome headless) : focus sur le
       `<textarea>` dès le montage, et à nouveau après un blur + `/`.
+- [x] **Notification desktop en arrière-plan** — le son (voir plus haut)
+      ne signale rien si le visiteur a changé d'onglet et est muet.
+      `useChatbot.ts` gagne `ensureNotificationPermission()` (appelée
+      depuis `sendMessage()`, donc toujours depuis un geste utilisateur —
+      requis par la plupart des navigateurs ; demandée au plus une fois
+      par montage, seulement si jamais tranchée) et `notifyIfHidden()`
+      (déclenche une `Notification` seulement si `document.hidden` et la
+      permission est accordée — jamais si l'onglet est déjà au premier
+      plan). Clic sur la notification : `window.focus()` + fermeture.
+      3 nouveaux tests (`Notification` global stubbé) — suite passée de
+      40 à 43 tests.
 
 ---
 
