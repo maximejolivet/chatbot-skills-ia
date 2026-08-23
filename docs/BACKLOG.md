@@ -1047,6 +1047,18 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       réelles (Chrome headless, page d'accueil) : `Ctrl+K` ouvre puis
       referme bien le widget.
 
+- [x] **Navigation clavier dans le picker d'emoji** — seuls le clic et la
+      recherche texte fonctionnaient. Roving tabindex sur la grille (un
+      seul bouton dans l'ordre de tabulation à la fois, `focusedEmojiIndex`)
+      avec un vrai déplacement du focus DOM (`.focus()`, pas un simple
+      surlignage CSS) — flèches pour naviguer (`ArrowLeft`/`Right` ±1,
+      `ArrowUp`/`Down` ±6 colonnes), Entrée/Espace insèrent nativement via
+      le `@click` du bouton focus. `ArrowDown`/Entrée depuis le champ de
+      recherche entre directement dans la grille au premier résultat.
+      Vérifié en conditions réelles (Chrome headless) : focus déplacé du
+      champ de recherche vers l'emoji d'index 0 puis 1 après
+      `ArrowDown`/`ArrowRight`, anneau de focus visible sur la capture.
+
 ---
 
 *Ce fichier est un backlog vivant : cocher au fur et à mesure, ajouter/retirer
