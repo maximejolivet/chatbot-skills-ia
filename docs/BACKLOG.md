@@ -933,6 +933,13 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       direct (localhost, hostname Docker interne `chatbot-symfony`, IP de
       métadonnées cloud `169.254.169.254`) tous bloqués — aucune fuite
       d'information, pas de plantage.
+- [x] **Compteur de caractères** — aucun repère sur la longueur d'un
+      message en train d'être tapé. `showCharCount` (`Chatbot.vue`)
+      affiche `inputValue.length` en petit, discret, sous le champ, mais
+      seulement au-delà de 500 caractères — pas de maximum imposé, un
+      indicateur purement informatif pour un message qui commence à être
+      long. Vérifié en conditions réelles (Chrome headless) : compteur
+      absent à 5 caractères, affiche bien "501" à 501 caractères.
 
 ---
 
