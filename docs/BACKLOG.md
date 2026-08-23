@@ -867,6 +867,21 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       4 nouveaux tests (`useNotificationSound.test.ts`, nouveau fichier :
       valeur par défaut, lecture d'un choix persisté, toggle + persistance,
       pas d'erreur pendant que muet) — suite passée de 36 à 40 tests.
+- [x] **Copier un bloc de code** — le seul bouton copier existant (`MessageBubble.vue`)
+      copiait tout le message ; copier juste un extrait de code depuis une
+      réponse qui contient plusieurs blocs était pénible. `marked` reçoit un
+      `Renderer` custom qui surcharge uniquement `code` : appelle le
+      renderer par défaut pour garder l'échappement HTML correct, puis
+      enveloppe le `<pre><code>` résultant dans un `<div class="code-block-wrapper">`
+      avec un bouton "copier" superposé. Pas de gestionnaire Vue possible
+      sur un bouton injecté via `v-html` (et DOMPurify retire les
+      attributs `on*` de toute façon) : un seul `@click` délégué sur le
+      conteneur (`onContentClick`) route vers le bon bouton, lit le texte
+      exact depuis le `<code>` voisin (pas de duplication dans un
+      data-attribute) et anime l'icône en manipulant le DOM directement
+      (imperatif, hors de l'arbre réactif de Vue). Vérifié en conditions
+      réelles (Chrome headless, flux SSE simulé avec un bloc `js`) : bouton
+      et wrapper bien présents, texte extrait exact (`code.textContent`).
 
 ---
 
