@@ -1,0 +1,143 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Analytics{% endblock %}
+{% block header %}Analytics{% endblock %}
+
+{% block content %}
+    <p class="mb-6 text-sm text-muted-foreground">
+        Vue d'ensemble de l'activité du chatbot : conversations, tokens consommés, retours des
+        visiteurs et recherches vectorielles.
+    </p>
+
+    {# Stat cards -- shadcn/ui "dashboard-01" pattern (rounded-xl card, icon top-right,
+       big number, muted subtext). See assets/styles/app.css for the token definitions. #}
+    <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
+                <h3 class="text-sm font-medium tracking-tight text-foreground">Conversations</h3>
+                <svg class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+            </div>
+            <div class="px-6 pb-6">
+                <div class="text-2xl font-bold text-foreground">{{ stats.conversations.total }}</div>
+                <p class="text-xs text-muted-foreground">
+                    {{ stats.conversations.active }} active{{ stats.conversations.active > 1 ? 's' : '' }}
+                </p>
+            </div>
+        </div>
+
+        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
+                <h3 class="text-sm font-medium tracking-tight text-foreground">Messages</h3>
+                <svg class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 10h8M8 14h4m9-2c0 4.418-4.03 8-9 8a9.9 9.9 0 01-3.8-.75L3 20l1.05-3.4A7.93 7.93 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+            </div>
+            <div class="px-6 pb-6">
+                <div class="text-2xl font-bold text-foreground">{{ stats.messages.total }}</div>
+                <p class="text-xs text-muted-foreground">
+                    {{ stats.messages.by_role.user|default(0) }} visiteur · {{ stats.messages.by_role.assistant|default(0) }} assistant
+                </p>
+            </div>
+        </div>
+
+        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
+                <h3 class="text-sm font-medium tracking-tight text-foreground">Tokens consommés</h3>
+                <svg class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 3L4 14h6l-1 7 9-11h-6l1-7z" />
+                </svg>
+            </div>
+            <div class="px-6 pb-6">
+                <div class="text-2xl font-bold text-foreground">{{ stats.token_usage.total_tokens|number_format(0, ',', ' ') }}</div>
+                <p class="text-xs text-muted-foreground">
+                    sur {{ stats.token_usage.message_count }} réponse{{ stats.token_usage.message_count > 1 ? 's' : '' }} assistant
+                </p>
+            </div>
+        </div>
+
+        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+            <div class="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
+                <h3 class="text-sm font-medium tracking-tight text-foreground">Recherches vectorielles</h3>
+                <svg class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-4.35-4.35M19 11a8 8 0 11-16 0 8 8 0 0116 0z" />
+                </svg>
+            </div>
+            <div class="px-6 pb-6">
+                <div class="text-2xl font-bold text-foreground">{{ stats.search_queries.total }}</div>
+                <p class="text-xs text-muted-foreground">
+                    {{ stats.search_queries.avg_execution_time|number_format(3, ',', ' ') }}s en moyenne · {{ stats.search_queries.avg_results_count|number_format(1, ',', ' ') }} résultats/requête
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm lg:col-span-1">
+            <div class="flex flex-col space-y-1.5 p-6">
+                <h3 class="text-lg font-semibold leading-none tracking-tight text-foreground">Feedback</h3>
+                <p class="text-sm text-muted-foreground">Retours des visiteurs sur les réponses de l'assistant</p>
+            </div>
+            {% set feedbackTotal = stats.feedback.positive + stats.feedback.negative + stats.feedback.none %}
+            <div class="space-y-4 p-6 pt-0">
+                {% set feedbackRows = [
+                    {label: 'Positif', value: stats.feedback.positive, bar: 'bg-emerald-500'},
+                    {label: 'Négatif', value: stats.feedback.negative, bar: 'bg-red-500'},
+                    {label: 'Sans retour', value: stats.feedback.none, bar: 'bg-muted-foreground/40'},
+                ] %}
+                {% for row in feedbackRows %}
+                    <div>
+                        <div class="mb-1.5 flex items-center justify-between text-sm">
+                            <span class="text-foreground">{{ row.label }}</span>
+                            <span class="font-medium text-foreground">{{ row.value }}</span>
+                        </div>
+                        <div class="h-2 w-full overflow-hidden rounded-full bg-secondary">
+                            <div class="h-full {{ row.bar }} rounded-full"
+                                style="width: {{ feedbackTotal > 0 ? (row.value / feedbackTotal * 100) : 0 }}%"></div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm lg:col-span-2">
+            <div class="flex flex-col space-y-1.5 p-6">
+                <h3 class="text-lg font-semibold leading-none tracking-tight text-foreground">Recherches vectorielles récentes</h3>
+                <p class="text-sm text-muted-foreground">10 dernières requêtes exécutées contre Qdrant</p>
+            </div>
+            <div class="px-6 pb-6">
+                <div class="overflow-x-auto rounded-lg border border-border">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-border">
+                                <th class="h-10 px-3 text-left align-middle font-medium text-muted-foreground">Requête</th>
+                                <th class="h-10 px-3 text-left align-middle font-medium text-muted-foreground">Résultats</th>
+                                <th class="h-10 px-3 text-left align-middle font-medium text-muted-foreground">Durée</th>
+                                <th class="h-10 px-3 text-left align-middle font-medium text-muted-foreground">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for query in stats.search_queries.recent %}
+                                <tr class="border-b border-border last:border-0 transition-colors hover:bg-muted/50">
+                                    <td class="max-w-xs truncate p-3 align-middle text-foreground">{{ query.query }}</td>
+                                    <td class="p-3 align-middle text-foreground">{{ query.resultsCount }}</td>
+                                    <td class="p-3 align-middle text-foreground">{{ query.executionTime|number_format(3, ',', ' ') }}s</td>
+                                    <td class="p-3 align-middle text-muted-foreground">{{ query.createdAt|date('d/m/Y H:i') }}</td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="p-8 text-center text-muted-foreground">Aucune recherche enregistrée.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

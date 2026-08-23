@@ -87,7 +87,7 @@ final class AdminExtension extends AbstractExtension
             WorkflowStepType::DataTransform => \sprintf(
                 'Modifie les données : %s',
                 implode(', ', array_map(
-                    static fn (array $t) => \sprintf('%s(%s)', $t['operation'] ?? '?', $t['field'] ?? '?'),
+                    static fn(array $t): string => \sprintf('%s(%s)', $t['operation'] ?? '?', $t['field'] ?? '?'),
                     $c['transformations'] ?? [],
                 )) ?: 'aucune transformation configurée',
             ),
@@ -111,13 +111,19 @@ final class AdminExtension extends AbstractExtension
      */
     public function nav(): array
     {
-        $item = fn (string $label, string $resource) => [
+        $item = fn(string $label, string $resource): array => [
             'label' => $label,
             'resource' => $resource,
             'route' => "app_admin_{$resource}_index",
         ];
 
         $groups = [
+            [
+                'label' => 'Analytics',
+                'items' => [
+                    $item('Vue d\'ensemble', 'analytics'),
+                ],
+            ],
             [
                 'label' => 'IA & Vecteurs',
                 'items' => [
@@ -158,11 +164,11 @@ final class AdminExtension extends AbstractExtension
         foreach ($groups as $i => $group) {
             $groups[$i]['items'] = array_values(array_filter(
                 $group['items'],
-                static fn (array $item) => null !== $routes->get($item['route']),
+                static fn(array $item): bool => $routes->get($item['route']) instanceof \Symfony\Component\Routing\Route,
             ));
         }
 
-        return array_values(array_filter($groups, static fn (array $group) => [] !== $group['items']));
+        return array_values(array_filter($groups, static fn(array $group): bool => [] !== $group['items']));
     }
 
     public function fieldValue(object $row, string $path): string
@@ -204,6 +210,6 @@ final class AdminExtension extends AbstractExtension
             }
         }
 
-        return '#'.($this->propertyAccessor->isReadable($value, 'id') ? $this->propertyAccessor->getValue($value, 'id') : '');
+        return '#' . ($this->propertyAccessor->isReadable($value, 'id') ? $this->propertyAccessor->getValue($value, 'id') : '');
     }
 }
