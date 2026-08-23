@@ -976,6 +976,22 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       jusqu'à copier `renderer.parser` dessus juste avant l'appel. Vérifié
       en conditions réelles (Chrome headless, tableau 6 colonnes) : rendu
       correct, `overflow-x: auto` bien appliqué au wrapper.
+- [x] **Aperçu d'image inline** — extension du système d'aperçu de lien
+      (`GET /api/link-preview`) : si l'URL pointe directement sur une
+      image, tranché sur le `Content-Type` réel de la réponse (pas
+      l'extension de l'URL — plus fiable, une image peut être servie sans
+      extension par un CDN), la route lit jusqu'à 3 Mo et renvoie
+      `imageDataUri` au lieu de titre/favicon — un seul aller-retour,
+      inliné en `data:` URI pour la même raison que le favicon (CSP
+      `img-src 'self' data:`). Nécessité de séparer la résolution de
+      requête (validation d'hôte + suivi des redirections) de la lecture
+      du corps (`resolvePublicResponse`/`readBounded`, refactor de l'ancien
+      `fetchPublicResource` monolithique) : impossible de savoir combien
+      d'octets lire avant de connaître le vrai `Content-Type`, qui n'arrive
+      qu'après la résolution. `LinkPreviewCard.vue` bascule son rendu
+      (`isImage`) en conséquence. Vérifié en conditions réelles (Chrome
+      headless, logo Wikipedia) : image affichée correctement dans la
+      carte.
 
 ---
 
