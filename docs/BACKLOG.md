@@ -882,6 +882,18 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       (imperatif, hors de l'arbre réactif de Vue). Vérifié en conditions
       réelles (Chrome headless, flux SSE simulé avec un bloc `js`) : bouton
       et wrapper bien présents, texte extrait exact (`code.textContent`).
+- [x] **Focus automatique + raccourci `/`** — le champ de saisie n'était
+      jamais focus automatiquement (ouverture du widget, chargement de
+      `/chat`, après un envoi via clic sur le bouton plutôt qu'Entrée), et
+      rien ne permettait d'y revenir rapidement depuis ailleurs sur la
+      page. `focusInput()` (nouveau, `Chatbot.vue`) est appelé à
+      `onMounted`, après `onSubmit`/`onInputKeydown`. Nouveau raccourci
+      `/` sur `onKeydown` (même écouteur `window` qu'Échap) : ramène le
+      focus dans le champ depuis n'importe où, sauf si le visiteur est
+      déjà en train de taper ailleurs (`isTypingTarget` — évite de voler
+      un `/` tapé légitimement dans le message ou la recherche d'emoji).
+      Vérifié en conditions réelles (Chrome headless) : focus sur le
+      `<textarea>` dès le montage, et à nouveau après un blur + `/`.
 
 ---
 
