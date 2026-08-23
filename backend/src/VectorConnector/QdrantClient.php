@@ -14,7 +14,7 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  */
 final class QdrantClient
 {
-    public const VECTOR_SIZE = 1024; // mxbai-embed-large embedding dimension
+    public const int VECTOR_SIZE = 1024; // mxbai-embed-large embedding dimension
 
     /** @var array<string, true> */
     private array $ensuredCollections = [];
@@ -28,7 +28,28 @@ final class QdrantClient
         private readonly string $port,
         #[Autowire(env: 'QDRANT_API_KEY')]
         private readonly string $apiKey,
-    ) {
+    ) {}
+
+    /**
+     * Cheap reachability probe for the aggregated health endpoint (see
+     * App\Controller\HealthController) -- lists collections rather than
+     * hitting Qdrant's bare root, so a reachable-but-misconfigured instance
+     * (wrong API key, etc.) still surfaces as an error instead of a false OK.
+     *
+     * @return array{status: string, message?: string}
+     */
+    public function ping(): array
+    {
+        try {
+            $response = $this->request('GET', '/collections', ['timeout' => 5]);
+            if (200 === $response->getStatusCode()) {
+                return ['status' => 'ok'];
+            }
+
+            return ['status' => 'error', 'message' => sprintf('HTTP %d', $response->getStatusCode())];
+        } catch (\Throwable $e) {
+            return ['status' => 'error', 'message' => $e->getMessage()];
+        }
     }
 
     /**
@@ -77,8 +98,8 @@ final class QdrantClient
     }
 
     /**
-     * @param float[]                    $queryVector
-     * @param array<string, mixed>|null  $filterConditions
+     * @param float[]                   $queryVector
+     * @param array<string, mixed>|null $filterConditions
      *
      * @return array<int, array{id: string|int, score: float, payload: array<string, mixed>}>
      */
@@ -94,7 +115,7 @@ final class QdrantClient
         if ($filterConditions) {
             $payload['filter'] = [
                 'must' => array_map(
-                    static fn (string $key, mixed $value) => ['key' => $key, 'match' => ['value' => $value]],
+                    static fn(string $key, mixed $value): array => ['key' => $key, 'match' => ['value' => $value]],
                     array_keys($filterConditions),
                     array_values($filterConditions),
                 ),
@@ -105,7 +126,7 @@ final class QdrantClient
         $points = $response->toArray()['result']['points'] ?? [];
 
         return array_map(
-            static fn (array $point) => [
+            static fn(array $point): array => [
                 'id' => $point['id'],
                 'score' => $point['score'],
                 'payload' => $point['payload'] ?? [],
