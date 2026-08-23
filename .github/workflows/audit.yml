@@ -1,0 +1,57 @@
+# Dependency vulnerability scan (composer audit + npm audit), already
+# available locally via `make audit` -- this wires the same checks into every
+# PR instead of only running composer audit as a side effect of the deploy
+# workflow (deploy-backend.yml, push to master only, backend-only). Both jobs
+# audit straight off the lock file (composer's --locked, npm's
+# --package-lock-only) so no dependency install is needed first.
+
+name: Dependency audit
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  backend:
+    name: composer audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Composer audit -- CVE scan (against composer.lock)
+        run: composer audit --locked
+
+  frontend:
+    name: npm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      # Informational only (new majors, not vulnerabilities) -- doesn't gate
+      # the PR, same as `make audit` running it before npm audit with `;` not
+      # `&&`.
+      - name: npm outdated (informational)
+        continue-on-error: true
+        run: npm outdated
+
+      - name: npm audit -- CVE scan (against package-lock.json)
+        run: npm audit --package-lock-only
