@@ -323,6 +323,18 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       indisponible pendant la session) — vérification statique à la place
       (aucune ressource externe au-delà de Google Fonts référencée nulle
       part dans le code).
+- [x] **Curseur clignotant pendant le streaming** — visuel indiquant que la
+      réponse est en train de se générer, maintenant que le streaming
+      token-par-token existe vraiment (voir l'item backend correspondant).
+      Réutilise une utilité Tailwind `animate-blink` déjà définie mais
+      jamais utilisée (même schéma que `LlmClientInterface::stream()` :
+      construit en anticipation d'une fonctionnalité, jamais branché avant
+      cette passe). Nouvelle prop `isStreaming` sur `MessageBubble.vue`
+      (`isLoading && dernier message && role assistant`, calculée dans
+      `Chatbot.vue`), petite barre verticale après le contenu rendu.
+      `TypingIndicator` (points rebondissants) et ce curseur sont
+      complémentaires et ne se chevauchent jamais : l'un s'affiche avant que
+      la bulle assistant existe (aucun delta encore arrivé), l'autre après.
 
 ## Backend (`backend/`)
 
