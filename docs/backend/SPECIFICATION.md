@@ -736,6 +736,8 @@ Toutes les requêtes ci-dessous nécessitent l'authentification HTTP Basic (`-u 
 
 ### 12.1 Limites d'architecture assumées
 
-Aucune limite active listée ici pour l'instant.
+| Limite | Détail | Impact |
+| --- | --- | --- |
+| **Mitigation anti-injection de prompt, pas élimination** | Le contenu RAG est délimité (`<extrait_document>`) et le prompt système précise explicitement de le traiter comme donnée, jamais comme instruction (`ChatOrchestrationService::buildDocumentsBlock()`) | Réduit mais ne garantit pas l'immunité contre un chunk de document conçu pour détourner le comportement du modèle — aucun garde-fou côté sortie (pas de modèle de modération séparé) pour rattraper ce qui passerait malgré tout |
 
 Résolues depuis : authentification multi-utilisateur avec cloisonnement par propriétaire (§10), file de messages asynchrone pour le chunking/la vectorisation et le déclenchement de workflow (§6.2, §7.3), CSRF stateless sur les formulaires du backoffice (§9), streaming token-par-token via SSE hors tool-calling (§5.5, voir `docs/BACKLOG.md` pour le détail du chantier).

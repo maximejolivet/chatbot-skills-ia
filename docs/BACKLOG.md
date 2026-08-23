@@ -697,6 +697,28 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
         *et* après Rector, `lint:container`/`lint:yaml`/`lint:twig`, et un
         test en conditions réelles (`quick-send` + `/api/health`, tous deux
         `200`) après l'ensemble des changements.
+- [x] **Durcissement anti-injection de prompt sur le contenu RAG** — le
+      contenu des chunks de documents était concaténé brut dans le prompt
+      système, sans délimitation ni avertissement. N'importe quel fichier
+      uploadé dans la base de connaissances pouvait donc contenir du texte
+      conçu pour ressembler à une instruction ("ignore les consignes
+      précédentes...") et potentiellement détourner le comportement de
+      l'assistant. Nouveau `ChatOrchestrationService::buildDocumentsBlock()` :
+      chaque extrait est entouré de balises `<extrait_document id="N">`, et
+      le bloc entier est précédé d'une consigne explicite précisant que ce
+      contenu vient de fichiers uploadés (pas de l'utilisateur ni de
+      l'opérateur) et doit être traité uniquement comme donnée factuelle à
+      citer/résumer, jamais comme instruction à suivre. **Limite assumée et
+      documentée** (`docs/backend/SPECIFICATION.md` §12.1) : ceci réduit la
+      probabilité qu'un modèle se laisse détourner, ça ne l'élimine pas —
+      aucun garde-fou côté sortie (pas de modèle de modération séparé) pour
+      rattraper ce qui passerait malgré tout. Pas de filtrage par regex de
+      motifs "suspects" dans le contenu : ce genre d'heuristique est
+      notoirement contournable et donne une fausse impression de sécurité,
+      délibérément pas fait. 1 test ajouté (vérifie que le contenu d'un
+      chunk contenant une tentative d'injection ressort bien délimité et
+      encadré par la consigne dans le message système envoyé au LLM) — suite
+      passée de 81 à 82 tests.
 
 ---
 
