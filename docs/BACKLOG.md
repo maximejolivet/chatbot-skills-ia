@@ -847,6 +847,16 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       conséquence. Avatar/horodatage/actions restent affichés sur chaque
       bulle malgré tout — seul l'espacement change, pas l'information
       disponible.
+- [x] **Skeleton pendant la restauration de l'historique** — `restoreConversation`
+      fait un aller-retour réseau avant d'afficher quoi que ce soit ; le
+      panneau passait d'un écran vide à la conversation complète d'un coup.
+      Nouveau `isRestoringHistory` (`useChatbot.ts`, `true` pendant l'appel
+      à `GET /api/conversations/{id}/messages`, remis à `false` dans un
+      `finally`) affiche 3 bulles `animate-pulse` (alignées comme de
+      vrais messages) à la place. Vérifié en conditions réelles (Chrome
+      headless, requête interceptée avec un délai de 4s) : le skeleton
+      s'affiche bien pendant l'attente, à la bonne position (bas du
+      panneau).
 
 ---
 
