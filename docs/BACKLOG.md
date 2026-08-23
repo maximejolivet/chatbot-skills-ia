@@ -335,6 +335,24 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       `TypingIndicator` (points rebondissants) et ce curseur sont
       complémentaires et ne se chevauchent jamais : l'un s'affiche avant que
       la bulle assistant existe (aucun delta encore arrivé), l'autre après.
+- [x] **Cache HTTP léger sur les endpoints publics en lecture seule**
+      (`/api/faqs`, `/api/ai_agents`) — ces deux endpoints sont identiques
+      pour tout visiteur (pas de variation par utilisateur, gérés uniquement
+      via le backoffice admin, aucune opération d'écriture exposée côté API)
+      et sollicités à chaque montage du widget. Simplement poser
+      `Cache-Control` côté Symfony (API Platform `cacheHeaders`) n'aurait
+      rien changé en pratique : rien dans cette architecture n'honore ce
+      header (pas de proxy de cache devant le `php -S` de prod). Le vrai
+      point de passage unique de chaque requête visiteur est le proxy Nuxt —
+      donc deux routes Nitro dédiées (`server/api/faqs.get.ts`,
+      `server/api/ai_agents.get.ts`, plus spécifiques que le catch-all
+      générique `[...path].ts` et prioritaires devant lui) utilisant
+      `defineCachedEventHandler` (TTL 5 min, clé statique puisque la réponse
+      est identique pour tout le monde). Vérifié en conditions réelles :
+      premier appel ~0,6-0,7 s (vrai aller-retour backend), appels suivants
+      ~5 ms (cache hit, >100x plus rapide) ; endpoints non concernés
+      (`quick-send`, `llm-status`) toujours au vert, donc pas d'effet de
+      bord sur le catch-all générique.
 
 ## Backend (`backend/`)
 
