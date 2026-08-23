@@ -1,0 +1,87 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% set resource_labels = {
+    ai_provider_config: 'Provider IA',
+    vector_index: 'Index vectoriel',
+    document_category: 'Catégorie',
+    faq: 'FAQ',
+    collection: 'Collection',
+    document: 'Document',
+    workflow: 'Workflow',
+    ai_agent: 'Agent IA',
+    conversation: 'Conversation',
+    user: 'Utilisateur',
+} %}
+
+{% set action_badges = {
+    create: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    update: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+    delete: 'bg-red-500/10 text-red-600 dark:text-red-400',
+} %}
+
+{% set action_labels = {
+    create: 'Création',
+    update: 'Modification',
+    delete: 'Suppression',
+} %}
+
+{% block title %}Journal d'audit{% endblock %}
+{% block header %}Journal d'audit{% endblock %}
+
+{% block content %}
+    <p class="mb-6 text-sm text-muted-foreground">
+        Qui a créé, modifié ou supprimé quelle ressource, et quand — {{ nbResults }} action{{ nbResults > 1 ? 's' : '' }} enregistrée{{ nbResults > 1 ? 's' : '' }}.
+    </p>
+
+    <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-border text-sm">
+                <thead class="bg-muted/50">
+                    <tr>
+                        <th class="px-4 py-2.5 text-left font-medium text-muted-foreground">Date</th>
+                        <th class="px-4 py-2.5 text-left font-medium text-muted-foreground">Action</th>
+                        <th class="px-4 py-2.5 text-left font-medium text-muted-foreground">Ressource</th>
+                        <th class="px-4 py-2.5 text-left font-medium text-muted-foreground">Élément</th>
+                        <th class="px-4 py-2.5 text-left font-medium text-muted-foreground">Par</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-border">
+                    {% for entry in entries %}
+                        <tr class="transition-colors hover:bg-muted/50">
+                            <td class="px-4 py-2.5 whitespace-nowrap text-muted-foreground">{{ entry.occurredAt|date('d/m/Y H:i:s') }}</td>
+                            <td class="px-4 py-2.5">
+                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ action_badges[entry.action] ?? '' }}">
+                                    {{ action_labels[entry.action] ?? entry.action }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-2.5 text-foreground">{{ resource_labels[entry.resourceType] ?? entry.resourceType }}</td>
+                            <td class="px-4 py-2.5 text-foreground">
+                                {{ entry.resourceLabel ?? '—' }}
+                                {% if entry.resourceId %}<span class="text-muted-foreground">#{{ entry.resourceId }}</span>{% endif %}
+                            </td>
+                            <td class="px-4 py-2.5 text-muted-foreground">{{ entry.actorEmail ?? '—' }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="px-4 py-8 text-center text-muted-foreground">Aucune action enregistrée.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if nbPages > 1 %}
+            <div class="flex items-center justify-between px-4 py-3 border-t border-border text-sm text-muted-foreground">
+                <span>Page {{ currentPage }} / {{ nbPages }} ({{ nbResults }} au total)</span>
+                <div class="space-x-2">
+                    {% if hasPreviousPage %}
+                        <a href="{{ path('app_admin_audit_log_index', {page: currentPage - 1}) }}" class="text-primary hover:underline">← Précédent</a>
+                    {% endif %}
+                    {% if hasNextPage %}
+                        <a href="{{ path('app_admin_audit_log_index', {page: currentPage + 1}) }}" class="text-primary hover:underline">Suivant →</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

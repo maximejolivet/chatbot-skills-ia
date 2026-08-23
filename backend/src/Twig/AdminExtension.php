@@ -156,6 +156,12 @@ final class AdminExtension extends AbstractExtension
                     $item('Messages', 'message'),
                 ],
             ],
+            [
+                'label' => 'Administration',
+                'items' => [
+                    $item('Journal d\'audit', 'audit_log'),
+                ],
+            ],
         ];
 
         // Only link to resources whose routes are already registered, so the
