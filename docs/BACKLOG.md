@@ -959,6 +959,23 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       `animation-name` bien `none` sur le skeleton de restauration
       d'historique avec la préférence active, `aura-drift` bien présent
       sans elle — la bascule fonctionne dans les deux sens.
+- [x] **Tableaux markdown défilants** — `prose-table` n'avait qu'une marge
+      (`prose-table:my-2`), aucun `overflow-x-auto` : un tableau plus large
+      que la bulle (`max-w-[80%]`) débordait franchement au lieu de
+      défiler. `MessageBubble.vue` surcharge la méthode `table` du
+      `Renderer` `marked` (même technique que le bouton copier des blocs
+      de code) pour envelopper le `<table>` déjà rendu dans un
+      `<div class="overflow-x-auto">` — `display: block` sur `<table>`
+      casserait l'algorithme de mise en page tabulaire, d'où le wrapper
+      plutôt qu'une classe directe. Bug réel trouvé en testant : contrairement
+      à `code()`, `table()` parse le markdown inline de chaque cellule via
+      `this.parser.parseInline()`, et le `Renderer` par défaut instancié à
+      part (`defaultRenderer`) n'a jamais son `.parser` positionné par
+      `marked` — chaque tableau plantait
+      (`Cannot read properties of undefined (reading 'parseInline')`)
+      jusqu'à copier `renderer.parser` dessus juste avant l'appel. Vérifié
+      en conditions réelles (Chrome headless, tableau 6 colonnes) : rendu
+      correct, `overflow-x: auto` bien appliqué au wrapper.
 
 ---
 
