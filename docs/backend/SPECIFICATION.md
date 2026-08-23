@@ -72,7 +72,7 @@ src/
 ├── Enum/                    # enums PHP 8.1 pour chaque champ à choix fermé
 ├── Repository/               # repositories Doctrine (1 par entité)
 ├── Controller/               # contrôleurs API Platform custom + Admin/DashboardController
-├── ApiResource/               # ressources API Platform "virtuelles" (non-entités) : quick-send, recherche/stats vectorielles, statut LLM/embedding
+├── ApiResource/               # ressources API Platform "virtuelles" (non-entités) : quick-send, recherche/stats vectorielles, statut LLM/embedding, health check agrégé
 ├── Form/                      # formulaires Symfony pour le backoffice
 ├── Grid/                      # définitions de grilles Sylius (colonnes/actions des listes admin)
 └── Twig/AdminExtension.php    # rendu générique des champs dans les templates admin
@@ -141,7 +141,7 @@ ai_providers  ──┐
 
 **`DocumentCategory`** — `name` (unique), `description`. CRUD complet.
 
-**`Faq`** — `question` (500), `answer` (text), `category` (nullable), `isActive`, `tags` (array). CRUD complet. Aucun champ `created_by` (pas de scoping par utilisateur).
+**`Faq`** — `question` (500), `answer` (text), `category` (nullable), `isActive`, `tags` (array). Lecture seule via REST (`GetCollection(paginationEnabled: false)` + `Get` uniquement, `PUBLIC_ACCESS` — mêmes conditions que `AiAgent`), écriture réservée au backoffice. `App\Doctrine\FaqActiveCollectionExtension` exclut les FAQ `isActive = false` de la collection publique (la grille `/admin/faqs` les liste toutes, via une requête Sylius séparée qui ne passe pas par API Platform). Consommée côté frontend comme questions de conversation suggérées (`frontend/composables/useFaqs.ts`, sur la home et le panneau chat) — toujours pas référencée dans `src/Chat/`, `src/KnowledgeBase/` ou `src/VectorConnector/` : un agent ne voit jamais ces entrées en répondant. Aucun champ `created_by` (pas de scoping par utilisateur).
 
 **`Collection`** — un regroupement logique de documents, optionnellement lié à un agent et/ou un index vectoriel.
 | Champ                          | Type                                                                                        |
@@ -406,11 +406,15 @@ Ces métadonnées enrichissent le `payload` de chaque point Qdrant (`category`, 
 - `upsert()` : `PUT /collections/{name}/points?wait=true`.
 - `search()` : `POST /collections/{name}/points/query`, avec un filtre optionnel (`filter.must`, correspondance exacte sur une clé du payload — ex. `category_id`).
 - `delete()` : `POST /collections/{name}/points/delete`.
+- `ping()` : `GET /collections` (probe de disponibilité, jamais d'exception — utilisé par `GET /api/health`, voir §8.7).
 
-**`VectorSearchService`** — orchestration RAG au sens strict :
-- `search()` : embed la requête → recherche dans Qdrant → reformate les résultats (`content`, `document_id`, `document_title`, `chunk_index`, `score`, `metadata`) → **journalise** la requête dans `SearchQuery` (si un `VectorIndex` existe pour cette collection).
+**`VectorSearchService`** — orchestration RAG, **recherche hybride** (vecteur + lexical) depuis l'ajout de la recherche BM25 :
+- `search()` : embed la requête (via `QueryEmbeddingCache`, voir §6.6) → recherche vectorielle dans Qdrant **et** recherche lexicale (FULLTEXT MariaDB) en parallèle logique, **fusionnées par Reciprocal Rank Fusion** (RRF, `k=60`) plutôt qu'un classement vecteur seul → reformate les résultats (`content`, `document_id`, `document_title`, `chunk_index`, `score`, `metadata`) → **journalise** la requête dans `SearchQuery` (si un `VectorIndex` existe pour cette collection). Chaque camp est sur-échantillonné (`limit × 4`, borne basse `limit + 20`) avant fusion et troncature au `limit` demandé.
+  - `lexicalSearch()` (privée) : `MATCH(document_chunk.content) AGAINST (:query IN NATURAL LANGUAGE MODE)`, une relevance de type BM25 sur l'index `document_chunk_content_fulltext` (migration `Version20260822220000`, InnoDB/MariaDB). Filtrable par `category_id` (jointure sur `Document.category`) ; `document_type`/`language`/`complexity` du filtre `search()` ne s'appliquent qu'au camp vectoriel (ils vivent dans le payload Qdrant `intelligent_analysis`, pas en colonnes `DocumentChunk`). Échec de la requête SQL (index absent, erreur FULLTEXT) → dégrade silencieusement vers vecteur seul (log `warning`), ne fait jamais échouer `search()`.
+  - **Limite connue** : la recherche lexicale interroge `document_chunk` sans filtrer par collection Qdrant (elle n'a pas de notion de "collection" — c'est un concept Qdrant, pas une colonne `DocumentChunk`) ; avec plusieurs collections actives contenant des documents différents, un résultat lexical pourrait techniquement provenir d'une collection distincte de celle demandée. Sans impact connu pour le déploiement actuel (une seule base de connaissances active réellement peuplée).
+  - `score` du résultat retourné reste la similarité cosinus Qdrant quand le chunk est aussi un hit vectoriel (comportement inchangé pour les consommateurs existants) ; seul un hit **lexical seul** (absent des résultats vectoriels) expose à la place la relevance FULLTEXT brute — pas sur une échelle 0–1.
 - `addDocumentChunks()` : analyse le document, embed tous les chunks en batch, construit les points Qdrant (payload enrichi), upsert.
-- ID de point Qdrant **déterministe** : `Uuid::v5(NAMESPACE_DNS, "doc_{id}_chunk_{index}")` — permet de régénérer le même ID plus tard pour la suppression sans avoir besoin de le stocker (bien qu'il soit aussi stocké sur `DocumentChunk.vectorId`).
+- ID de point Qdrant **déterministe** : `Uuid::v5(NAMESPACE_DNS, "doc_{id}_chunk_{index}")` — permet de régénérer le même ID plus tard pour la suppression sans avoir besoin de le stocker (bien qu'il soit aussi stocké sur `DocumentChunk.vectorId`), et sert aussi à fabriquer un `id` pour un résultat purement lexical (qui n'a pas d'ID Qdrant).
 
 **`RagContextService`** (dans `chat`) — le point d'entrée utilisé par l'orchestrateur de conversation : résout la collection de l'agent, puis délègue à `VectorSearchService::search()` (top **5** résultats par défaut). Toute exception est absorbée et journalisée — **une erreur RAG ne bloque jamais la génération de réponse**, elle prive seulement le LLM de contexte documentaire.
 
@@ -418,6 +422,7 @@ Ces métadonnées enrichissent le `payload` de chaque point Qdrant (`category`, 
 
 - Modèle par défaut : **`mxbai-embed-large`** (Ollama), dimension **1024** — une constante partagée par `QdrantClient::VECTOR_SIZE` et `VectorIndex.dimension`.
 - `EmbeddingService` (dans `vector_connector`) est un wrapper léger sur `ProviderSelectionService::getEmbeddingClient()`, qui expose aussi l'usage de tokens du dernier appel (`getLastUsage()`/`getBatchUsage()`), consommé pour enrichir `Document.metadata.embedding_usage`.
+- **`QueryEmbeddingCache`** : cache Redis dédié (pool `cache.query_embedding`, `config/packages/cache.yaml`, TTL 7 jours) devant l'appel `EmbeddingService::generateEmbedding()` fait par `VectorSearchService::search()` — une question identique (ou identique après `trim`+minuscules) réutilise le vecteur déjà calculé plutôt que de refaire l'aller-retour Ollama. Même schéma que `App\Chat\ConversationHistoryCache` (§10 n'en parle pas, mais le principe — pool Redis nommé séparé de `app` — est identique). Ne concerne que l'embedding *requête* ; l'embedding des chunks à l'ingestion (`addDocumentChunks()`) n'est pas caché (calculé une seule fois par chunk de toute façon). Pas de notion de modèle/provider dans la clé de cache : changer le modèle d'embedding actif rend le cache obsolète, à vider manuellement (même compromis que l'absence de ré-indexation automatique des chunks déjà vectorisés).
 
 ---
 
@@ -438,7 +443,7 @@ Types d'étapes supportés (`WorkflowStepType`) :
 | `api_call`       | Requête HTTP sortante (méthode/URL/headers/body configurables, substitution de placeholders `{{champ}}` dans l'URL et le body)                                                                          |
 | `webhook`        | Identique à `api_call` mais envoie toujours `inputData` en JSON                                                                                                                                         |
 | `data_transform` | Applique une liste de transformations (`set`, `remove`, `add`) aux données courantes                                                                                                                    |
-| `condition`      | Évalue une condition (`equals`, `not_equals`, `contains`, `greater_than`, `less_than`) sur un champ, exécute une `true_action`/`false_action` (seule l'action `set_field` est actuellement implémentée) |
+| `condition`      | Évalue une condition (`equals`, `not_equals`, `contains`, `greater_than`, `less_than`) sur un champ, exécute une `true_action`/`false_action` — `{"type": "set_field"\|"add_field"\|"remove_field", "field": "...", "value"?: ...}`, même vocabulaire `set`/`add`/`remove` que `data_transform` (`WorkflowExecutionService::applyFieldOperation()`, factorisé entre les deux) |
 | `delay`          | `sleep()` bloquant pendant le nombre de secondes configuré                                                                                                                                              |
 | `email`          | Envoi réel via **Symfony Mailer** (`MAILER_DSN`), expéditeur `MAILER_FROM_ADDRESS`. En dev Docker, pointe vers un catcher **MailHog** local (`http://mailhog.chatbot.localhost`) -- rien ne part réellement tant que `MAILER_DSN` n'est pas configuré vers un vrai provider en prod                    |
 | `notification`   | POST vers `webhook_url` (payload `{"text": ..., "channel": ...}`, compatible Slack/Discord/Mattermost) si configuré dans le step ; sinon journalise seulement (`status: logged`)                        |
@@ -486,7 +491,7 @@ Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les res
 | Méthode                       | URL                               | Description                                                                                                                                                                                                       |
 | ----------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET`/`POST`/`PATCH`/`DELETE` | `/api/document_categories[/{id}]` | CRUD des catégories                                                                                                                                                                                               |
-| `GET`/`POST`/`PATCH`/`DELETE` | `/api/faqs[/{id}]`                | CRUD des FAQ                                                                                                                                                                                                      |
+| `GET`                         | `/api/faqs[/{id}]`                | Liste (FAQ actives uniquement)/détail — lecture seule, écriture réservée à `/admin/faqs`                                                                                                                         |
 | `GET`/`POST`/`PATCH`/`DELETE` | `/api/collections[/{id}]`         | CRUD des collections                                                                                                                                                                                              |
 | `GET`                         | `/api/documents`                  | Liste des documents                                                                                                                                                                                               |
 | `GET`                         | `/api/documents/{id}`             | Détail                                                                                                                                                                                                            |
@@ -523,6 +528,7 @@ Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les res
 | `POST`                        | `/api/chat/quick-send`             | Chat **anonyme, non persisté** (body : `{message, agent_id?}`) — utilisé par les frontends de démo             |
 | `GET`                         | `/api/chat/llm-status`             | Statut du provider LLM actif (`reachable`/`running`/`error`/`not_reachable`)                                   |
 | `GET`                         | `/api/chat/embedding-status`       | Statut du provider d'embedding actif                                                                           |
+| `POST`                        | `/api/chat/follow-up-questions`    | 2-3 questions de relance générées à partir d'un échange (body : `{message, answer}`, stateless — pas de lookup DB) |
 
 ### 8.6 Formats de réponse notables
 
@@ -533,14 +539,43 @@ Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les res
   "conversation_id": null,
   "status": "success",
   "token_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "source": "provider|estimated", "provider": "ollama|api_endpoint", "model": "..."},
-  "tool_calls": [{"tool": "...", "arguments": {...}, "status": "completed|failed", "output": {...}}]
+  "tool_calls": [{"tool": "...", "arguments": {...}, "status": "completed|failed", "output": {...}}],
+  "sources": [{"document_id": 1, "document_title": "...", "score": 0.56}],
+  "sources_hidden": true
 }
 ```
+`sources_hidden` : même convention que `App\Chat\MessageSerializer` pour les messages persistés (`§8.5`) — un flag, pas un retrait des données. `quick-send` est le seul point d'entrée pensé pour des **embedders tiers** (pas ce repo, dont le widget ignore déjà les sources par design) ; le flag documente juste la même intention côté n'importe quel consommateur public.
 
-**`POST /api/vector/search`** :
+**`POST /api/chat/follow-up-questions`** :
+```json
+{"questions": ["Quels projets a-t-il menés ?", "Quelle est sa stack technique ?"]}
+```
+`App\Chat\FollowUpQuestionsService::generate()` — appelle le client LLM d'analyse dédié (`ProviderSelectionService::getAnalysisLlmClient()`, celui de `DocumentAnalysisService`) sur le seul échange `{message, answer}` reçu, lui demande 2-3 questions de relance courtes en JSON. Best-effort : `[]` sur tout échec (parsing JSON, LLM indisponible), jamais d'exception propagée — pensé pour être appelé *après* qu'une vraie réponse a déjà été affichée (voir `frontend/composables/useChatbot.ts::fetchFollowUpQuestions`, jamais sur le chemin critique d'un tour de conversation). Consomme le même rate-limiter que `quick-send`/`messages`/`stream` (`limiter.chat_message`).
+
+**`POST /api/vector/search`** — recherche hybride (§6.5), classée par fusion RRF ; `score` reste la similarité cosinus Qdrant pour un hit vectoriel, une relevance FULLTEXT (hors 0-1) pour un hit lexical seul :
 ```json
 {"query": "...", "results": [{"id": "...", "score": 0.87, "content": "...", "document_id": 12, "document_title": "...", "chunk_index": 3, "metadata": {...}}], "total": 5}
 ```
+
+### 8.7 Monitoring (transverse)
+
+| Méthode | URL           | Description                                                                             |
+| ------- | ------------- | ----------------------------------------------------------------------------------------- |
+| `GET`   | `/api/health` | Agrège 4 checks indépendants (DB, Qdrant, Redis, provider LLM) en un seul appel — `200` si tous passent, `503` sinon |
+
+`App\Controller\HealthController`, même emplacement que `LlmStatusController`/`QuickSendController` (`App\Controller` + une `ApiResource` "virtuelle" dans `App\ApiResource`, pas une entité). Chaque check est indépendant et best-effort (jamais d'exception qui remonte) :
+```json
+{
+  "status": "ok",
+  "checks": {
+    "database": {"status": "ok"},
+    "qdrant": {"status": "ok"},
+    "redis": {"status": "ok"},
+    "llm": {"status": "running", "model_available": true, "models": [...], "base_url": "...", "model": "..."}
+  }
+}
+```
+`checks.llm` réutilise directement `ProviderSelectionService::checkLlmStatus()` (même forme que `GET /api/chat/llm-status`) ; `checks.qdrant` appelle la nouvelle `QdrantClient::ping()` (`GET /collections`, pas la racine, pour distinguer une instance joignable-mais-mal-configurée d'un vrai down) ; `checks.redis` ouvre une connexion `\Redis` via `RedisAdapter::createConnection(REDIS_URL)` et appelle `PING` directement, sans passer par le pool de cache applicatif (`cache.conversation_history`).
 
 ---
 
@@ -550,11 +585,13 @@ Construit avec **Sylius Resource/Grid Bundle** — CRUD générique piloté par 
 
 | Ressource                              | URL                          | Opérations                                                                                   |
 | -------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------- |
+| *(Analytics)*                          | `/admin/analytics`           | Lecture seule — tableau de bord agrégé, pas un `#[AsGrid]` Sylius (voir note ci-dessous)      |
+| *(Journal d'audit)*                    | `/admin/audit-log`           | Lecture seule — même schéma qu'Analytics, voir note ci-dessous                               |
 | `AiProviderConfig`                     | `/admin/ai-provider-configs` | CRUD complet                                                                                 |
 | `VectorIndex`                          | `/admin/vector-indexes`      | CRUD complet                                                                                 |
 | `SearchQuery`                          | `/admin/search-queries`      | Lecture seule (`index`, `show`)                                                              |
 | `DocumentCategory`                     | `/admin/document-categories` | CRUD complet                                                                                 |
-| `Faq`                                  | `/admin/faqs`                | CRUD complet                                                                                 |
+| `Faq`                                  | `/admin/faqs`                | CRUD complet — **seul moyen de créer/modifier une FAQ**, l'API REST étant en lecture seule    |
 | `Collection`                           | `/admin/collections`         | CRUD complet                                                                                 |
 | `Document`                             | `/admin/documents`           | `index`, `show`, `update`, `delete` — **pas de création** (réservée à `POST /api/documents`) |
 | `Workflow` (+ `WorkflowStep` imbriqué) | `/admin/workflows`           | CRUD complet                                                                                 |
@@ -563,6 +600,10 @@ Construit avec **Sylius Resource/Grid Bundle** — CRUD générique piloté par 
 | `Conversation`                         | `/admin/conversations`       | CRUD complet                                                                                 |
 | `Message`                              | `/admin/messages`            | Lecture seule                                                                                |
 | `User`                                 | `/admin/users`               | CRUD complet — gestion des comptes opérateurs (§10)                                          |
+
+**Analytics n'est pas une ressource Sylius** — pas d'entité/formulaire/grille : `App\Controller\Admin\AnalyticsController` (route `app_admin_analytics_index`, même convention de nom que les routes Sylius pour que la mise en surbrillance de la sidebar dans `admin/layout.html.twig` fonctionne sans changement) rend directement `App\Chat\AnalyticsService::getDashboardStats()` (agrégats `Conversation`/`Message`/`SearchQuery` via DQL — `total_tokens` est sommé en PHP, pas en SQL, car il vit dans `Message.metadata` en JSON, voir §6.5 pour le même choix côté recherche lexicale) dans `templates/admin/analytics/index.html.twig`. Ajouté à `AdminExtension::nav()` avec le même helper `$item()` que les ressources Sylius.
+
+**Journal d'audit, même schéma** : `App\Controller\Admin\AuditLogController` (route `app_admin_audit_log_index`) liste, paginée manuellement (50/page, pas de dépendance de pagination), la table `audit_log` alimentée par `App\EventListener\AuditLogListener` — voir §10 pour le détail du mécanisme de capture.
 
 Pour ajouter une 14ᵉ ressource : une entité `implements ResourceInterface`, un repository avec `ResourceRepositoryTrait`, une classe `App\Form\XType`, une classe `App\Grid\XGrid` (`#[AsGrid]`), une entrée dans `config/packages/sylius_resource.yaml` et `config/routes/admin.yaml`. Le rendu des champs est mutualisé via `App\Twig\AdminExtension::fieldValue()` (basé sur `PropertyAccessor`, gère nativement enums/dates/bools/relations/collections).
 
@@ -583,12 +624,14 @@ Pour ajouter une 14ᵉ ressource : une entité `implements ResourceInterface`, u
   - **Item** (`Get`/`Patch`/`Delete`) : `security: "is_granted('OWNER', object)"`, vérifié par `App\Security\Voter\OwnershipVoter` (`ROLE_ADMIN` bypass toujours ; propriétaire `null` = admin uniquement).
   - **Collection** (`GetCollection`) : `App\Doctrine\OwnershipCollectionExtension` filtre la requête DQL (pas d'`object` unique pour un Voter).
   - **Opérations à contrôleur personnalisé** (messages/stream de `Conversation`) : le `security:` déclaratif d'API Platform ne s'y applique pas de façon fiable (vérifié empiriquement) — `#[IsGranted('OWNER', subject: 'data')]` directement sur `ConversationMessagesController`/`ConversationStreamController`.
-  - **Toutes les autres ressources** (`Document`, `Workflow`, `AiAgent`, `AiProviderConfig`, `Collection`, `Faq`, `DocumentCategory`, `VectorIndex`) exigent explicitement `ROLE_ADMIN` sur leur propre `#[ApiResource(security: ...)]`, indépendamment de la règle `access_control` globale — un compte `ROLE_USER` ne peut ni les lire ni les modifier.
+  - **La plupart des autres ressources** (`Document`, `Workflow`, `AiProviderConfig`, `Collection`, `DocumentCategory`, `VectorIndex`) exigent explicitement `ROLE_ADMIN` sur leur propre `#[ApiResource(security: ...)]`, indépendamment de la règle `access_control` globale — un compte `ROLE_USER` ne peut ni les lire ni les modifier. **Exceptions** : `AiAgent` et `Faq` gardent `ROLE_ADMIN` par défaut au niveau ressource mais redéclarent `GetCollection`/`Get` en `PUBLIC_ACCESS` et n'exposent aucune autre opération via l'API — lecture ouverte à tout compte authentifié (y compris `ROLE_USER`), écriture uniquement via le backoffice (`/admin/ai-agents`, `/admin/faqs`).
 - **CORS** (`nelmio_cors.yaml`) : origines autorisées via la regex `CORS_ALLOW_ORIGIN` (par défaut `^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$` — dev uniquement), méthodes `GET, OPTIONS, POST, PUT, PATCH, DELETE`, headers `Content-Type, Authorization`.
 - `AiProviderConfig.apiKey` est `#[ApiProperty(readable: false)]` : jamais renvoyé par l'API (`GET`/`GetCollection`), uniquement accepté en écriture (`POST`/`PATCH`). `Conversation.getOwnerUser()`/`getOwnerFieldName()` (et l'équivalent sur `WorkflowExecution`) portent la même annotation. Reste visible dans le formulaire d'édition du backoffice, nécessaire pour le modifier — mais cette page est protégée par le firewall `admin`.
 
 > [!CAUTION]
 > Sans `#[ApiProperty(readable: false)]` sur `getOwnerUser()`/`getOwnerFieldName()`, ces méthodes ajoutées pour `OwnedResourceInterface` seraient auto-découvertes comme propriétés API et embarqueraient le `User` complet — hash de mot de passe inclus — dans chaque réponse JSON exposant une `Conversation`/`WorkflowExecution`. Bug réel, trouvé et corrigé en cours de développement plutôt qu'en production.
+
+**Journal d'audit** (`audit_log`, §9) : `App\EventListener\AuditLogListener` s'abonne aux événements génériques `app.<resource>.post_create`/`post_update`/`pre_delete` que `Sylius\Bundle\ResourceBundle\Controller\ResourceController` émet déjà pour toute ressource CRUD, plutôt qu'un listener dédié par entité. Un seul point d'attention : la suppression est capturée sur `pre_delete` et non `post_delete`, car Doctrine réinitialise l'identifiant auto-généré à `null` sur l'entité en mémoire juste après l'exécution réelle de la suppression — capturer après coup y perdrait `resourceId`. L'acteur (`actorEmail`) est un instantané, pas une clé étrangère vers `User`, pour rester lisible même si le compte opérateur est ensuite supprimé.
 
 ---
 

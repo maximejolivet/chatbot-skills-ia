@@ -6,7 +6,7 @@ en plus de l'API REST (API Platform). Les routes sont déclarées dans
 `backend/src/Grid/`, les entités dans `backend/src/Entity/`. Le menu de la sidebar est construit
 dynamiquement par `nav()` dans
 [`backend/src/Twig/AdminExtension.php`](../../backend/src/Twig/AdminExtension.php) : il ne
-liste que 4 groupes fixes et filtre les entrées dont la route n'est pas enregistrée — toute
+liste que 6 groupes fixes et filtre les entrées dont la route n'est pas enregistrée — toute
 route admin qui n'apparaît pas dans un de ces groupes reste accessible mais **invisible dans le
 menu**.
 
@@ -15,6 +15,22 @@ menu**.
 ### Chatbot Admin (accueil)
 `DashboardController` (route `app_admin_dashboard`, `/admin/`). Simple point d'entrée, rend
 `templates/admin/dashboard.html.twig` — pas de modèle de données propre.
+
+### Analytics
+
+- **Vue d'ensemble** (`AnalyticsController`, route `app_admin_analytics_index`, `/admin/analytics`)
+  — pas une ressource Sylius (rien à créer/modifier/supprimer, lecture seule). Agrège des
+  données qui existaient déjà mais n'avaient pas de vue exploitable :
+  conversations (total/actives), messages (total, par rôle), tokens consommés (somme de
+  `Message.metadata.token_usage.total_tokens` sur les réponses assistant), feedback 👍👎
+  (`Message.feedback`), et recherches vectorielles (total, durée moyenne, nombre de résultats
+  moyen, 10 plus récentes). Calculé par `App\Chat\AnalyticsService::getDashboardStats()`
+  (requêtes DQL `COUNT`/`AVG`/`GROUP BY` ; le total de tokens est sommé en PHP après lecture des
+  `metadata` JSON, pas en SQL — voir la recherche hybride ci-dessous pour le même choix côté
+  `document_chunk.content`). Pas de test automatisé dédié (agrégats DQL contre de vraies entités
+  — même limite que les autres services testés uniquement via de vraies dépendances `final`,
+  voir `docs/BACKLOG.md`) ; vérifié manuellement via `curl` (session `/admin/login` +
+  cookie) contre les données réelles de l'instance de dev.
 
 ### IA & Vecteurs
 
@@ -37,7 +53,12 @@ menu**.
 Deux endpoints utilitaires ne correspondent à aucune entité du menu mais servent tout le domaine
 `vector_connector`, utilisés en coulisse par le RAG (et directement, pour déboguer une recherche) :
 `POST /api/vector/search` (`{query, collection_name, category_id?, limit}`) et `GET
-/api/vector/stats`.
+/api/vector/stats`. Depuis l'ajout de la **recherche hybride**, `/api/vector/search` ne classe
+plus sur la seule similarité vectorielle : `VectorSearchService::search()` fusionne le résultat
+Qdrant avec une recherche lexicale FULLTEXT (MariaDB, `document_chunk.content`) par Reciprocal
+Rank Fusion — voir `docs/backend/SPECIFICATION.md` §6.5 pour le détail (filtres supportés côté
+lexical, limite connue sur le scoping par collection, sémantique du champ `score` selon l'origine
+du hit).
 
 ### Base de connaissances
 
@@ -62,12 +83,15 @@ Deux endpoints utilitaires ne correspondent à aucune entité du menu mais serve
   PATCH (`agent: "/api/ai_agents/{id}"`) qui sert à relier un agent à sa collection, `AiAgent`
   n'ayant pas ce champ dans son propre formulaire admin.
 - **FAQ** (`Faq`) — questions/réponses pré-rédigées (`question`, `answer`, `category`, `isActive`,
-  `tags`). CRUD simple non branché sur le pipeline RAG/chat : aucune référence à `Faq` dans
+  `tags`). Toujours pas branché sur le pipeline RAG/chat : aucune référence à `Faq` dans
   `src/Chat/`, `src/KnowledgeBase/` ou `src/VectorConnector/` — pas d'indexation Qdrant, pas de
   lecture par `ChatOrchestrationService`/`RagContextService`. En l'état, un agent ne voit jamais
-  ces entrées quand il répond ; c'est un stock de contenu prêt à être branché, pas (encore) un
-  complément actif du RAG.
-  → **API** : `GET/POST /api/faqs`, `GET/PATCH/DELETE /api/faqs/{id}`.
+  ces entrées quand il répond. Consommé côté frontend comme questions de conversation suggérées
+  (`frontend/composables/useFaqs.ts`, sur la home et le panneau chat) — seules les FAQ
+  `isActive = true` remontent (`App\Doctrine\FaqActiveCollectionExtension`).
+  → **API** : lecture seule, `GET /api/faqs`, `GET /api/faqs/{id}`. Création/édition/suppression
+  uniquement via ce backoffice — pas de `POST`/`PATCH`/`DELETE` côté API (même schéma que
+  `AiAgent`, §4.5 de `SPECIFICATION.md`).
 
 ### Workflows
 
@@ -109,6 +133,23 @@ Deux endpoints utilitaires ne correspondent à aucune entité du menu mais serve
   `user`/`assistant`/`system`/`tool`, `content`, `metadata`), lecture seule, accessible seulement
   via sa conversation parente.
   → **API** : aucune ressource propre — uniquement `GET /api/conversations/{id}/messages`.
+
+### Administration
+
+- **Journal d'audit** (`AuditLogController`, route `app_admin_audit_log_index`,
+  `/admin/audit-log`) — pas une ressource Sylius, comme Analytics (rien à créer/modifier ici,
+  lecture seule, append-only). Liste, la plus récente en premier, chaque création/modification/
+  suppression faite via un CRUD admin (`AiProviderConfig`, `VectorIndex`, `DocumentCategory`,
+  `Faq`, `Collection`, `Document`, `Workflow`, `AiAgent`, `Conversation`, `User`) : type de
+  ressource, id, un libellé best-effort (`getName`/`getTitle`/`getQuestion`/`getEmail` selon
+  l'entité), l'email de l'opérateur qui a agi, et la date. Alimenté par
+  `App\EventListener\AuditLogListener`, un seul abonné générique aux événements
+  `app.<resource>.post_create`/`post_update`/`pre_delete` que tout `ResourceController` Sylius
+  émet déjà — pas de listener par entité. La table `audit_log` n'a pas de FK vers `User` (juste un
+  email en instantané), pour rester lisible même après suppression du compte opérateur. Pagination
+  manuelle (50/page), sans dépendance externe. Vérifié en conditions réelles (session admin via
+  `curl`) : création + modification + suppression d'une FAQ de test, les 3 actions apparaissent
+  correctement dans `/admin/audit-log` avec l'acteur et l'id de ressource attendus.
 
 ## Pages hors menu (routes existantes, non listées dans la sidebar)
 
@@ -184,8 +225,10 @@ Elle crée un **`VectorIndex`** : `name = "kb-rh"`, `collectionId = "kb_rh"`,
 - Sophie ajoute aussi une **`Faq`** toute prête : `question = "Combien de jours de congés par an ?"`,
   `answer = "25 jours ouvrés..."`, `category = Congés & absences`, `isActive = true`. **Attention** :
   contrairement à l'intuition, cette FAQ n'est reliée à rien côté chat — aucune référence à `Faq`
-  dans `src/Chat/`, `src/KnowledgeBase/` ou `src/VectorConnector/`. C'est un CRUD autonome, pas un
-  raccourci qui court-circuite le RAG ; un agent ne la verra jamais tant que rien ne l'y branche.
+  dans `src/Chat/`, `src/KnowledgeBase/` ou `src/VectorConnector/`. Un agent ne la verra jamais tant
+  que rien ne l'y branche ; sa seule utilisation actuelle est de nourrir les questions suggérées du
+  widget public (`question` uniquement, via `GET /api/faqs` — lecture seule, la création/édition
+  reste ici, dans ce backoffice).
 
 ### 5. Définir un workflow-outil
 

@@ -18,6 +18,10 @@ Index de tous les fichiers Markdown du dépôt.
 - [docs/backend/SPECIFICATION.md](backend/SPECIFICATION.md) — cahier des charges du backend
 - [docs/backend/ADMIN.md](backend/ADMIN.md) — guide des pages du backoffice `/admin` (Menu et Pages hors menu)
 
+## Chantier
+
+- [docs/BACKLOG.md](BACKLOG.md) — backlog de pistes d'amélioration backend/frontend
+
 ## Outillage
 
 - [.claude/skills/semantic-commit-messages/SKILL.md](../.claude/skills/semantic-commit-messages/SKILL.md) — format des messages de commit sémantiques

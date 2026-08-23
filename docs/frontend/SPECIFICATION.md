@@ -30,6 +30,8 @@ Le head HTML (`nuxt.config.ts`) définit un titre **"Maxime - Chatbot IA"** et c
 | Langage               | **TypeScript 7.0**                                                                                                       |                                                                                                                                  |
 | HTTP client (déclaré) | **axios 1.19**                                                                                                           | Présent en dépendance mais **non utilisé dans le code actuel** — les appels réseau passent tous par `$fetch` (natif Nuxt/ofetch) |
 | Emojis                | **`unicode-emoji-json` 0.9**                                                                                             | Données statiques (par groupe) pour le sélecteur d'emoji du composant `Chatbot`                                                  |
+| i18n                  | **`@nuxtjs/i18n` 10.6** (vue-i18n 11)                                                                                    | Une seule locale active (`fr`) pour l'instant — infrastructure prête pour une 2ᵉ langue, voir §8.7                               |
+| Tests                 | **Vitest 4** + **`@nuxt/test-utils` 4.1** + **`@vue/test-utils`** (environnement `nuxt`, `happy-dom`)                    | Tests unitaires des composables — voir §8.6                                                                                      |
 | Formatage             | **Prettier 3.9** (`.prettierrc.json` : single quotes, semicolons, `printWidth: 100`)                                     |                                                                                                                                  |
 | Devtools              | **`@nuxt/devtools`**                                                                                                     |                                                                                                                                  |
 | Conteneurisation      | Servi comme service `nuxt` dans `backend/compose.yaml` (image `node:24-alpine`, build + `node .output/server/index.mjs`) | Pas de `Dockerfile` propre à ce projet                                                                                           |
@@ -136,7 +138,7 @@ Sections :
 
 Pas de sélecteur d'agent dans l'UI : l'agent est choisi **automatiquement** par `useChatbot` (voir §5.1) plutôt que par l'utilisateur — un choix délibéré pour un widget mono-agent (voir §1).
 
-Prise en charge du thème sombre via la classe CSS `dark` (Tailwind `darkMode: 'class'`), appliquée conditionnellement sur le conteneur racine selon la prop `theme`.
+Mode sombre activable par le visiteur (bouton lune/soleil dans l'en-tête) — classe CSS `dark` (Tailwind `darkMode: 'class'`) posée sur le conteneur racine selon `composables/useColorScheme.ts` : choix explicite du visiteur (`localStorage`) > `prefers-color-scheme` OS > prop `theme` (simple valeur de repli désormais, ne force plus rien). Palette claire/sombre en variables CSS (`assets/css/main.css` `:root`/`.dark`), voir `docs/BACKLOG.md` pour le détail des tokens.
 
 **Workaround technique notable** (documenté dans le README et `nuxt.config.ts`) : sous TypeScript 7, `@vue/compiler-sfc` échoue à résoudre les props typées (`defineProps<ChatbotProps>()`) car il ne détecte plus l'environnement Node — corrigé en injectant manuellement le module `fs` de Node dans la config Vite (`vite.vue.script.fs`).
 
@@ -271,9 +273,11 @@ npm run preview    # sert le build localement
 ```bash
 npm run format        # Prettier — reformate tous les fichiers
 npm run format:check  # Prettier — vérifie sans modifier (CI)
+npm run test          # Vitest — suite complète, une fois
+npm run test:watch    # Vitest — mode watch
 ```
 
-Aucun linter (ESLint) ni test automatisé (unitaire/e2e) n'est configuré dans ce projet.
+Aucun linter (ESLint) n'est configuré. Tests unitaires : voir §8.7.
 
 ### 8.6 Intégrer le widget dans une autre page/app Nuxt
 
@@ -295,11 +299,39 @@ import { Chatbot } from '~/components/Chatbot';
 | Prop          | Type                | Défaut                     | Description                                                                                                           |
 | ------------- | ------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | `title`       | `string`            | `'Assistant IA'`           | Titre affiché dans l'en-tête                                                                                          |
-| `theme`       | `'light' \| 'dark'` | `'light'`                  | Thème visuel                                                                                                          |
+| `theme`       | `'light' \| 'dark'` | `'light'`                  | Valeur de repli seulement si le visiteur n'a rien choisi et que l'OS n'a pas de préférence — voir §4.2, `useColorScheme.ts` |
 | `apiUrl`      | `string`            | `'/api'`                   | *(non utilisée pour construire les URLs d'appel réel — voir §5.1, les endpoints sont codés en dur dans `useChatbot`)* |
 | `placeholder` | `string`            | `'Tapez votre message...'` | Placeholder du champ de saisie                                                                                        |
 | `className`   | `string`            | `''`                       | Classes CSS supplémentaires sur le conteneur racine                                                                   |
 | `showClose`   | `boolean`           | `false`                    | Affiche un bouton de fermeture (utilisé par `ChatWidget`)                                                             |
+
+### 8.7 Tests
+
+**Vitest** (`vitest.config.ts`, `environment: 'nuxt'` via `@nuxt/test-utils/config`) — un vrai contexte Nuxt est démarré pour chaque fichier de test, donc les imports automatiques du projet (`useState`, `useI18n`, `useRoute`, `$fetch`, composables locaux comme `useFaqs`/`useOnlineStatus`) fonctionnent dans les tests exactement comme dans l'app, sans les importer explicitement. Fichiers `*.test.ts` colocalisés avec le code testé (`composables/useChatbot.test.ts` à côté de `useChatbot.ts`, etc.) plutôt qu'un dossier `tests/` séparé.
+
+Couverture actuelle — composables uniquement, pas de test de composant `.vue` ni e2e :
+- **`useOnlineStatus`** : reflète `navigator.onLine`, réagit aux events `online`/`offline`, arrête de réagir après unmount.
+- **`useDebugMode`** : lecture de `?debug=1` dans l'URL, via `mockNuxtImport('useRoute', ...)`.
+- **`useFaqs`** : peuple `suggestedQuestions` depuis `GET /api/faqs` (mocké avec `registerEndpoint`), ne fetch qu'une fois (`hasFetched`), dégrade silencieusement en cas d'échec, état partagé entre deux appels indépendants (`useState`).
+- **`useChatbot`** : le plus gros morceau — garde-fous de `sendMessage()` (message vide, déjà en cours d'envoi, hors ligne), le chemin heureux complet (parsing des frames SSE `data: {...}\n\n`, y compris `ai_complete`/`sources`/`token_usage`), un frame `error`, une réponse HTTP non-`ok`, `retryLastMessage()` (rejoue sans dupliquer la bulle utilisateur), `clearMessages()`.
+
+Deux techniques de mock spécifiques à connaître avant d'y toucher :
+- **`registerEndpoint`** (`@nuxt/test-utils/runtime`) mocke une route Nitro atteinte via `$fetch`/ofetch (ex. `ensureConversation`'s `POST /api/conversations`). Le flux SSE de `sendMessage()` (`server/api/conversations/[id]/stream.post.ts`) passe lui par le `fetch` brut du navigateur, pas `$fetch` — `registerEndpoint` ne l'intercepte donc pas. `useChatbot.test.ts` stub `globalThis.fetch` directement pour les URLs `/stream` uniquement (tout le reste repasse par le vrai `fetch`, donc `registerEndpoint` continue de fonctionner en parallèle dans le même test).
+- **`mockNuxtImport`** est une macro transpilée à la compilation : elle doit être appelée au **niveau racine** du fichier de test, jamais à l'intérieur d'un `it(...)` (sinon `SyntaxError`/comportement silencieusement incorrect). Pour faire varier la valeur mockée d'un test à l'autre, importer la fonction déjà mockée (ex. `const { useRoute } = await import('#app')`) et appeler `vi.mocked(useRoute).mockReturnValue(...)`.
+- Les composables utilisant des lifecycle hooks (`onMounted`/`onBeforeUnmount` — `useOnlineStatus`, `useChatbot`) doivent être invoqués dans un vrai contexte de composant, pas appelés nus dans un test : `test/withSetup.ts` monte un composant jetable via **`mountSuspended`** (`@nuxt/test-utils/runtime`) — pas le `mount()` classique de `@vue/test-utils`, qui n'installe pas les plugins Nuxt (ex. `useI18n()` échoue avec *"Need to install with `app.use` function"* sans ça).
+- `useFaqs`/`useChatbot` partagent leur état via `useState` (clés globales à l'app Nuxt), donc au sein d'un même fichier de test il faut réinitialiser ces clés dans un `beforeEach` — sinon un test peut hériter silencieusement de l'état laissé par le précédent (ex. `hasFetched` déjà à `true`).
+
+**Piège d'environnement (pas lié au code du projet)** : `backend/compose.yaml`'s service `nuxt` exécute `npm ci` à **chaque démarrage/redémarrage** du conteneur, sur un `node_modules` en bind-mount partagé avec l'hôte. Lancer `npm ci`/`npm install` depuis le conteneur Linux puis `npx vitest` depuis un hôte macOS (ou l'inverse) casse les binaires natifs optionnels (`rolldown`, etc.) — `Cannot find native binding`. Si ça arrive, relancer `npm install` depuis l'environnement où les tests doivent tourner.
+
+### 8.8 Internationalisation (i18n)
+
+**`@nuxtjs/i18n`**, configuré dans `nuxt.config.ts` (`strategy: 'no_prefix'`, une seule locale `fr` déclarée pour l'instant — pas de préfixe `/fr`/`/en` dans les URLs tant qu'il n'y a qu'une langue). Toutes les chaînes visibles par un visiteur vivent dans **`i18n/locales/fr.json`** (clés groupées par composant/zone : `home.*`, `heroChatBar.*`, `stickyBubble.*`, `chatbot.*`, `messageBubble.*`, `errors.*`, `meta.*`), plutôt qu'en dur dans les `.vue`/`.ts` — objectif : ajouter une 2ᵉ langue plus tard doit être « traduire ce fichier », pas « rechercher les chaînes dans chaque composant ».
+
+- Dans un template : `{{ $t('chatbot.send') }}` / `:title="$t('chatbot.close')"`.
+- Dans un `<script setup>` ou composable : `const { t } = useI18n();` puis `t('errors.offline')`. Utilisé dans `useChatbot.ts` pour les deux messages d'erreur utilisateur (`errors.sendFailed`/`errors.offline`) — pas pour les `console.error(...)` de debug juste au-dessus, qui restent en français en dur (jamais montrés à un visiteur).
+- `app.vue` pose `<title>`/`<meta name="description">` via `useHead()` + `t('meta.title')`/`t('meta.description')` plutôt que dans `nuxt.config.ts` (évalué avant que le runtime i18n existe).
+- **Piège rencontré** : `withDefaults(defineProps<T>(), {...})` est hoisté au niveau module par le compilateur `<script setup>` — ses valeurs par défaut ne peuvent **pas** référencer un `const { t } = useI18n()` local (`SyntaxError` au build). `Chatbot.vue` garde donc `title`/`placeholder` par défaut en littéraux français en dur ; sans conséquence pratique, les deux call sites actuels (`StickyChatBubble.vue`, `pages/chat.vue`) passent toujours une prop explicite traduite.
+- Interpolation : `t('chatbot.bookSlotMessage', { label, iso })` avec `"bookSlotMessage": "Je réserve le créneau du {label} ({iso})."` dans le JSON.
 
 > [!TIP]
 > Pour le widget flottant complet (bulle + tooltip + panneau), utiliser directement `<ChatWidget />` (déjà monté globalement dans `app.vue`) plutôt que `<Chatbot />` seul.
