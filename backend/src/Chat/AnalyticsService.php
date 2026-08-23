@@ -9,19 +9,26 @@ use App\Entity\Message;
 use App\Entity\SearchQuery;
 use App\Enum\MessageRole;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\Cache\CacheInterface;
 
 /**
  * Read-only aggregation over data that already exists (Message.feedback,
  * Message.metadata.token_usage, SearchQuery) but had no aggregated view --
- * backs the /admin/analytics dashboard. No caching: admin-only, low-traffic
- * page, and these are cheap COUNT/AVG queries plus one bounded SELECT for
- * the token-usage sum (see tokenUsageStats() for why that one can't be a
- * plain SQL aggregate).
+ * backs the /admin/analytics dashboard. Cached (dedicated Redis pool, 5 min
+ * TTL, config/packages/cache.yaml) -- revisits an earlier "no caching
+ * needed, cheap COUNT/AVG queries" call: tokenUsageStats() in particular
+ * scans every assistant message's metadata JSON in PHP (see that method),
+ * not a bounded aggregate, and only gets heavier as message volume grows.
+ * No per-viewer variation (every admin sees the same numbers), so a single
+ * static cache key is correct.
  */
 final readonly class AnalyticsService
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
+        #[Autowire(service: 'cache.admin_analytics')]
+        private CacheInterface $cache,
     ) {}
 
     /**
@@ -29,13 +36,13 @@ final readonly class AnalyticsService
      */
     public function getDashboardStats(): array
     {
-        return [
+        return $this->cache->get('dashboard_stats', fn(): array => [
             'conversations' => $this->conversationStats(),
             'messages' => $this->messageStats(),
             'feedback' => $this->feedbackStats(),
             'token_usage' => $this->tokenUsageStats(),
             'search_queries' => $this->searchQueryStats(),
-        ];
+        ]);
     }
 
     /**

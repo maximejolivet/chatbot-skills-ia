@@ -37,3 +37,14 @@ framework:
             cache.query_embedding:
                 adapter: cache.adapter.redis
                 default_lifetime: 604800 # 7 days
+
+            # Dedicated pool for App\Chat\AnalyticsService -- same rationale
+            # as cache.conversation_history above. Short lifetime: the
+            # /admin/analytics dashboard is a live-ish "how's it going"
+            # view, a few minutes of staleness is an acceptable tradeoff for
+            # not recomputing several DQL aggregates (one of them scans
+            # every assistant message's metadata in PHP, see
+            # AnalyticsService::tokenUsageStats()) on every page view.
+            cache.admin_analytics:
+                adapter: cache.adapter.redis
+                default_lifetime: 300 # 5 minutes

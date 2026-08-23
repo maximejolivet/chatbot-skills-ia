@@ -742,6 +742,22 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       -sI` sur `/admin/login` (en-têtes présents) et `/api/ai_agents`
       (absents, comme voulu), session admin réelle sur `/admin/analytics`
       (la page avec le style inline) toujours `200`.
+- [x] **Cache du dashboard `/admin/analytics`** — revient sur une décision
+      explicite antérieure ("No caching: admin-only, low-traffic page,
+      cheap queries", commentaire de classe d'`AnalyticsService`) :
+      `tokenUsageStats()` charge en réalité le `metadata` JSON de **tous**
+      les messages assistant pour sommer les tokens en PHP (pas un agrégat
+      SQL borné, voir cette méthode) — pas un problème au volume actuel de
+      l'instance de dev, mais un coût qui grandit avec le nombre de
+      messages sans plafond. Nouveau pool Redis dédié `cache.admin_analytics`
+      (même schéma que `ConversationHistoryCache`/`QueryEmbeddingCache`,
+      TTL 5 min — un dashboard "à jour à quelques minutes près" est un
+      compromis acceptable face à recalculer plusieurs agrégats DQL à
+      chaque vue de page). Clé de cache statique unique : aucune variation
+      par visiteur, chaque admin voit les mêmes chiffres. Vérifié en
+      conditions réelles contre le vrai Redis de dev : 177 ms au premier
+      appel (calcul + mise en cache), ~45 ms ensuite (cache hit), clé
+      `dashboard_stats` confirmée présente dans Redis après coup.
 
 ---
 
