@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
 use App\Repository\FaqRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Sylius\Resource\Model\ResourceInterface;
@@ -10,11 +12,22 @@ use Sylius\Resource\Model\ResourceInterface;
 /**
  * NOTE: no `created_by` attribution, same as Document.uploaded_by -- the
  * User system exists (see Conversation.user), this entity just hasn't been
- * extended with an owner field, restricted to ROLE_ADMIN as a whole instead.
+ * extended with an owner field.
+ *
+ * Managed exclusively through the /admin backoffice (see
+ * config/routes/admin.yaml, app_admin_faq) -- no write operations exposed
+ * here, same reasoning as AiAgent. GetCollection/Get are deliberately public
+ * (PUBLIC_ACCESS): the landing page and chat widget pull FAQ questions as
+ * conversation starters (see frontend/composables/useFaqs.ts). Inactive FAQs
+ * are excluded from the public collection by FaqActiveCollectionExtension --
+ * admins still see them all in the /admin/faqs grid, a separate query.
  */
 #[ORM\Entity(repositoryClass: FaqRepository::class)]
 #[ORM\HasLifecycleCallbacks]
-#[ApiResource(security: "is_granted('ROLE_ADMIN')")]
+#[ApiResource(operations: [
+    new GetCollection(paginationEnabled: false, security: "is_granted('PUBLIC_ACCESS')"),
+    new Get(security: "is_granted('PUBLIC_ACCESS')"),
+], security: "is_granted('ROLE_ADMIN')")]
 class Faq implements ResourceInterface
 {
     #[ORM\Id]

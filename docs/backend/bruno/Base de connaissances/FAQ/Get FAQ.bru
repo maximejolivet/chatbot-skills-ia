@@ -1,7 +1,7 @@
 meta {
   name: Get FAQ
   type: http
-  seq: 3
+  seq: 2
 }
 
 get {
@@ -13,4 +13,11 @@ get {
 auth:basic {
   username: {{admin_username}}
   password: {{admin_password}}
+}
+
+docs {
+  Read-only, PUBLIC_ACCESS -- see List FAQs. Note: unlike the collection,
+  this item route is not filtered by FaqActiveCollectionExtension (a
+  QueryCollectionExtensionInterface), so an inactive FAQ is still readable
+  by id if you already know it.
 }

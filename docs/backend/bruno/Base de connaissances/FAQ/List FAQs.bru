@@ -16,7 +16,17 @@ auth:basic {
 }
 
 docs {
-  FAQ is a standalone CRUD, not wired into the chat/RAG pipeline: no
-  reference to Faq in src/Chat/, src/KnowledgeBase/ or src/VectorConnector/.
-  An agent never sees these entries when answering.
+  Read-only via REST (GetCollection + Get only, PUBLIC_ACCESS -- same
+  conditions as AiAgent): creating/editing/deleting a FAQ only happens
+  through the admin backoffice (/admin/faqs, session + CSRF), not this API.
+
+  FaqActiveCollectionExtension filters this collection to isActive = true
+  only -- draft/retired FAQs never appear here, though they still show up
+  in the /admin/faqs grid (a separate Sylius query).
+
+  Not wired into the chat/RAG pipeline: no reference to Faq in src/Chat/,
+  src/KnowledgeBase/ or src/VectorConnector/ -- an agent never sees these
+  entries when answering. Consumed by the frontend as suggested
+  conversation-starter questions instead (frontend/composables/useFaqs.ts,
+  shown on the landing page and the chat panel's empty state).
 }
