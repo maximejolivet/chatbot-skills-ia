@@ -37,7 +37,7 @@ final class WorkflowExecutionServiceTest extends TestCase
 
     private function invokePrivate(WorkflowExecutionService $service, string $method, array $args): mixed
     {
-        return (new \ReflectionMethod($service, $method))->invoke($service, ...$args);
+        return new \ReflectionMethod($service, $method)->invoke($service, ...$args);
     }
 
     public function testResolveEnvHeadersResolvesEnvPlaceholder(): void
@@ -73,7 +73,7 @@ final class WorkflowExecutionServiceTest extends TestCase
 
     public function testHandleSetConversationSkipsWhenNoConversation(): void
     {
-        $step = (new WorkflowStep())
+        $step = new WorkflowStep()
             ->setStepType(WorkflowStepType::SetConversation)
             ->setConfiguration(['fields' => ['visitor_first_name' => 'first_name']]);
 
@@ -89,7 +89,7 @@ final class WorkflowExecutionServiceTest extends TestCase
         $entityManager->expects(self::once())->method('flush');
 
         $conversation = new Conversation();
-        $step = (new WorkflowStep())
+        $step = new WorkflowStep()
             ->setStepType(WorkflowStepType::SetConversation)
             ->setConfiguration(['fields' => [
                 'visitor_first_name' => 'first_name',
@@ -115,7 +115,7 @@ final class WorkflowExecutionServiceTest extends TestCase
         $entityManager->expects(self::never())->method('flush');
 
         $conversation = new Conversation();
-        $step = (new WorkflowStep())
+        $step = new WorkflowStep()
             ->setStepType(WorkflowStepType::SetConversation)
             ->setConfiguration(['fields' => ['visitor_first_name' => 'first_name']]);
 
@@ -127,5 +127,83 @@ final class WorkflowExecutionServiceTest extends TestCase
 
         self::assertSame('skipped', $result['status']);
         self::assertSame([], $result['fields']);
+    }
+
+    public function testHandleConditionRunsTrueActionSetField(): void
+    {
+        $step = new WorkflowStep()
+            ->setStepType(WorkflowStepType::Condition)
+            ->setConfiguration([
+                'condition' => ['field' => 'score', 'operator' => 'greater_than', 'value' => 5],
+                'true_action' => ['type' => 'set_field', 'field' => 'tier', 'value' => 'gold'],
+                'false_action' => ['type' => 'set_field', 'field' => 'tier', 'value' => 'standard'],
+            ]);
+
+        $result = $this->invokePrivate($this->service(), 'handleCondition', [$step, ['score' => 10]]);
+
+        self::assertSame('gold', $result['tier']);
+    }
+
+    public function testHandleConditionRunsFalseActionAddField(): void
+    {
+        $step = new WorkflowStep()
+            ->setStepType(WorkflowStepType::Condition)
+            ->setConfiguration([
+                'condition' => ['field' => 'score', 'operator' => 'greater_than', 'value' => 5],
+                'true_action' => ['type' => 'set_field', 'field' => 'bonus', 'value' => 100],
+                'false_action' => ['type' => 'add_field', 'field' => 'bonus', 'value' => 1],
+            ]);
+
+        $result = $this->invokePrivate($this->service(), 'handleCondition', [$step, ['score' => 1, 'bonus' => 4]]);
+
+        self::assertSame(5, $result['bonus']);
+    }
+
+    public function testHandleConditionRemoveFieldAction(): void
+    {
+        $step = new WorkflowStep()
+            ->setStepType(WorkflowStepType::Condition)
+            ->setConfiguration([
+                'condition' => ['field' => 'flagged', 'operator' => 'equals', 'value' => true],
+                'true_action' => ['type' => 'remove_field', 'field' => 'draft'],
+            ]);
+
+        $result = $this->invokePrivate($this->service(), 'handleCondition', [$step, ['flagged' => true, 'draft' => 'wip']]);
+
+        self::assertArrayNotHasKey('draft', $result);
+    }
+
+    public function testHandleConditionUnknownActionTypeIsNoOp(): void
+    {
+        $step = new WorkflowStep()
+            ->setStepType(WorkflowStepType::Condition)
+            ->setConfiguration([
+                'condition' => ['field' => 'x', 'operator' => 'equals', 'value' => 1],
+                'true_action' => ['type' => 'send_carrier_pigeon', 'field' => 'x', 'value' => 2],
+            ]);
+
+        $result = $this->invokePrivate($this->service(), 'handleCondition', [$step, ['x' => 1]]);
+
+        self::assertSame(['x' => 1], $result);
+    }
+
+    public function testHandleDataTransformSetAddAndRemove(): void
+    {
+        $step = new WorkflowStep()
+            ->setStepType(WorkflowStepType::DataTransform)
+            ->setConfiguration(['transformations' => [
+                ['field' => 'greeting', 'operation' => 'set', 'value' => 'Hello {{name}}'],
+                ['field' => 'count', 'operation' => 'add', 'value' => 1],
+                ['field' => 'secret', 'operation' => 'remove'],
+            ]]);
+
+        $result = $this->invokePrivate($this->service(), 'handleDataTransform', [
+            $step,
+            ['name' => 'Kilian', 'count' => 4, 'secret' => 'shh'],
+        ]);
+
+        self::assertSame('Hello Kilian', $result['greeting']);
+        self::assertSame(5, $result['count']);
+        self::assertArrayNotHasKey('secret', $result);
     }
 }

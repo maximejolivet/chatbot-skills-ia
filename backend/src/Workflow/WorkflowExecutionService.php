@@ -41,7 +41,7 @@ final class WorkflowExecutionService
      */
     private array $stepHandlers;
 
-    private HttpClientInterface $httpClient;
+    private readonly HttpClientInterface $httpClient;
 
     public function __construct(
         private readonly WorkflowRepository $workflowRepository,
@@ -88,7 +88,7 @@ final class WorkflowExecutionService
             throw new \RuntimeException("Workflow {$workflowId} not found or inactive.");
         }
 
-        $execution = (new WorkflowExecution())
+        $execution = new WorkflowExecution()
             ->setWorkflow($workflow)
             ->setInputData($inputData)
             ->setConversation($conversation);
@@ -219,7 +219,7 @@ final class WorkflowExecutionService
     private function resolveEnvHeaders(array $headers): array
     {
         return array_map(
-            static fn ($value) => is_string($value) && preg_match('/^%env\((\w+)\)%$/', $value, $m)
+            static fn(string $value): string => is_string($value) && preg_match('/^%env\((\w+)\)%$/', $value, $m)
                 ? (string) ($_ENV[$m[1]] ?? getenv($m[1]) ?: '')
                 : $value,
             $headers,
@@ -241,7 +241,7 @@ final class WorkflowExecutionService
         $subject = $this->replacePlaceholders($config['subject'] ?? '', $inputData);
         $body = $this->replacePlaceholders($config['body'] ?? '', $inputData);
 
-        $email = (new Email())
+        $email = new Email()
             ->from($this->mailerFromAddress)
             ->to($toEmail)
             ->subject($subject)
@@ -250,7 +250,7 @@ final class WorkflowExecutionService
         try {
             $this->mailer->send($email);
         } catch (TransportExceptionInterface $e) {
-            throw new \RuntimeException("Failed to send email to {$toEmail}: {$e->getMessage()}", previous: $e);
+            throw new \RuntimeException("Failed to send email to {$toEmail}: {$e->getMessage()}", $e->getCode(), previous: $e);
         }
 
         return ['to_email' => $toEmail, 'subject' => $subject, 'body' => $body, 'status' => 'sent'];
@@ -298,25 +298,41 @@ final class WorkflowExecutionService
     {
         $resultData = $inputData;
         foreach ($step->getConfiguration()['transformations'] ?? [] as $transformation) {
-            $field = $transformation['field'] ?? null;
             $operation = $transformation['operation'] ?? null;
-            $value = $transformation['value'] ?? null;
-            if (!$field || !$operation) {
+            if (!$operation) {
                 continue;
             }
-            if ('set' === $operation) {
-                $resultData[$field] = $this->replacePlaceholders($value, $inputData);
-            } elseif ('remove' === $operation) {
-                unset($resultData[$field]);
-            } elseif ('add' === $operation) {
-                $addition = $this->replacePlaceholders($value, $inputData);
-                $resultData[$field] = array_key_exists($field, $resultData)
-                    ? $resultData[$field] + $addition
-                    : $addition;
-            }
+            $resultData = $this->applyFieldOperation($resultData, $operation, $transformation['field'] ?? null, $transformation['value'] ?? null);
         }
 
         return $resultData;
+    }
+
+    /**
+     * `set`/`remove`/`add` on a single field of `$data`. Shared by
+     * handleDataTransform() (a `transformations` list) and executeAction()
+     * (a condition step's single true_action/false_action) so a condition
+     * branch has the same field-mutation vocabulary as a dedicated
+     * data_transform step instead of a smaller, one-off copy of it.
+     *
+     * @param array<string, mixed> $data
+     *
+     * @return array<string, mixed>
+     */
+    private function applyFieldOperation(array $data, string $operation, ?string $field, mixed $value): array
+    {
+        if (!$field) {
+            return $data;
+        }
+
+        return match ($operation) {
+            'set' => [...$data, $field => $this->replacePlaceholders($value, $data)],
+            'remove' => array_diff_key($data, [$field => true]),
+            'add' => [...$data, $field => array_key_exists($field, $data)
+                ? $data[$field] + $this->replacePlaceholders($value, $data)
+                : $this->replacePlaceholders($value, $data)],
+            default => $data,
+        };
     }
 
     /**
@@ -442,12 +458,12 @@ final class WorkflowExecutionService
     private function replacePlaceholders(mixed $value, array $data): mixed
     {
         if (is_array($value)) {
-            return array_map(fn ($v) => $this->replacePlaceholders($v, $data), $value);
+            return array_map(fn($v): mixed => $this->replacePlaceholders($v, $data), $value);
         }
         if (is_string($value)) {
             return preg_replace_callback(
                 '/\{\{(\w+)\}\}/',
-                static fn (array $m) => isset($data[$m[1]]) ? (string) $data[$m[1]] : $m[0],
+                static fn(array $m): string => isset($data[$m[1]]) ? (string) $data[$m[1]] : $m[0],
                 $value,
             );
         }
@@ -456,6 +472,11 @@ final class WorkflowExecutionService
     }
 
     /**
+     * `condition`'s true_action/false_action: `{"type": "set_field"|"add_field"|"remove_field", "field": "...", "value"?: ...}`.
+     * Same three operations as data_transform's `transformations` (see
+     * applyFieldOperation()) -- an unrecognized/missing `type` is a no-op,
+     * same as an unrecognized data_transform `operation`.
+     *
      * @param array<string, mixed> $action
      * @param array<string, mixed> $inputData
      *
@@ -463,14 +484,15 @@ final class WorkflowExecutionService
      */
     private function executeAction(array $action, array $inputData): array
     {
-        if ('set_field' === ($action['type'] ?? null)) {
-            $field = $action['field'] ?? null;
-            $value = $action['value'] ?? null;
-            if ($field && null !== $value) {
-                $inputData[$field] = $this->replacePlaceholders($value, $inputData);
-            }
-        }
+        $operation = match ($action['type'] ?? null) {
+            'set_field' => 'set',
+            'add_field' => 'add',
+            'remove_field' => 'remove',
+            default => null,
+        };
 
-        return $inputData;
+        return $operation
+            ? $this->applyFieldOperation($inputData, $operation, $action['field'] ?? null, $action['value'] ?? null)
+            : $inputData;
     }
 }
