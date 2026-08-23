@@ -1,5 +1,6 @@
 # Chatbot Full-Stack
 
+[![CI (backend)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/ci-backend.yml/badge.svg)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/ci-backend.yml)
 [![Deploy chat-ia (backend)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend.yml/badge.svg)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend.yml)
 ![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)
 ![Symfony](https://img.shields.io/badge/Symfony-8.1-000000?logo=symfony&logoColor=white)

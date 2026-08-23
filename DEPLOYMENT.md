@@ -1,5 +1,6 @@
 # Déploiement
 
+[![CI (backend)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/ci-backend.yml/badge.svg)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/ci-backend.yml)
 [![Deploy chat-ia (backend)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend.yml/badge.svg)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend.yml)
 ![Hosting](https://img.shields.io/badge/hosting-o2switch-FF6600)
 ![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)
@@ -7,21 +8,33 @@
 
 ## Backend (Symfony)
 
-CI/CD : [`.github/workflows/deploy-backend.yml`](.github/workflows/deploy-backend.yml),
-déclenché sur push vers `master` touchant `backend/**`, ou manuellement
-(`workflow_dispatch`, avec une option `dry_run`).
+Deux pipelines distincts, le second déclenché par le premier :
+
+1. [`.github/workflows/ci-backend.yml`](.github/workflows/ci-backend.yml) —
+   lint, tests, PHPStan, PHP-CS-Fixer, `composer audit`. Déclenché sur tout
+   push/PR touchant `backend/**`. Pas de secrets, pas de SSH.
+2. [`.github/workflows/deploy-backend.yml`](.github/workflows/deploy-backend.yml) —
+   build + déploiement SSH. Déclenché par `workflow_run` quand le pipeline CI
+   **réussit sur `master`** (jamais directement sur push), ou manuellement
+   (`workflow_dispatch`, avec une option `dry_run`).
 
 ### Pourquoi cette architecture
 
 - **Hébergement** : o2switch, hébergement mutualisé cPanel (domaine
   `chatbot.jolivetmaxime.fr`). Pas de registre Docker ni de conteneurs côté
   serveur — le déploiement est un `rsync` de fichiers PHP bruts sur SSH.
-- **Un seul job** (pas de split build/deploy) : contrairement à un frontend
-  statique, il n'y a pas de besoin "build once, ship to multiple targets"
-  ici, et l'étape de whitelisting IP doit obligatoirement tourner dans le
-  même job que le SSH/rsync — chaque job GitHub Actions a sa propre VM avec
-  sa propre IP publique ; whitelister dans un job et faire le SSH dans un
-  autre whitelisterait la mauvaise IP.
+- **CI et déploiement séparés, mais le déploiement reste un seul job** :
+  la porte de qualité (lint/tests/audit/PHPStan/CS-Fixer) vit dans son
+  propre workflow (`ci-backend.yml`), avec un retour rapide sur chaque push/PR
+  sans toucher aux secrets de déploiement. `deploy-backend.yml` ne se
+  déclenche qu'après un succès de ce pipeline sur `master`
+  (`on: workflow_run`). En revanche, à l'intérieur de `deploy-backend.yml`,
+  build et déploiement restent **un seul job** (pas de split), parce que
+  l'étape de whitelisting IP doit obligatoirement tourner dans le même job
+  que le SSH/rsync — chaque job GitHub Actions a sa propre VM avec sa propre
+  IP publique ; whitelister dans un job et faire le SSH dans un autre
+  whitelisterait la mauvaise IP. C'est cette contrainte-là (pas l'absence de
+  CI séparée) qui borne le job unique.
 - **Whitelisting IP** : o2switch restreint l'accès SSH par IP (cPanel >
   Sécurité > Accès SSH). Les runners GitHub Actions changent d'IP à chaque
   run, donc le workflow whiteliste l'IP du runner via l'API cPanel avant de
@@ -29,10 +42,6 @@ déclenché sur push vers `master` touchant `backend/**`, ou manuellement
   [`.github/scripts/o2switch-whitelist.sh`](.github/scripts/o2switch-whitelist.sh)).
   Le quota de whitelist étant limité, le script retire les 2 IP les plus
   récemment ajoutées avant d'ajouter la nouvelle.
-- **Lint + audit comme porte de déploiement** : pas de workflow CI séparé —
-  un échec de lint/audit bloque le job avant que whitelist/rsync/SSH ne
-  s'exécutent, ce qui donne le même effet de garde-fou qu'un job "build"
-  distinct sans fichier de workflow supplémentaire à maintenir.
 
 ### Disposition sur le serveur
 

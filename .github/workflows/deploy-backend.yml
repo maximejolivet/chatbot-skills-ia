@@ -1,15 +1,22 @@
 # Full rationale, server layout, required secrets, and dry-run instructions:
 # see ../../DEPLOYMENT.md. Deploys to o2switch over SSH (shared cPanel
 # hosting) -- no logic here should change without reading that doc first.
+#
+# Triggered by ci-backend.yml succeeding on master (not by push directly):
+# lint/test/audit/phpstan/cs-fixer are that separate workflow's job now,
+# not duplicated here. Still a single job below despite that split --
+# the IP-whitelisting step must run in the same job as the SSH/rsync
+# steps (each GitHub Actions job gets its own runner VM, and its own
+# public IP), so build and deploy can't be split into their own jobs the
+# way build and CI could.
 
 name: Deploy chat-ia (backend)
 
 on:
-  push:
+  workflow_run:
+    workflows: ['CI (backend)']
     branches: [master]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/deploy-backend.yml'
+    types: [completed]
   workflow_dispatch:
     inputs:
       dry_run:
@@ -25,6 +32,7 @@ concurrency:
 jobs:
   deploy:
     name: Deploy
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -36,7 +44,12 @@ jobs:
       run:
         working-directory: backend
     steps:
+      # Pins to the exact commit ci-backend.yml just validated, not
+      # whatever master happens to be when this job starts -- avoids a race
+      # if another push landed on master between the two workflows.
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -51,9 +64,6 @@ jobs:
           key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
           restore-keys: composer-${{ runner.os }}-
 
-      - name: Validate composer.json/composer.lock
-        run: composer validate --strict
-
       # Dummy env, just enough for composer's post-install auto-scripts
       # (cache:clear, assets:install) to boot the kernel on the runner --
       # unrelated to the real production .env, which is written to the
@@ -61,29 +71,8 @@ jobs:
       - name: Prepare .env for the build
         run: cp .env.example .env
 
-      - name: Install dependencies (with dev, for the checks below)
+      - name: Install dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
-
-      - name: Lint YAML config
-        run: php bin/console lint:yaml config --parse-tags
-
-      - name: Lint Twig templates
-        run: php bin/console lint:twig templates
-
-      - name: Lint container
-        run: php bin/console lint:container
-
-      - name: Run tests
-        run: php bin/phpunit
-
-      - name: Composer audit -- CVE scan
-        run: composer audit
-
-      - name: PHPStan -- static analysis (level 9, phpstan-baseline.neon for pre-existing findings)
-        run: composer phpstan
-
-      - name: PHP-CS-Fixer -- coding style (@Symfony + @PER-CS)
-        run: composer cs:check
 
       # Rebuilt here (on the runner), never on the server -- no vendor/ from
       # a previous deploy sits around to accidentally corrupt.

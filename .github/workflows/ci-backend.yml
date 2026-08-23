@@ -1,0 +1,80 @@
+# Quality gate for the backend: lint, tests, static analysis, coding
+# style, dependency audit. Runs on every push and PR touching backend/**
+# -- no secrets, no SSH, fast feedback. Split out of deploy-backend.yml
+# (see DEPLOYMENT.md) so a push to master can't reach the SSH/whitelist
+# steps there without this passing first (deploy-backend.yml triggers via
+# workflow_run on this workflow's success).
+
+name: CI (backend)
+
+on:
+  push:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci-backend.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci-backend.yml'
+
+concurrency:
+  group: ci-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, test, analyse
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Validate composer.json/composer.lock
+        run: composer validate --strict
+
+      # Dummy env, just enough for composer's post-install auto-scripts
+      # (cache:clear, assets:install) to boot the kernel on the runner.
+      - name: Prepare .env for the build
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Lint YAML config
+        run: php bin/console lint:yaml config --parse-tags
+
+      - name: Lint Twig templates
+        run: php bin/console lint:twig templates
+
+      - name: Lint container
+        run: php bin/console lint:container
+
+      - name: Run tests
+        run: php bin/phpunit
+
+      - name: Composer audit -- CVE scan
+        run: composer audit
+
+      - name: PHPStan -- static analysis (level 9, phpstan-baseline.neon for pre-existing findings)
+        run: composer phpstan
+
+      - name: PHP-CS-Fixer -- coding style (@Symfony + @PER-CS)
+        run: composer cs:check
