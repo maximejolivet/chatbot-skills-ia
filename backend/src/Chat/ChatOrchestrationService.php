@@ -3,6 +3,10 @@
 namespace App\Chat;
 
 use App\AiProvider\Client\ChatMessage;
+use App\AiProvider\Client\LlmClientInterface;
+use App\AiProvider\Client\Ollama\OllamaLlmClient;
+use App\AiProvider\Client\ApiEndpoint\OpenAiCompatibleLlmClient;
+use App\AiProvider\Client\TokenEstimator;
 use App\AiProvider\Client\ToolSpec;
 use App\AiProvider\ProviderSelectionService;
 use App\Entity\AiAgent;
@@ -20,6 +24,15 @@ use App\Workflow\WorkflowExecutionService;
  *
  * RAG (vector search) is a separate, explicit orchestration step here rather
  * than being baked into the LLM client itself.
+ *
+ * Token-level streaming (an optional $onDelta callback on generateReply())
+ * only applies to the no-tools path: LlmClientInterface::stream() is
+ * "plain text only, no tools" by contract (see that interface), so an agent
+ * with active workflows always takes the buffered complete()+tool-loop path
+ * below, same as before streaming existed. $onDelta still fires exactly
+ * once on that path, with the full content, so callers (ConversationStreamController)
+ * get a uniform "zero or more deltas, then done" contract either way instead
+ * of having to know which path was taken.
  */
 final readonly class ChatOrchestrationService
 {
@@ -44,19 +57,49 @@ final readonly class ChatOrchestrationService
     ) {}
 
     /**
-     * @param ChatMessage[] $history
+     * @param ChatMessage[]                 $history
+     * @param (callable(string): void)|null $onDelta invoked with each chunk of
+     *                                               the final answer as it's produced -- see class docblock for why
+     *                                               this only streams incrementally on the no-tools path, and still
+     *                                               fires exactly once (with the full content) on the buffered path
      */
     public function generateReply(
         string $userMessage,
         array $history,
         ?AiAgent $agent = null,
         ?Conversation $conversation = null,
+        ?callable $onDelta = null,
     ): ChatReplyResult {
         $llmClient = $this->providerSelectionService->getLlmClient(AiProviderUsage::Chat);
+
+        return $this->orchestrate($llmClient, $userMessage, $history, $agent, $conversation, $onDelta);
+    }
+
+    /**
+     * Split out of generateReply() so tests can exercise the actual
+     * streaming-vs-buffered/tool-loop logic below with a hand-built
+     * LlmClientInterface fake, without going through ProviderSelectionService
+     * (final, no seam to make it resolve to a fake client -- see
+     * ChatOrchestrationServiceTest).
+     *
+     * @param ChatMessage[] $history
+     */
+    private function orchestrate(
+        LlmClientInterface $llmClient,
+        string $userMessage,
+        array $history,
+        ?AiAgent $agent,
+        ?Conversation $conversation,
+        ?callable $onDelta,
+    ): ChatReplyResult {
         $ragResults = $this->ragContextService->buildContext($userMessage, $agent);
         $messages = $this->buildMessages($agent, $history, $userMessage, $ragResults, $conversation);
         $toolSpecs = $this->buildToolSpecs($agent);
         $sources = $this->buildSources($ragResults);
+
+        if (!$toolSpecs && $onDelta) {
+            return $this->generateStreamingReply($llmClient, $messages, $onDelta, $sources);
+        }
 
         $toolTrace = [];
 
@@ -65,6 +108,8 @@ final readonly class ChatOrchestrationService
             $messages[] = $result->message;
 
             if (!$result->message->toolCalls) {
+                $onDelta?->__invoke($result->message->content);
+
                 return new ChatReplyResult($result->message->content, $result->usage, $toolTrace, $sources);
             }
 
@@ -98,8 +143,45 @@ final readonly class ChatOrchestrationService
 
         // Iteration budget exhausted -- force a final answer without further tool access.
         $final = $llmClient->complete($messages);
+        $onDelta?->__invoke($final->message->content);
 
         return new ChatReplyResult($final->message->content, $final->usage, $toolTrace, $sources);
+    }
+
+    /**
+     * No-tools path: LlmClientInterface::stream() only ever yields plain
+     * content chunks, never usage/provider/model data (unlike complete()),
+     * so those are estimated/best-effort here the same way the clients
+     * themselves already estimate usage when a provider doesn't report it
+     * (see e.g. OllamaLlmClient::complete()).
+     *
+     * @param ChatMessage[]                    $messages
+     * @param callable(string): void           $onDelta
+     * @param array<int, array<string, mixed>> $sources
+     */
+    private function generateStreamingReply(LlmClientInterface $llmClient, array $messages, callable $onDelta, array $sources): ChatReplyResult
+    {
+        $content = '';
+        foreach ($llmClient->stream($messages) as $chunk) {
+            $content .= $chunk;
+            $onDelta($chunk);
+        }
+
+        $promptTokens = TokenEstimator::estimate(json_encode($messages) ?: '');
+        $completionTokens = TokenEstimator::estimate($content);
+
+        return new ChatReplyResult($content, [
+            'prompt_tokens' => $promptTokens,
+            'completion_tokens' => $completionTokens,
+            'total_tokens' => $promptTokens + $completionTokens,
+            'source' => 'estimated',
+            'provider' => match (true) {
+                $llmClient instanceof OllamaLlmClient => 'ollama',
+                $llmClient instanceof OpenAiCompatibleLlmClient => 'api_endpoint',
+                default => 'unknown',
+            },
+            'model' => property_exists($llmClient, 'model') ? $llmClient->model : 'unknown',
+        ], [], $sources);
     }
 
     /**

@@ -304,27 +304,77 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       réservé aux comptes `ROLE_ADMIN`", pas "accessible sans authentification
       HTTP Basic". Le proxy Nuxt (`server/api/[...path].ts`) s'authentifie
       déjà en admin sur chaque appel, donc le widget public n'en voit rien.*
-- [ ] **Streaming compatible tool-calling** — limite assumée actuellement
+- [x] **Streaming compatible tool-calling** — limite précédemment assumée
       (§12.1 de la spec backend) : réponse générée entièrement côté serveur
-      puis émise en SSE. Un chemin "streaming direct" pour les réponses sans
-      appel d'outil (majorité des cas), avec repli bufferisé quand il y a
-      tool-calling, serait faisable sans tout casser.
-      **Non traité dans cette passe** (contrairement aux 3 autres items
-      backend sélectionnés en même temps) : en creusant, c'est un changement
-      d'architecture bien plus profond que les autres — `OllamaLlmClient`/
-      `OpenAiCompatibleLlmClient::complete()` sont aujourd'hui des appels
-      **bloquants** (`stream: false` en dur) ; un vrai streaming token-par-
-      token demanderait (1) un mode streaming réel sur ces deux clients
-      (NDJSON pour Ollama, SSE pour l'endpoint OpenAI-compatible), (2)
-      restructurer `ChatOrchestrationService::generateReply()` pour émettre
-      au fil de l'eau sur le chemin sans tool-calling tout en gardant le
-      chemin bufferisé pour le tool-calling, (3) `ConversationStreamController`
-      pour relayer de vrais deltas au lieu du seul frame `ai_complete`
-      actuel, (4) le frontend (`useChatbot.ts`) pour consommer des deltas
-      incrémentaux. Risque de régression sur le cœur du pipeline de chat,
-      sans filet de test de streaming existant — mieux vaut le traiter
-      comme son propre chantier dédié plutôt que le faire rapidement à la
-      suite des 3 autres items.
+      puis émise en SSE en un seul bloc. Traité comme son propre chantier
+      dédié, comme prévu lors du report initial.
+      **Découverte en creusant** : `OllamaLlmClient::stream()` et
+      `OpenAiCompatibleLlmClient::stream()` (NDJSON / SSE, parsing des deltas)
+      existaient déjà, complets et fonctionnels, sur `LlmClientInterface` —
+      jamais appelés nulle part dans le code (confirmé par recherche globale),
+      probablement construits en anticipation de cette fonctionnalité puis
+      jamais branchés. Le vrai travail restant était donc le câblage, pas
+      l'implémentation des clients.
+      - **`ChatOrchestrationService::generateReply()`** : nouveau paramètre
+        optionnel `?callable $onDelta`. Le choix streaming-vs-bufferisé se
+        fait sur la présence de tools : `LlmClientInterface::stream()` est
+        "texte brut sans tools" par contrat, donc un agent avec des workflows
+        actifs prend toujours le chemin bufferisé existant (`complete()` +
+        boucle tool-calling, inchangée). `$onDelta` est appelé au moins une
+        fois dans tous les cas — sur le chemin bufferisé, une seule fois avec
+        le contenu complet — pour que l'appelant (`ConversationStreamController`)
+        ait un contrat uniforme ("zéro ou plusieurs deltas, puis fin") sans
+        savoir quel chemin a été pris côté serveur. Logique extraite dans une
+        méthode privée `orchestrate()` (accepte le `LlmClientInterface` déjà
+        résolu) pour rester testable sans passer par `ProviderSelectionService`
+        (`final`, aucun point d'injection pour lui faire résoudre un client
+        factice).
+      - **Usage estimé sur le chemin streaming** : `stream()` ne renvoie que
+        du texte, jamais de compteurs de tokens ni provider/model (contrairement
+        à `complete()`) — `TokenEsimator` utilisé en repli, `source: estimated`,
+        même convention que les autres endroits où le provider ne renvoie pas
+        ces infos.
+      - **`ConversationStreamController`** : relaie chaque delta comme frame
+        SSE `{type: 'delta', content: '...'}`, `ai_complete` reste inchangé
+        (message complet sérialisé, lu côté frontend uniquement pour les
+        métadonnées désormais).
+      - **Frontend (`useChatbot.ts`)** : les frames `delta` construisent la
+        bulle assistant en direct (poussée au premier delta, puis mutée en
+        place — via la référence *réactive* obtenue après le `push`, pas
+        l'objet brut créé avant, sinon Vue ne détecte pas les mutations
+        suivantes) ; `ai_complete` ne fait plus que compléter les métadonnées
+        (id réel, sources, tool_calls, feedback, tokenUsage) sur cette même
+        bulle plutôt que d'en pousser une nouvelle. Repli défensif conservé
+        si aucun delta n'arrive jamais (ne devrait jamais arriver vu que le
+        backend en émet toujours au moins un). `TypingIndicator` masqué dès
+        que la bulle live apparaît (`messages[messages.length-1]?.role ===
+        'assistant'`) plutôt que de rester affiché en double.
+      - **Bug trouvé et corrigé pendant le développement** : le premier jet de
+        `generateStreamingReply()` oubliait de transmettre `$sources` au
+        `ChatReplyResult` — les sources RAG auraient été silencieusement
+        perdues sur toute réponse streamée. Repéré par le linter de l'éditeur
+        (pas PHPStan), corrigé, couvert par un test dédié.
+      - 4 tests ajoutés (`ChatOrchestrationServiceTest`, nouveau fichier —
+        double `FakeLlmClient` fait main pour contrôler `stream()`/`complete()`,
+        même raison que `ProviderSelectionService` : chemin streaming avec
+        deltas incrémentaux, chemin bufferisé sans agent, chemin bufferisé
+        avec agent+workflow actif malgré `onDelta` fourni, sources RAG
+        préservées sur le chemin streaming) — suite passée de 77 à 81 tests.
+        `phpstan.neon` : nouvelle règle `ignoreErrors` pour
+        `staticMethod.dynamicCall` sur `tests/*` (faux positif PHPStan sur
+        `createStub()`/`createMock()`, déjà 7 fois grandfathered dans la
+        baseline avant cette règle — évite de re-baseliner chaque nouveau
+        fichier de test utilisant cet idiome PHPUnit standard).
+      - Vérifié en conditions réelles de bout en bout (`curl -N` à travers le
+        proxy Nuxt) : dizaines de vraies frames `delta` token-par-token sur le
+        chemin sans tools (`token_usage.source: estimated`) ; un seul `delta`
+        avec le contenu complet sur le chemin avec agent+tools, y compris un
+        vrai déclenchement de 2 outils (`enregistrer_identite` +
+        `lister_creneaux_disponibles`, vrai appel à l'API Cal.com) — aucune
+        fuite de deltas pendant l'exécution des outils, `token_usage.source:
+        provider` comme attendu. `quick-send` et l'endpoint JSON non-streaming
+        (`ConversationMessagesController`) ne passent jamais `$onDelta` :
+        strictement inchangés, vérifié aussi via `curl`.
 - [x] **`quick-send` n'expose pas les `sources`** RAG (contrairement aux
       messages persistés) — **la prémisse s'est révélée fausse en creusant** :
       `QuickSendController` renvoyait déjà `sources` en clair depuis le

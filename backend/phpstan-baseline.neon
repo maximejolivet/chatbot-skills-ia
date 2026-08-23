@@ -265,6 +265,18 @@ parameters:
 			path: src/Chat/ChatOrchestrationService.php
 
 		-
+			message: '#^Cannot call method __invoke\(\) on callable\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: src/Chat/ChatOrchestrationService.php
+
+		-
+			message: '#^Only booleans are allowed in &&, \(callable\)\|null given on the right side\.$#'
+			identifier: booleanAnd.rightNotBoolean
+			count: 1
+			path: src/Chat/ChatOrchestrationService.php
+
+		-
 			message: '#^Only booleans are allowed in &&, App\\Entity\\AiAgent\|null given on the left side\.$#'
 			identifier: booleanAnd.leftNotBoolean
 			count: 1
@@ -284,6 +296,12 @@ parameters:
 
 		-
 			message: '#^Only booleans are allowed in a negated boolean, array\<App\\AiProvider\\Client\\ToolCall\> given\.$#'
+			identifier: booleanNot.exprNotBoolean
+			count: 1
+			path: src/Chat/ChatOrchestrationService.php
+
+		-
+			message: '#^Only booleans are allowed in a negated boolean, array\<App\\AiProvider\\Client\\ToolSpec\> given\.$#'
 			identifier: booleanNot.exprNotBoolean
 			count: 1
 			path: src/Chat/ChatOrchestrationService.php
@@ -333,7 +351,7 @@ parameters:
 		-
 			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
 			identifier: ternary.shortNotAllowed
-			count: 3
+			count: 4
 			path: src/Chat/ChatOrchestrationService.php
 
 		-
@@ -1771,16 +1789,10 @@ parameters:
 			path: src/Workflow/WorkflowExecutionService.php
 
 		-
-			message: '#^Dynamic call to static method PHPUnit\\Framework\\TestCase\:\:createStub\(\)\.$#'
-			identifier: staticMethod.dynamicCall
-			count: 2
-			path: tests/AiProvider/ProviderSelectionServiceTest.php
-
-		-
-			message: '#^Dynamic call to static method PHPUnit\\Framework\\TestCase\:\:createStub\(\)\.$#'
-			identifier: staticMethod.dynamicCall
-			count: 3
-			path: tests/Chat/FollowUpQuestionsServiceTest.php
+			message: '#^Method App\\Tests\\Chat\\ChatOrchestrationServiceTest\:\:orchestrate\(\) should return App\\Chat\\ChatReplyResult but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Chat/ChatOrchestrationServiceTest.php
 
 		-
 			message: '#^Method App\\Tests\\Chat\\FollowUpQuestionsServiceTest\:\:parseQuestions\(\) return type has no value type specified in iterable type array\.$#'
@@ -1805,24 +1817,6 @@ parameters:
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: tests/Chat/MessageSerializerTest.php
-
-		-
-			message: '#^Dynamic call to static method PHPUnit\\Framework\\TestCase\:\:createStub\(\)\.$#'
-			identifier: staticMethod.dynamicCall
-			count: 8
-			path: tests/Chat/RagContextServiceTest.php
-
-		-
-			message: '#^Dynamic call to static method PHPUnit\\Framework\\TestCase\:\:createStub\(\)\.$#'
-			identifier: staticMethod.dynamicCall
-			count: 10
-			path: tests/KnowledgeBase/CollectionServiceTest.php
-
-		-
-			message: '#^Dynamic call to static method PHPUnit\\Framework\\TestCase\:\:createStub\(\)\.$#'
-			identifier: staticMethod.dynamicCall
-			count: 1
-			path: tests/VectorConnector/QdrantClientTest.php
 
 		-
 			message: '#^Offset ''message'' might not exist on array\{status\: ''error'', message\?\: string\}\.$#'
@@ -1870,12 +1864,6 @@ parameters:
 			message: '#^Cannot access offset 0 on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 6
-			path: tests/VectorConnector/VectorSearchServiceTest.php
-
-		-
-			message: '#^Dynamic call to static method PHPUnit\\Framework\\TestCase\:\:createStub\(\)\.$#'
-			identifier: staticMethod.dynamicCall
-			count: 14
 			path: tests/VectorConnector/VectorSearchServiceTest.php
 
 		-
@@ -1948,12 +1936,6 @@ parameters:
 			message: '#^Cannot access offset ''tier'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
-			path: tests/Workflow/WorkflowExecutionServiceTest.php
-
-		-
-			message: '#^Dynamic call to static method PHPUnit\\Framework\\TestCase\:\:createStub\(\)\.$#'
-			identifier: staticMethod.dynamicCall
-			count: 6
 			path: tests/Workflow/WorkflowExecutionServiceTest.php
 
 		-

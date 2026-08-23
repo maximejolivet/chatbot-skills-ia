@@ -35,7 +35,10 @@ final readonly class ChatService
         private string $ownerNotificationEmail,
     ) {}
 
-    public function sendMessage(Conversation $conversation, string $userMessage, ?int $agentId = null): Message
+    /**
+     * @param (callable(string): void)|null $onDelta see ChatOrchestrationService::generateReply()
+     */
+    public function sendMessage(Conversation $conversation, string $userMessage, ?int $agentId = null, ?callable $onDelta = null): Message
     {
         $userMsg = new Message()->setRole(MessageRole::User)->setContent($userMessage);
         $conversation->addMessage($userMsg);
@@ -49,7 +52,7 @@ final readonly class ChatService
         $agent = $agentId ? $this->agentRepository->getActive($agentId) : null;
         $history = $this->historyAsChatMessages($conversation->getId());
 
-        $result = $this->orchestrator->generateReply($userMessage, $history, $agent, $conversation);
+        $result = $this->orchestrator->generateReply($userMessage, $history, $agent, $conversation, $onDelta);
 
         $assistantMsg = new Message()
             ->setRole(MessageRole::Assistant)

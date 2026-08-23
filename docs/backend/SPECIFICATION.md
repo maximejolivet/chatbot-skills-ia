@@ -337,7 +337,7 @@ Une façade à deux modes :
 
 ### 5.5 Streaming (SSE)
 
-`POST /api/conversations/{id}/stream` (`ConversationStreamController`) : génère la réponse **entièrement côté serveur** (appel bloquant à `ChatService::sendMessage`), puis l'émet en *Server-Sent Events* (`user_message` → `ai_complete` → `done`). Ce **n'est pas** du streaming token par token — le tool-calling n'est pas compatible avec le streaming LLM natif dans cette architecture (limite assumée).
+`POST /api/conversations/{id}/stream` (`ConversationStreamController`) émet en *Server-Sent Events* : `user_message` → zéro ou plusieurs `delta` (vrais tokens, au fil de l'eau) → `ai_complete` (message complet sérialisé, lu côté client uniquement pour les métadonnées : id, sources, tool_calls, feedback) → `done`. `ChatOrchestrationService::generateReply()` décide du chemin en fonction de la présence de tools pour l'agent : sans tool disponible, `LlmClientInterface::stream()` (NDJSON pour Ollama, SSE pour l'endpoint OpenAI-compatible) émet un vrai delta par chunk ; avec des tools actifs, le chemin bufferisé historique (`complete()` + boucle tool-calling) reste utilisé — `stream()` est par contrat "texte brut sans tools", et streamer pendant qu'un tool pourrait être appelé fuiterait des détails internes avant que la décision d'appeler l'outil soit connue. Dans ce second cas, un seul `delta` est quand même émis avec le contenu complet une fois la réponse finale obtenue, pour que le frontend ait un contrat uniforme sans avoir à savoir quel chemin a été pris. `token_usage.source` vaut `estimated` sur le chemin streaming (les providers ne renvoient pas de compteurs exacts en streaming), `provider` sur le chemin bufferisé.
 
 ---
 
@@ -736,8 +736,6 @@ Toutes les requêtes ci-dessous nécessitent l'authentification HTTP Basic (`-u 
 
 ### 12.1 Limites d'architecture assumées
 
-| Limite                                    | Détail                                                                         | Impact                                                              |
-| ----------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| **Streaming non combiné au tool-calling** | `ConversationStreamController` génère la réponse complète puis l'émet en SSE   | Pas de vrai streaming token-par-token pendant l'exécution d'outils    |
+Aucune limite active listée ici pour l'instant.
 
-Résolues depuis : authentification multi-utilisateur avec cloisonnement par propriétaire (§10), file de messages asynchrone pour le chunking/la vectorisation et le déclenchement de workflow (§6.2, §7.3), CSRF stateless sur les formulaires du backoffice (§9).
+Résolues depuis : authentification multi-utilisateur avec cloisonnement par propriétaire (§10), file de messages asynchrone pour le chunking/la vectorisation et le déclenchement de workflow (§6.2, §7.3), CSRF stateless sur les formulaires du backoffice (§9), streaming token-par-token via SSE hors tool-calling (§5.5, voir `docs/BACKLOG.md` pour le détail du chantier).

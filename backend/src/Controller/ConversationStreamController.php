@@ -15,9 +15,13 @@ use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
- * Runs the full (non-streaming) reply generation server-side, then emits the
- * result as SSE -- true token-level streaming isn't combined with
- * tool-calling in this design (see ChatOrchestrationService).
+ * Relays real token-level deltas as `type: delta` SSE frames while the reply
+ * is generated (ChatOrchestrationService streams whenever the agent has no
+ * active tools; buffered otherwise, see that class), then `ai_complete` with
+ * the full serialized message once persisted -- the frontend builds up the
+ * bubble from deltas and only reads ai_complete for metadata (id, sources,
+ * tool_calls, feedback), not for content, since a delta stream may have
+ * already rendered it.
  */
 #[AsController]
 final readonly class ConversationStreamController
@@ -48,7 +52,10 @@ final readonly class ConversationStreamController
             $this->emit(['type' => 'user_message', 'content' => $userMessage]);
 
             try {
-                $assistantMessage = $this->chatService->sendMessage($data, $userMessage, $agentId);
+                $onDelta = function (string $chunk): void {
+                    $this->emit(['type' => 'delta', 'content' => $chunk]);
+                };
+                $assistantMessage = $this->chatService->sendMessage($data, $userMessage, $agentId, $onDelta);
                 $this->emit(['type' => 'ai_complete', 'done' => true, ...MessageSerializer::serialize($assistantMessage)]);
             } catch (\Throwable $e) {
                 $this->emit(['type' => 'error', 'content' => $e->getMessage()]);

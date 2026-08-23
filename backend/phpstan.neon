@@ -10,3 +10,14 @@ parameters:
         - src/Kernel.php
 
     reportUnmatchedIgnoredErrors: true
+
+    # PHPUnit\Framework\TestCase::createStub()/createMock() are genuinely
+    # dynamic (PHPStan can't resolve the generic-by-callsite return type),
+    # not a real bug -- this codebase's test suite calls them constantly
+    # (already 7 baselined instances before this rule existed). Ignoring the
+    # identifier outright in tests/ avoids re-baselining every new test file
+    # that uses the same standard PHPUnit idiom.
+    ignoreErrors:
+        -
+            identifier: staticMethod.dynamicCall
+            path: tests/*
