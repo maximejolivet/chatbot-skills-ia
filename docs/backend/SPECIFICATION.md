@@ -633,6 +633,8 @@ Pour ajouter une 14ᵉ ressource : une entité `implements ResourceInterface`, u
 
 **Journal d'audit** (`audit_log`, §9) : `App\EventListener\AuditLogListener` s'abonne aux événements génériques `app.<resource>.post_create`/`post_update`/`pre_delete` que `Sylius\Bundle\ResourceBundle\Controller\ResourceController` émet déjà pour toute ressource CRUD, plutôt qu'un listener dédié par entité. Un seul point d'attention : la suppression est capturée sur `pre_delete` et non `post_delete`, car Doctrine réinitialise l'identifiant auto-généré à `null` sur l'entité en mémoire juste après l'exécution réelle de la suppression — capturer après coup y perdrait `resourceId`. L'acteur (`actorEmail`) est un instantané, pas une clé étrangère vers `User`, pour rester lisible même si le compte opérateur est ensuite supprimé.
 
+**En-têtes de sécurité HTTP sur `/admin`** : `App\EventListener\SecurityHeadersListener` (`kernel.response`, scopé aux requêtes principales sous `/admin` uniquement — pas `/api`, une API JSON consommée par le proxy Nuxt/des scripts, pas une page de navigateur). CSP, HSTS, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`. Tout ce que charge le backoffice est self-hosté via AssetMapper (pas de CDN, pas de Google Fonts côté admin contrairement au widget public) — `'unsafe-inline'` reste nécessaire sur `script-src` (le `<script type="importmap">` que rend `importmap()`) et `style-src` (un seul `style="width: …%"` dynamique dans `templates/admin/analytics/index.html.twig`).
+
 ---
 
 ## 11. Installation et mise en place

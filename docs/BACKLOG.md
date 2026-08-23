@@ -719,6 +719,29 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       chunk contenant une tentative d'injection ressort bien délimité et
       encadré par la consigne dans le message système envoyé au LLM) — suite
       passée de 81 à 82 tests.
+- [x] **En-têtes de sécurité HTTP sur le backoffice admin** — le durcissement
+      CSP/HSTS précédent ne couvrait que le widget Nuxt public ; `/admin`
+      (données métier réelles, plus sensible) n'avait aucun de ces
+      en-têtes. Nouveau `App\EventListener\SecurityHeadersListener`
+      (`kernel.response`, scopé aux requêtes principales sous `/admin`
+      uniquement — jamais `/api`, une API JSON pour le proxy Nuxt/des
+      scripts, pas une page de navigateur qui a besoin d'être protégée
+      contre du contenu tiers). Pas de séparation dev/prod nécessaire ici
+      contrairement au frontend (pas de websocket HMR à autoriser pour une
+      app Twig rendue serveur). Tout le backoffice est self-hosté via
+      AssetMapper — pas de Google Fonts ni aucune autre origine externe
+      côté admin — donc `font-src`/`img-src` restent `'self'` (+ `data:`).
+      `'unsafe-inline'` reste nécessaire sur `script-src` (le
+      `<script type="importmap">` que rend l'appel `importmap()`) et
+      `style-src` (un seul `style="width: …%"` dynamique dans
+      `templates/admin/analytics/index.html.twig`, pas jugé pertinent de
+      refactorer en variable CSS pour un seul endroit). 3 tests ajoutés
+      (`SecurityHeadersListenerTest`, nouveau fichier — en-têtes bien posés
+      sur `/admin`, absents sur `/api`, absents sur une sous-requête) —
+      suite passée de 82 à 85 tests. Vérifié en conditions réelles : `curl
+      -sI` sur `/admin/login` (en-têtes présents) et `/api/ai_agents`
+      (absents, comme voulu), session admin réelle sur `/admin/analytics`
+      (la page avec le style inline) toujours `200`.
 
 ---
 
