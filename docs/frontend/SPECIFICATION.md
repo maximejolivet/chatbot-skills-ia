@@ -158,6 +158,10 @@ Affiche un message unique, alignement à droite/bleu pour l'utilisateur, à gauc
 
 Indicateur "en train d'écrire" façon Messenger (avatar + 3 points qui rebondissent en cascade, `animate-bounce-slow` avec délais échelonnés). Affiché entre le dernier message et le champ de saisie tant que `isLoading === true`.
 
+### 4.5 `LinkPreviewCard.vue`
+
+Carte d'aperçu (favicon + titre + domaine) affichée sous un message qui contient un lien — le lien lui-même reste cliquable dans le texte, la carte est un complément en dessous (même schéma que Slack/Discord), pas un remplacement. `MessageBubble.vue` extrait jusqu'à 3 URLs `http(s)://` uniques par simple regex sur `formattedContent` (le HTML déjà sanitizé, pas de `DOMParser`/`document` — ce computed doit pouvoir tourner côté serveur aussi) ; rien n'est extrait tant que `isStreaming` est vrai, un lien encore en train de s'écrire n'est pas exploitable. Chaque carte s'appuie sur `GET /api/link-preview` (§7.1) pour récupérer titre/favicon, chargé au montage (`onMounted`, pas de blocage SSR) ; ne s'affiche pas du tout si l'aller-retour échoue ou si la page cible n'a pas de titre exploitable — pas de carte cassée/vide.
+
 ---
 
 ## 5. Composables (logique métier)
@@ -212,11 +216,12 @@ En résumé : ce frontend est une **vitrine minimaliste** du backend — beaucou
 
 ### 7.1 Ce que ce frontend expose
 
-| Méthode | Route (côté Nuxt) | Comportement                                                                                                         |
-| ------- | ----------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `ANY`   | `/api/*`          | Route Nitro catch-all (`server/api/[...path].ts`) — proxy transparent vers `${API_URL}/api/*` sur le backend Symfony |
+| Méthode | Route (côté Nuxt)   | Comportement                                                                                                                                          |
+| ------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ANY`   | `/api/*`             | Route Nitro catch-all (`server/api/[...path].ts`) — proxy transparent vers `${API_URL}/api/*` sur le backend Symfony                                    |
+| `GET`   | `/api/link-preview`  | `server/api/link-preview.get.ts` — récupère titre + favicon (inliné en `data:` URI, contrainte CSP `img-src`) d'une URL externe pour `LinkPreviewCard.vue`. N'appelle jamais le backend Symfony (`fetch` direct vers l'URL demandée, avec garde-fous SSRF — voir le fichier). Mis en cache 24h par URL (`defineCachedEventHandler`). |
 
-Aucune autre route serveur n'est définie. `pages/index.vue` est une page vide (le widget est monté globalement depuis `app.vue`).
+`pages/index.vue` est une page vide (le widget est monté globalement depuis `app.vue`).
 
 ### 7.2 Ce que ce frontend consomme (endpoints backend Symfony réellement appelés)
 

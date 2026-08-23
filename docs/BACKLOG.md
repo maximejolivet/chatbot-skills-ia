@@ -905,6 +905,34 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       plan). Clic sur la notification : `window.focus()` + fermeture.
       3 nouveaux tests (`Notification` global stubbé) — suite passée de
       40 à 43 tests.
+- [x] **Aperçu de lien (titre + favicon)** — un lien dans une réponse
+      s'affichait comme du texte brut souligné, sans contexte sur la
+      destination. Nouvelle route Nitro `GET /api/link-preview`
+      (`server/api/link-preview.get.ts`) : récupère `<title>`/favicon
+      d'une URL externe **côté serveur** (jamais via le backend Symfony),
+      avec des garde-fous SSRF — hôte privé/loopback/link-local rejeté
+      (littéral IP ou résolution DNS), redirections suivies manuellement
+      avec re-validation à chaque saut (`redirect: 'follow'` aurait laissé
+      une URL publique rediriger vers une IP privée après coup), taille et
+      délai bornés (200 Ko HTML / 100 Ko favicon, 5s, 3 redirections max).
+      Reconnu comme relais de fetch public par nature (n'importe qui peut
+      appeler la route avec n'importe quelle URL) — le DNS rebinding reste
+      un angle non couvert, compromis assumé à l'échelle du projet, même
+      catégorie que la CSP elle-même ("raisonnable mais pas complet").
+      Le favicon est inliné en `data:` URI dans la réponse (pas d'URL
+      externe directe) : la CSP du widget (`img-src 'self' data:`,
+      `nuxt.config.ts`) bloquerait sinon l'image. Mis en cache 24h par URL
+      (`defineCachedEventHandler`). Côté `MessageBubble.vue` : jusqu'à 3
+      liens extraits par regex du HTML déjà rendu (pas de `DOMParser`, ce
+      computed doit pouvoir tourner côté serveur), rien pendant le
+      streaming (`isStreaming`). Nouveau `LinkPreviewCard.vue` charge
+      l'aperçu au montage, ne s'affiche pas si l'aller-retour échoue ou si
+      la page cible n'a pas de titre. Vérifié en conditions réelles :
+      wikipedia.org (titre + favicon complets), example.com (favicon
+      `data:,` vide géré sans erreur), et les 3 vecteurs SSRF testés en
+      direct (localhost, hostname Docker interne `chatbot-symfony`, IP de
+      métadonnées cloud `169.254.169.254`) tous bloqués — aucune fuite
+      d'information, pas de plantage.
 
 ---
 
