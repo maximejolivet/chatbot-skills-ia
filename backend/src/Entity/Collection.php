@@ -30,7 +30,7 @@ class Collection implements ResourceInterface
      * `isCommon` below (a collection can have neither, e.g. a generic
      * knowledge base not tied to a specific agent).
      */
-    #[ORM\OneToOne(inversedBy: 'collection', targetEntity: AiAgent::class)]
+    #[ORM\OneToOne(targetEntity: AiAgent::class, inversedBy: 'collection')]
     #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     private ?AiAgent $agent = null;
 

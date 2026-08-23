@@ -8,13 +8,13 @@ use App\AiProvider\Client\TokenEstimator;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-final class OllamaEmbeddingClient implements EmbeddingClientInterface
+final readonly class OllamaEmbeddingClient implements EmbeddingClientInterface
 {
     private HttpClientInterface $httpClient;
 
     public function __construct(
-        public readonly string $baseUrl,
-        public readonly string $model,
+        public string $baseUrl,
+        public string $model,
         ?HttpClientInterface $httpClient = null,
     ) {
         $this->httpClient = $httpClient ?? HttpClient::create();
@@ -22,7 +22,7 @@ final class OllamaEmbeddingClient implements EmbeddingClientInterface
 
     public function embed(string $text): EmbeddingResult
     {
-        $response = $this->httpClient->request('POST', rtrim($this->baseUrl, '/').'/api/embeddings', [
+        $response = $this->httpClient->request('POST', rtrim($this->baseUrl, '/') . '/api/embeddings', [
             'json' => ['model' => $this->model, 'prompt' => $text],
         ]);
         $data = $response->toArray();
@@ -48,13 +48,13 @@ final class OllamaEmbeddingClient implements EmbeddingClientInterface
 
     public function embedBatch(array $texts): array
     {
-        return array_map(fn (string $text) => $this->embed($text), $texts);
+        return array_map($this->embed(...), $texts);
     }
 
     public function checkStatus(): array
     {
         try {
-            $response = $this->httpClient->request('GET', rtrim($this->baseUrl, '/').'/api/tags', ['timeout' => 5]);
+            $response = $this->httpClient->request('GET', rtrim($this->baseUrl, '/') . '/api/tags', ['timeout' => 5]);
             if (200 === $response->getStatusCode()) {
                 return [
                     'status' => 'ok',

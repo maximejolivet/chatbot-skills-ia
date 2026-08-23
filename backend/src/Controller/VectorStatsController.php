@@ -9,13 +9,12 @@ use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 #[AsController]
-final class VectorStatsController
+final readonly class VectorStatsController
 {
     public function __construct(
-        private readonly VectorIndexRepository $vectorIndexRepository,
-        private readonly SearchQueryRepository $searchQueryRepository,
-    ) {
-    }
+        private VectorIndexRepository $vectorIndexRepository,
+        private SearchQueryRepository $searchQueryRepository,
+    ) {}
 
     public function __invoke(): JsonResponse
     {

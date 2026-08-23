@@ -15,14 +15,13 @@ use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[AsController]
-final class ConversationMessagesController
+final readonly class ConversationMessagesController
 {
     public function __construct(
-        private readonly ChatService $chatService,
+        private ChatService $chatService,
         #[Autowire(service: 'limiter.chat_message')]
-        private readonly RateLimiterFactory $chatMessageLimiter,
-    ) {
-    }
+        private RateLimiterFactory $chatMessageLimiter,
+    ) {}
 
     // ApiResource's declarative `security: "is_granted('OWNER', object)"` on
     // this operation is NOT reliably enforced for custom-controller (read:

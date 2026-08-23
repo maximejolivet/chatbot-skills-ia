@@ -20,19 +20,18 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * (App\MessageHandler\IndexDocumentMessageHandler), not from the HTTP
  * request directly -- see DocumentUploadController/DocumentProcessController.
  */
-final class DocumentIndexingService
+final readonly class DocumentIndexingService
 {
     public function __construct(
-        private readonly DocumentProcessorService $processor,
-        private readonly DocumentChunkRepository $chunkRepository,
-        private readonly CollectionService $collectionService,
-        private readonly VectorSearchService $vectorSearchService,
-        private readonly EntityManagerInterface $entityManager,
-        private readonly LoggerInterface $logger,
+        private DocumentProcessorService $processor,
+        private DocumentChunkRepository $chunkRepository,
+        private CollectionService $collectionService,
+        private VectorSearchService $vectorSearchService,
+        private EntityManagerInterface $entityManager,
+        private LoggerInterface $logger,
         #[Autowire('%app.document_upload_dir%')]
-        private readonly string $uploadDir,
-    ) {
-    }
+        private string $uploadDir,
+    ) {}
 
     /**
      * Extract text and persist chunks. Returns the chunk count. Throws on failure
@@ -46,7 +45,7 @@ final class DocumentIndexingService
         $chunksData = $this->processor->processDocument($document, $this->absoluteFilePath($document));
 
         foreach ($chunksData as $index => $data) {
-            $chunk = (new DocumentChunk())
+            $chunk = new DocumentChunk()
                 ->setContent($data['content'])
                 ->setChunkIndex($index)
                 ->setStartPosition($data['start_position'])
@@ -76,7 +75,7 @@ final class DocumentIndexingService
 
         $documentContent = $this->readDocumentContent($document, $chunks);
 
-        $chunkData = array_map(static fn (DocumentChunk $c) => [
+        $chunkData = array_map(static fn(DocumentChunk $c): array => [
             'content' => $c->getContent(),
             'chunk_index' => $c->getChunkIndex(),
             'metadata' => $c->getMetadata(),
@@ -125,7 +124,7 @@ final class DocumentIndexingService
         $chunks = $this->chunkRepository->findForDocument($document->getId());
 
         $pointIds = array_map(
-            static fn (DocumentChunk $c) => $c->getVectorId() ?: VectorSearchService::generatePointId($document->getId(), $c->getChunkIndex()),
+            static fn(DocumentChunk $c): string => $c->getVectorId() ?: VectorSearchService::generatePointId($document->getId(), $c->getChunkIndex()),
             $chunks,
         );
 
@@ -138,7 +137,7 @@ final class DocumentIndexingService
 
     public function absoluteFilePath(Document $document): ?string
     {
-        return $document->getFilePath() ? $this->uploadDir.'/'.$document->getFilePath() : null;
+        return $document->getFilePath() ? $this->uploadDir . '/' . $document->getFilePath() : null;
     }
 
     /**
@@ -158,6 +157,6 @@ final class DocumentIndexingService
             $this->logger->warning('Could not read document file {path} for analysis.', ['path' => $absolutePath]);
         }
 
-        return implode(' ', array_map(static fn (DocumentChunk $c) => $c->getContent(), $chunks));
+        return implode(' ', array_map(static fn(DocumentChunk $c): string => $c->getContent(), $chunks));
     }
 }

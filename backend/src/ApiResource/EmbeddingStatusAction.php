@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\ApiResource;
 
 use ApiPlatform\Metadata\ApiResource;
@@ -11,12 +13,10 @@ use App\Controller\EmbeddingStatusController;
         new Get(
             uriTemplate: '/chat/embedding-status',
             controller: EmbeddingStatusController::class,
-            read: false,
             output: false,
+            read: false,
             name: 'chat_embedding_status',
         ),
     ],
 )]
-final class EmbeddingStatusAction
-{
-}
+final class EmbeddingStatusAction {}

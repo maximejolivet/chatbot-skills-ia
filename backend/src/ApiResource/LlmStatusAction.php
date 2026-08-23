@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\ApiResource;
 
 use ApiPlatform\Metadata\ApiResource;
@@ -11,12 +13,10 @@ use App\Controller\LlmStatusController;
         new Get(
             uriTemplate: '/chat/llm-status',
             controller: LlmStatusController::class,
-            read: false,
             output: false,
+            read: false,
             name: 'chat_llm_status',
         ),
     ],
 )]
-final class LlmStatusAction
-{
-}
+final class LlmStatusAction {}

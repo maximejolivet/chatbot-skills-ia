@@ -3,7 +3,6 @@
 namespace App\Controller;
 
 use App\Entity\Conversation;
-use App\Entity\Message;
 use App\Enum\MessageRole;
 use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -19,7 +18,7 @@ final class ConversationSourcesController
 
         // Extract sources from assistant messages metadata
         foreach ($data->getMessages() as $message) {
-            if ($message->getRole() !== MessageRole::Assistant) {
+            if (MessageRole::Assistant !== $message->getRole()) {
                 continue;
             }
 

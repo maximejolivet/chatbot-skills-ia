@@ -11,14 +11,13 @@ use Psr\Log\LoggerInterface;
  * Resolves which Qdrant collection to search (via knowledge_base) and
  * performs the search (via vector_connector).
  */
-final class RagContextService
+final readonly class RagContextService
 {
     public function __construct(
-        private readonly CollectionService $collectionService,
-        private readonly VectorSearchService $vectorSearchService,
-        private readonly LoggerInterface $logger,
-    ) {
-    }
+        private CollectionService $collectionService,
+        private VectorSearchService $vectorSearchService,
+        private LoggerInterface $logger,
+    ) {}
 
     /**
      * @return array<int, array<string, mixed>>

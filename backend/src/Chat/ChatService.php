@@ -19,26 +19,25 @@ use Symfony\Component\Mime\Email;
  * Thin façade over ChatOrchestrationService for the two entry points:
  * authenticated conversations (persisted) and anonymous quick-send (not).
  */
-final class ChatService
+final readonly class ChatService
 {
     public function __construct(
-        private readonly MessageRepository $messageRepository,
-        private readonly AiAgentRepository $agentRepository,
-        private readonly ChatOrchestrationService $orchestrator,
-        private readonly EntityManagerInterface $entityManager,
-        private readonly MailerInterface $mailer,
-        private readonly LoggerInterface $logger,
-        private readonly ConversationHistoryCache $historyCache,
+        private MessageRepository $messageRepository,
+        private AiAgentRepository $agentRepository,
+        private ChatOrchestrationService $orchestrator,
+        private EntityManagerInterface $entityManager,
+        private MailerInterface $mailer,
+        private LoggerInterface $logger,
+        private ConversationHistoryCache $historyCache,
         #[Autowire(env: 'MAILER_FROM_ADDRESS')]
-        private readonly string $mailerFromAddress,
+        private string $mailerFromAddress,
         #[Autowire(env: 'OWNER_NOTIFICATION_EMAIL')]
-        private readonly string $ownerNotificationEmail,
-    ) {
-    }
+        private string $ownerNotificationEmail,
+    ) {}
 
     public function sendMessage(Conversation $conversation, string $userMessage, ?int $agentId = null): Message
     {
-        $userMsg = (new Message())->setRole(MessageRole::User)->setContent($userMessage);
+        $userMsg = new Message()->setRole(MessageRole::User)->setContent($userMessage);
         $conversation->addMessage($userMsg);
         $this->entityManager->persist($userMsg);
         $this->entityManager->flush();
@@ -52,7 +51,7 @@ final class ChatService
 
         $result = $this->orchestrator->generateReply($userMessage, $history, $agent, $conversation);
 
-        $assistantMsg = (new Message())
+        $assistantMsg = new Message()
             ->setRole(MessageRole::Assistant)
             ->setContent($result->content)
             ->setMetadata(['token_usage' => $result->usage, 'tool_calls' => $result->toolCalls, 'sources' => $result->sources]);
@@ -85,13 +84,13 @@ final class ChatService
             return;
         }
 
-        $email = (new Email())
+        $email = new Email()
             ->from($this->mailerFromAddress)
             ->to($this->ownerNotificationEmail)
             ->subject('Nouvelle conversation sur le chatbot')
             ->text(
-                "Un visiteur vient de démarrer une conversation (#{$conversation->getId()}).\n\n".
-                "Premier message :\n{$firstMessage}",
+                "Un visiteur vient de démarrer une conversation (#{$conversation->getId()}).\n\n"
+                . "Premier message :\n{$firstMessage}",
             );
 
         try {
@@ -108,8 +107,8 @@ final class ChatService
     {
         return $this->historyCache->remember(
             $conversationId,
-            fn () => array_map(
-                static fn (Message $m) => new LlmChatMessage(role: $m->getRole()->value, content: $m->getContent()),
+            fn(): array => array_map(
+                static fn(Message $m): LlmChatMessage => new LlmChatMessage(role: $m->getRole()->value, content: $m->getContent()),
                 $this->messageRepository->recentHistory($conversationId),
             ),
         );

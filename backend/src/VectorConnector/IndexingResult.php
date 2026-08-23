@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\VectorConnector;
 
 final readonly class IndexingResult
@@ -15,6 +17,5 @@ final readonly class IndexingResult
         public ?array $embeddingUsage = null,
         public ?array $analysisMetadata = null,
         public ?string $error = null,
-    ) {
-    }
+    ) {}
 }

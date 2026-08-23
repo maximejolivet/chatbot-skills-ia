@@ -16,14 +16,13 @@ use Symfony\Component\HttpFoundation\JsonResponse;
  * Live-test an AiProviderConfig and persist the result on the row.
  */
 #[AsController]
-final class TestAiProviderConfigController
+final readonly class TestAiProviderConfigController
 {
     public function __construct(
-        private readonly ProviderSelectionService $providerSelectionService,
-        private readonly EntityManagerInterface $entityManager,
-        private readonly LoggerInterface $logger,
-    ) {
-    }
+        private ProviderSelectionService $providerSelectionService,
+        private EntityManagerInterface $entityManager,
+        private LoggerInterface $logger,
+    ) {}
 
     public function __invoke(AiProviderConfig $data): JsonResponse
     {
@@ -67,7 +66,7 @@ final class TestAiProviderConfigController
                 'error' => $e->getMessage(),
             ]);
             $result['status'] = 'error';
-            $result['message'] = 'Erreur inattendue : '.$e->getMessage();
+            $result['message'] = 'Erreur inattendue : ' . $e->getMessage();
             $result['error'] = mb_substr($e->getMessage(), 0, 500);
         }
 

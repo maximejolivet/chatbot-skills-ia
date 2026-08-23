@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\VectorConnector;
 
 use App\AiProvider\ProviderSelectionService;
@@ -21,8 +23,7 @@ final class EmbeddingService
 
     public function __construct(
         private readonly ProviderSelectionService $providerSelectionService,
-    ) {
-    }
+    ) {}
 
     /**
      * @return float[]
@@ -43,7 +44,7 @@ final class EmbeddingService
     public function generateEmbeddingsBatch(array $texts): array
     {
         $results = $this->providerSelectionService->getEmbeddingClient()->embedBatch($texts);
-        $totalTokens = array_sum(array_map(static fn ($r) => $r->usage['total_tokens'] ?? 0, $results));
+        $totalTokens = array_sum(array_map(static fn(\App\AiProvider\Client\EmbeddingResult $r) => $r->usage['total_tokens'] ?? 0, $results));
 
         $this->batchUsage = [
             'total_tokens' => $totalTokens,
@@ -53,7 +54,7 @@ final class EmbeddingService
             'items' => count($texts),
         ];
 
-        return array_map(static fn ($r) => $r->vector, $results);
+        return array_map(static fn(\App\AiProvider\Client\EmbeddingResult $r): array => $r->vector, $results);
     }
 
     /**

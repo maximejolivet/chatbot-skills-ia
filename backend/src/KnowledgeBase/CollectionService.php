@@ -25,8 +25,7 @@ class CollectionService
         private readonly QdrantClient $qdrantClient,
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+    ) {}
 
     /**
      * Resolve the Qdrant collection name a document's chunks should live in: its own
@@ -58,7 +57,7 @@ class CollectionService
             return $common;
         }
 
-        $common = (new Collection())
+        $common = new Collection()
             ->setName('Collection Commune')
             ->setDescription('Collection commune pour les documents sans collection spécifique')
             ->setIsCommon(true);
@@ -66,7 +65,7 @@ class CollectionService
         $this->entityManager->flush();
 
         $collectionId = "collection_common_{$common->getId()}";
-        $vectorIndex = (new VectorIndex())
+        $vectorIndex = new VectorIndex()
             ->setName('Index Collection Commune')
             ->setDescription('Vector index for the common collection')
             ->setCollectionId($collectionId)

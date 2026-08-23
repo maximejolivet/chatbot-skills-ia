@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Security\Voter;
 
 use App\Entity\OwnedResourceInterface;
@@ -20,7 +22,7 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
  */
 final class OwnershipVoter extends Voter
 {
-    private const ATTRIBUTE = 'OWNER';
+    private const string ATTRIBUTE = 'OWNER';
 
     protected function supports(string $attribute, mixed $subject): bool
     {

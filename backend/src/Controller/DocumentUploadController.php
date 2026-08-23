@@ -24,18 +24,17 @@ use Symfony\Component\Messenger\MessageBusInterface;
  * /api/documents/{id} for the final status.
  */
 #[AsController]
-final class DocumentUploadController
+final readonly class DocumentUploadController
 {
-    private const ALLOWED_EXTENSIONS = ['pdf', 'txt', 'docx', 'md', 'html', 'json'];
+    private const array ALLOWED_EXTENSIONS = ['pdf', 'txt', 'docx', 'md', 'html', 'json'];
     private const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly MessageBusInterface $messageBus,
+        private EntityManagerInterface $entityManager,
+        private MessageBusInterface $messageBus,
         #[Autowire('%app.document_upload_dir%')]
-        private readonly string $uploadDir,
-    ) {
-    }
+        private string $uploadDir,
+    ) {}
 
     public function __invoke(Request $request): JsonResponse
     {
@@ -51,10 +50,7 @@ final class DocumentUploadController
 
         $extension = mb_strtolower($file->getClientOriginalExtension() ?: pathinfo($file->getClientOriginalName(), \PATHINFO_EXTENSION));
         if (!\in_array($extension, self::ALLOWED_EXTENSIONS, true)) {
-            throw new BadRequestHttpException(sprintf(
-                'File type not supported. Allowed types: %s',
-                implode(', ', array_map(static fn (string $e) => ".{$e}", self::ALLOWED_EXTENSIONS)),
-            ));
+            throw new BadRequestHttpException(sprintf('File type not supported. Allowed types: %s', implode(', ', array_map(static fn(string $e): string => ".{$e}", self::ALLOWED_EXTENSIONS))));
         }
         if ($file->getSize() > self::MAX_FILE_SIZE) {
             throw new BadRequestHttpException('File size too large. Maximum size is 10MB.');
@@ -63,7 +59,7 @@ final class DocumentUploadController
         $categoryId = $request->request->get('category_id');
         $category = $categoryId ? $this->entityManager->getReference(DocumentCategory::class, (int) $categoryId) : null;
 
-        $document = (new Document())
+        $document = new Document()
             ->setTitle($title)
             ->setDescription((string) $request->request->get('description', ''))
             ->setFileType(DocumentFileType::from($extension))
@@ -73,10 +69,10 @@ final class DocumentUploadController
         $this->entityManager->flush(); // assigns an id, used for the upload subdirectory
 
         $categorySegment = $category?->getId() ?? 'uncategorized';
-        $filename = uniqid('', true).'_'.$file->getClientOriginalName();
+        $filename = uniqid('', true) . '_' . $file->getClientOriginalName();
         $relativePath = "{$categorySegment}/{$filename}";
         $fileSize = $file->getSize();
-        $file->move($this->uploadDir.'/'.$categorySegment, $filename);
+        $file->move($this->uploadDir . '/' . $categorySegment, $filename);
 
         $document->setFilePath($relativePath)->setFileSize($fileSize);
         $this->entityManager->flush();

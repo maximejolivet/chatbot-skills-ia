@@ -3,7 +3,6 @@
 namespace App\Chat;
 
 use App\AiProvider\Client\ChatMessage;
-use App\AiProvider\Client\ToolCall;
 use App\AiProvider\Client\ToolSpec;
 use App\AiProvider\ProviderSelectionService;
 use App\Entity\AiAgent;
@@ -22,9 +21,9 @@ use App\Workflow\WorkflowExecutionService;
  * RAG (vector search) is a separate, explicit orchestration step here rather
  * than being baked into the LLM client itself.
  */
-final class ChatOrchestrationService
+final readonly class ChatOrchestrationService
 {
-    public const DEFAULT_SYSTEM_PROMPT = <<<'PROMPT'
+    public const string DEFAULT_SYSTEM_PROMPT = <<<'PROMPT'
         Tu es un assistant IA utile et bienveillant spécialisé dans l'aide aux utilisateurs.
         Tu réponds en français de manière claire et concise.
 
@@ -36,14 +35,13 @@ final class ChatOrchestrationService
         - Si tu ne connais pas la réponse, dis-le honnêtement
         PROMPT;
 
-    private const MAX_TOOL_ITERATIONS = 3; // guards against a runaway tool-call loop
+    private const int MAX_TOOL_ITERATIONS = 3; // guards against a runaway tool-call loop
 
     public function __construct(
-        private readonly ProviderSelectionService $providerSelectionService,
-        private readonly RagContextService $ragContextService,
-        private readonly WorkflowExecutionService $workflowExecutionService,
-    ) {
-    }
+        private ProviderSelectionService $providerSelectionService,
+        private RagContextService $ragContextService,
+        private WorkflowExecutionService $workflowExecutionService,
+    ) {}
 
     /**
      * @param ChatMessage[] $history
@@ -56,7 +54,7 @@ final class ChatOrchestrationService
     ): ChatReplyResult {
         $llmClient = $this->providerSelectionService->getLlmClient(AiProviderUsage::Chat);
         $ragResults = $this->ragContextService->buildContext($userMessage, $agent);
-        $messages = $this->buildMessages($agent, $history, $userMessage, $ragResults);
+        $messages = $this->buildMessages($agent, $history, $userMessage, $ragResults, $conversation);
         $toolSpecs = $this->buildToolSpecs($agent);
         $sources = $this->buildSources($ragResults);
 
@@ -144,7 +142,7 @@ final class ChatOrchestrationService
         }
 
         return array_values(array_map(
-            static fn (Workflow $wf) => new ToolSpec(
+            static fn(Workflow $wf): ToolSpec => new ToolSpec(
                 name: self::toolName($wf->getName()),
                 description: $wf->getDescription() ?: $wf->getName(),
                 parameters: $wf->getParametersSchema() ?: ['type' => 'object', 'properties' => []],
@@ -173,17 +171,29 @@ final class ChatOrchestrationService
      *
      * @return ChatMessage[]
      */
-    private function buildMessages(?AiAgent $agent, array $history, string $userMessage, array $ragResults): array
+    private function buildMessages(?AiAgent $agent, array $history, string $userMessage, array $ragResults, ?Conversation $conversation = null): array
     {
         $systemPrompt = $agent && '' !== $agent->getSystemPrompt() ? $agent->getSystemPrompt() : self::DEFAULT_SYSTEM_PROMPT;
         // Tool-calling agents (e.g. scheduling) need "today" to turn relative
         // dates ("la semaine prochaine") into the absolute ones tool
         // arguments require -- the model has no other source of the current date.
-        $systemPrompt = "{$systemPrompt}\n\nNous sommes le ".(new \DateTimeImmutable())->format('Y-m-d').' (format AAAA-MM-JJ).';
+        $systemPrompt = "{$systemPrompt}\n\nNous sommes le " . new \DateTimeImmutable()->format('Y-m-d') . ' (format AAAA-MM-JJ).';
+
+        // The visitor's name may have been captured earlier in the
+        // conversation by a SetConversation workflow step (see
+        // WorkflowExecutionService::handleSetConversation) and can fall out
+        // of the sliding history window below -- re-inject it here so the
+        // model never asks for it twice.
+        $firstName = $conversation?->getVisitorFirstName();
+        $lastName = $conversation?->getVisitorLastName();
+        if ($firstName || $lastName) {
+            $knownName = trim(($firstName ?? '') . ' ' . ($lastName ?? ''));
+            $systemPrompt = "{$systemPrompt}\n\nLe visiteur s'appelle {$knownName}. Cette information est déjà connue, ne la lui redemande pas.";
+        }
 
         if ($ragResults) {
-            $docsText = "Documents pertinents trouvés dans la base de connaissances:\n".implode("\n", array_map(
-                static fn (int $i, array $doc) => ($i + 1).'. '.($doc['content'] ?? ''),
+            $docsText = "Documents pertinents trouvés dans la base de connaissances:\n" . implode("\n", array_map(
+                static fn(int $i, array $doc): string => ($i + 1) . '. ' . ($doc['content'] ?? ''),
                 array_keys($ragResults),
                 $ragResults,
             ));

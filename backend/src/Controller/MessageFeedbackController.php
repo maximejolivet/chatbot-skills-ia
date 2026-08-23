@@ -22,13 +22,12 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * declarative `security:` (see those two controllers for why).
  */
 #[AsController]
-final class MessageFeedbackController
+final readonly class MessageFeedbackController
 {
     public function __construct(
-        private readonly MessageRepository $messageRepository,
-        private readonly EntityManagerInterface $entityManager,
-    ) {
-    }
+        private MessageRepository $messageRepository,
+        private EntityManagerInterface $entityManager,
+    ) {}
 
     #[IsGranted('OWNER', subject: 'data')]
     public function __invoke(Conversation $data, Request $request): JsonResponse

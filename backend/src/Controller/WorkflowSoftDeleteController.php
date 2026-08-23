@@ -11,11 +11,9 @@ use Symfony\Component\HttpFoundation\Response;
  * Soft delete: sets is_active=false rather than removing the row.
  */
 #[AsController]
-final class WorkflowSoftDeleteController
+final readonly class WorkflowSoftDeleteController
 {
-    public function __construct(private readonly EntityManagerInterface $entityManager)
-    {
-    }
+    public function __construct(private EntityManagerInterface $entityManager) {}
 
     public function __invoke(Workflow $data): Response
     {

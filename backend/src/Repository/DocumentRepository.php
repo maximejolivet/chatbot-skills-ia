@@ -41,7 +41,7 @@ class DocumentRepository extends ServiceEntityRepository implements SyliusReposi
 
         $this->documentIndexingService->deleteVectorsAndChunks($resource);
         if ($resource->getFilePath()) {
-            @unlink($this->uploadDir.'/'.$resource->getFilePath());
+            @unlink($this->uploadDir . '/' . $resource->getFilePath());
         }
 
         $this->removeResource($resource);

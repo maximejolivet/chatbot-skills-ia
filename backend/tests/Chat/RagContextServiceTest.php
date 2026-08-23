@@ -15,7 +15,7 @@ final class RagContextServiceTest extends TestCase
     private function agentWithId(int $id): AiAgent
     {
         $agent = new AiAgent();
-        (new \ReflectionProperty(AiAgent::class, 'id'))->setValue($agent, $id);
+        new \ReflectionProperty(AiAgent::class, 'id')->setValue($agent, $id);
 
         return $agent;
     }
@@ -77,7 +77,7 @@ final class RagContextServiceTest extends TestCase
 
         $service = new RagContextService($collectionService, $vectorSearchService, $this->createStub(LoggerInterface::class));
 
-        $service->buildContext('hello', null);
+        $service->buildContext('hello');
     }
 
     public function testReturnsEmptyArrayAndLogsWhenSearchThrows(): void
@@ -95,6 +95,6 @@ final class RagContextServiceTest extends TestCase
 
         $service = new RagContextService($collectionService, $vectorSearchService, $logger);
 
-        self::assertSame([], $service->buildContext('hello', null));
+        self::assertSame([], $service->buildContext('hello'));
     }
 }

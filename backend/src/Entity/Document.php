@@ -29,41 +29,38 @@ use Sylius\Resource\Model\ResourceInterface;
  * with an owner field, restricted to ROLE_ADMIN as a whole instead.
  */
 #[ORM\Entity(repositoryClass: DocumentRepository::class)]
-#[ApiResource(
-    security: "is_granted('ROLE_ADMIN')",
-    operations: [
-        new GetCollection(),
-        new Get(),
-        new Patch(),
-        new Post(
-            controller: DocumentUploadController::class,
-            deserialize: false,
-            output: false,
-            name: 'document_upload',
-        ),
-        new Delete(
-            controller: DocumentDeleteController::class,
-            read: true,
-            output: false,
-            name: 'document_delete',
-        ),
-        new Post(
-            uriTemplate: '/documents/{id}/process',
-            controller: DocumentProcessController::class,
-            read: true,
-            deserialize: false,
-            output: false,
-            name: 'document_process',
-        ),
-        new Get(
-            uriTemplate: '/documents/{id}/chunks',
-            controller: DocumentChunksController::class,
-            read: true,
-            output: false,
-            name: 'document_chunks',
-        ),
-    ],
-)]
+#[ApiResource(operations: [
+    new GetCollection(),
+    new Get(),
+    new Patch(),
+    new Post(
+        controller: DocumentUploadController::class,
+        output: false,
+        deserialize: false,
+        name: 'document_upload',
+    ),
+    new Delete(
+        controller: DocumentDeleteController::class,
+        output: false,
+        read: true,
+        name: 'document_delete',
+    ),
+    new Post(
+        uriTemplate: '/documents/{id}/process',
+        controller: DocumentProcessController::class,
+        output: false,
+        read: true,
+        deserialize: false,
+        name: 'document_process',
+    ),
+    new Get(
+        uriTemplate: '/documents/{id}/chunks',
+        controller: DocumentChunksController::class,
+        output: false,
+        read: true,
+        name: 'document_chunks',
+    ),
+], security: "is_granted('ROLE_ADMIN')")]
 class Document implements ResourceInterface
 {
     #[ORM\Id]

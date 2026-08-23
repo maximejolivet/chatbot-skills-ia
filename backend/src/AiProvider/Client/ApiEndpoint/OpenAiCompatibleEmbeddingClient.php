@@ -8,16 +8,16 @@ use App\AiProvider\Client\TokenEstimator;
 use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-final class OpenAiCompatibleEmbeddingClient implements EmbeddingClientInterface
+final readonly class OpenAiCompatibleEmbeddingClient implements EmbeddingClientInterface
 {
-    public readonly string $apiEndpoint;
+    public string $apiEndpoint;
     private HttpClientInterface $httpClient;
 
     public function __construct(
         string $apiEndpoint,
-        public readonly string $apiKey,
-        public readonly string $model,
-        public readonly int $timeout = 30,
+        public string $apiKey,
+        public string $model,
+        public int $timeout = 30,
         ?HttpClientInterface $httpClient = null,
     ) {
         if ('' === $apiKey) {
@@ -45,7 +45,7 @@ final class OpenAiCompatibleEmbeddingClient implements EmbeddingClientInterface
             return $chatEndpoint;
         }
 
-        return rtrim($chatEndpoint, '/').'/embeddings';
+        return rtrim($chatEndpoint, '/') . '/embeddings';
     }
 
     public function embed(string $text): EmbeddingResult
@@ -86,7 +86,7 @@ final class OpenAiCompatibleEmbeddingClient implements EmbeddingClientInterface
 
     public function embedBatch(array $texts): array
     {
-        return array_map(fn (string $text) => $this->embed($text), $texts);
+        return array_map($this->embed(...), $texts);
     }
 
     public function checkStatus(): array
@@ -124,6 +124,6 @@ final class OpenAiCompatibleEmbeddingClient implements EmbeddingClientInterface
      */
     private function headers(): array
     {
-        return ['Content-Type' => 'application/json', 'Authorization' => 'Bearer '.$this->apiKey];
+        return ['Content-Type' => 'application/json', 'Authorization' => 'Bearer ' . $this->apiKey];
     }
 }

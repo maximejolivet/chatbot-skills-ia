@@ -47,7 +47,7 @@ final class CreateUserCommand extends Command
             return Command::FAILURE;
         }
 
-        $user = (new User())->setEmail($email)->setRoles([$role]);
+        $user = new User()->setEmail($email)->setRoles([$role]);
         $user->setPassword($this->passwordHasher->hashPassword($user, $password));
 
         $this->entityManager->persist($user);

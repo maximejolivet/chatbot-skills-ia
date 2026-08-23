@@ -15,12 +15,11 @@ use Symfony\Bundle\SecurityBundle\Security;
  * `object` for a Voter to check, so non-admin users are restricted to their
  * own rows by filtering the query itself instead.
  */
-final class OwnershipCollectionExtension implements QueryCollectionExtensionInterface
+final readonly class OwnershipCollectionExtension implements QueryCollectionExtensionInterface
 {
     public function __construct(
-        private readonly Security $security,
-    ) {
-    }
+        private Security $security,
+    ) {}
 
     public function applyToCollection(QueryBuilder $queryBuilder, QueryNameGeneratorInterface $queryNameGenerator, string $resourceClass, ?Operation $operation = null, array $context = []): void
     {

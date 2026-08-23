@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Form\DataTransformer;
 
 use Symfony\Component\Form\DataTransformerInterface;
@@ -20,6 +22,6 @@ final class CommaListToArrayTransformer implements DataTransformerInterface
             return [];
         }
 
-        return array_values(array_filter(array_map('trim', explode(',', (string) $value)), static fn (string $v) => '' !== $v));
+        return array_values(array_filter(array_map(trim(...), explode(',', (string) $value)), static fn(string $v): bool => '' !== $v));
     }
 }

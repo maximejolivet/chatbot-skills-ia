@@ -16,13 +16,12 @@ use Symfony\Component\Messenger\MessageBusInterface;
  * /trigger, there's no is-active check here either.
  */
 #[AsController]
-final class WorkflowTestController
+final readonly class WorkflowTestController
 {
     public function __construct(
-        private readonly WorkflowExecutionService $workflowExecutionService,
-        private readonly MessageBusInterface $messageBus,
-    ) {
-    }
+        private WorkflowExecutionService $workflowExecutionService,
+        private MessageBusInterface $messageBus,
+    ) {}
 
     public function __invoke(Workflow $data, Request $request): JsonResponse
     {

@@ -17,15 +17,15 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * apiKey; used for hosted endpoints like OVHcloud AI Endpoints or
  * OpenRouter, see .env.example / .env.prod).
  */
-final class OpenAiCompatibleLlmClient implements LlmClientInterface
+final readonly class OpenAiCompatibleLlmClient implements LlmClientInterface
 {
     private HttpClientInterface $httpClient;
 
     public function __construct(
-        public readonly string $apiEndpoint,
-        public readonly string $apiKey,
-        public readonly string $model,
-        public readonly int $timeout = 30,
+        public string $apiEndpoint,
+        public string $apiKey,
+        public string $model,
+        public int $timeout = 30,
         ?HttpClientInterface $httpClient = null,
     ) {
         if ('' === $apiKey) {
@@ -38,11 +38,11 @@ final class OpenAiCompatibleLlmClient implements LlmClientInterface
     {
         $payload = [
             'model' => $this->model,
-            'messages' => self::toOpenAiMessages($messages),
+            'messages' => $this->toOpenAiMessages($messages),
             'temperature' => $temperature,
             'max_tokens' => $maxTokens,
         ];
-        $toolSpecs = self::toToolSpecs($tools);
+        $toolSpecs = $this->toToolSpecs($tools);
         if ($toolSpecs) {
             $payload['tools'] = $toolSpecs;
         }
@@ -98,7 +98,7 @@ final class OpenAiCompatibleLlmClient implements LlmClientInterface
         $response = $this->httpClient->request('POST', $this->apiEndpoint, [
             'json' => [
                 'model' => $this->model,
-                'messages' => self::toOpenAiMessages($messages),
+                'messages' => $this->toOpenAiMessages($messages),
                 'temperature' => $temperature,
                 'max_tokens' => $maxTokens,
                 'stream' => true,
@@ -181,7 +181,7 @@ final class OpenAiCompatibleLlmClient implements LlmClientInterface
      */
     private function headers(): array
     {
-        return ['Content-Type' => 'application/json', 'Authorization' => 'Bearer '.$this->apiKey];
+        return ['Content-Type' => 'application/json', 'Authorization' => 'Bearer ' . $this->apiKey];
     }
 
     /**
@@ -189,14 +189,14 @@ final class OpenAiCompatibleLlmClient implements LlmClientInterface
      *
      * @return array<int, array<string, mixed>>
      */
-    private static function toOpenAiMessages(array $messages): array
+    private function toOpenAiMessages(array $messages): array
     {
         $result = [];
         foreach ($messages as $msg) {
             $entry = ['role' => $msg->role, 'content' => $msg->content];
             if ($msg->toolCalls) {
                 $entry['tool_calls'] = array_map(
-                    static fn (ToolCall $tc) => [
+                    static fn(ToolCall $tc): array => [
                         'id' => $tc->id,
                         'type' => 'function',
                         'function' => ['name' => $tc->name, 'arguments' => json_encode($tc->arguments ?: new \stdClass())],
@@ -219,14 +219,14 @@ final class OpenAiCompatibleLlmClient implements LlmClientInterface
      *
      * @return array<int, array<string, mixed>>|null
      */
-    private static function toToolSpecs(?array $tools): ?array
+    private function toToolSpecs(?array $tools): ?array
     {
         if (!$tools) {
             return null;
         }
 
         return array_map(
-            static fn (ToolSpec $tool) => [
+            static fn(ToolSpec $tool): array => [
                 'type' => 'function',
                 'function' => [
                     'name' => $tool->name,

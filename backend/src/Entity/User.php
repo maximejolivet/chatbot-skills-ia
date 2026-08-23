@@ -118,9 +118,7 @@ class User implements ResourceInterface, UserInterface, PasswordAuthenticatedUse
         return $this;
     }
 
-    public function eraseCredentials(): void
-    {
-    }
+    public function eraseCredentials(): void {}
 
     public function isActive(): bool
     {

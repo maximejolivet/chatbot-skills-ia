@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\AiProvider\Client;
 
 /**
@@ -8,8 +10,8 @@ namespace App\AiProvider\Client;
 interface LlmClientInterface
 {
     /**
-     * @param ChatMessage[]     $messages
-     * @param ToolSpec[]|null   $tools
+     * @param ChatMessage[]   $messages
+     * @param ToolSpec[]|null $tools
      */
     public function complete(
         array $messages,

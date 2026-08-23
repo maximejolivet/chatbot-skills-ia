@@ -21,31 +21,30 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * client." Selection rule: an active AiProviderConfig row for the requested usage
  * (admin-managed) always takes priority over the env-var fallback.
  */
-final class ProviderSelectionService
+final readonly class ProviderSelectionService
 {
     public function __construct(
-        private readonly AiProviderConfigRepository $repository,
-        private readonly LoggerInterface $logger,
+        private AiProviderConfigRepository $repository,
+        private LoggerInterface $logger,
         #[Autowire(env: 'AI_PROVIDER')]
-        private readonly string $aiProvider,
+        private string $aiProvider,
         #[Autowire(env: 'AI_API_ENDPOINT')]
-        private readonly string $aiApiEndpoint,
+        private string $aiApiEndpoint,
         #[Autowire(env: 'AI_API_KEY')]
-        private readonly string $aiApiKey,
+        private string $aiApiKey,
         #[Autowire(env: 'AI_API_MODEL')]
-        private readonly string $aiApiModel,
+        private string $aiApiModel,
         #[Autowire(env: 'int:AI_API_TIMEOUT')]
-        private readonly int $aiApiTimeout,
+        private int $aiApiTimeout,
         #[Autowire(env: 'OLLAMA_BASE_URL')]
-        private readonly string $ollamaBaseUrl,
+        private string $ollamaBaseUrl,
         #[Autowire(env: 'OLLAMA_CHAT_MODEL')]
-        private readonly string $ollamaChatModel,
+        private string $ollamaChatModel,
         #[Autowire(env: 'OLLAMA_EMBEDDING_MODEL')]
-        private readonly string $ollamaEmbeddingModel,
+        private string $ollamaEmbeddingModel,
         #[Autowire(env: 'OLLAMA_ANALYSIS_MODEL')]
-        private readonly string $ollamaAnalysisModel,
-    ) {
-    }
+        private string $ollamaAnalysisModel,
+    ) {}
 
     /**
      * When multiple AiProviderConfig rows are active for this usage, returns a

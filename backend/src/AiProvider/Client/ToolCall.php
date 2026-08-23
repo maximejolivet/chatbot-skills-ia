@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\AiProvider\Client;
 
 /**
@@ -16,6 +18,5 @@ final readonly class ToolCall
         public string $id,
         public string $name,
         public array $arguments,
-    ) {
-    }
+    ) {}
 }

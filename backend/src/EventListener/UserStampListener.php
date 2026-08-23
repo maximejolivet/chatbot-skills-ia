@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\EventListener;
 
 use App\Entity\Conversation;
@@ -19,21 +21,19 @@ use Symfony\Bundle\SecurityBundle\Security;
  * during an authenticated chat request.
  */
 #[AsDoctrineListener(event: Events::prePersist)]
-final class UserStampListener
+final readonly class UserStampListener
 {
-    public function __construct(private readonly Security $security)
-    {
-    }
+    public function __construct(private Security $security) {}
 
     public function prePersist(PrePersistEventArgs $args): void
     {
         $entity = $args->getObject();
 
-        if ($entity instanceof Conversation && null === $entity->getUser()) {
+        if ($entity instanceof Conversation && !$entity->getUser() instanceof User) {
             $entity->setUser($this->currentUser());
         }
 
-        if ($entity instanceof WorkflowExecution && null === $entity->getTriggeredBy()) {
+        if ($entity instanceof WorkflowExecution && !$entity->getTriggeredBy() instanceof User) {
             $entity->setTriggeredBy($this->currentUser());
         }
     }

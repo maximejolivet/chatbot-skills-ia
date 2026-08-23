@@ -30,50 +30,47 @@ use Sylius\Resource\Model\ResourceInterface;
  */
 #[ORM\Entity(repositoryClass: WorkflowRepository::class)]
 #[ORM\HasLifecycleCallbacks]
-#[ApiResource(
-    security: "is_granted('ROLE_ADMIN')",
-    operations: [
-        new GetCollection(),
-        new Get(),
-        new Post(),
-        new Patch(),
-        new Delete(
-            controller: WorkflowSoftDeleteController::class,
-            read: true,
-            output: false,
-            name: 'workflow_soft_delete',
-        ),
-        new Post(
-            uriTemplate: '/workflows/{id}/trigger',
-            controller: WorkflowTriggerController::class,
-            read: true,
-            output: false,
-            name: 'workflow_trigger',
-        ),
-        new Post(
-            uriTemplate: '/workflows/{id}/test',
-            controller: WorkflowTestController::class,
-            read: true,
-            output: false,
-            name: 'workflow_test',
-        ),
-        new Get(
-            uriTemplate: '/workflows/{id}/steps',
-            controller: WorkflowStepsController::class,
-            read: true,
-            output: false,
-            name: 'workflow_steps',
-        ),
-        new Post(
-            uriTemplate: '/workflows/{id}/steps',
-            controller: WorkflowStepsController::class,
-            read: true,
-            deserialize: false,
-            output: false,
-            name: 'workflow_steps_create',
-        ),
-    ],
-)]
+#[ApiResource(operations: [
+    new GetCollection(),
+    new Get(),
+    new Post(),
+    new Patch(),
+    new Delete(
+        controller: WorkflowSoftDeleteController::class,
+        output: false,
+        read: true,
+        name: 'workflow_soft_delete',
+    ),
+    new Post(
+        uriTemplate: '/workflows/{id}/trigger',
+        controller: WorkflowTriggerController::class,
+        output: false,
+        read: true,
+        name: 'workflow_trigger',
+    ),
+    new Post(
+        uriTemplate: '/workflows/{id}/test',
+        controller: WorkflowTestController::class,
+        output: false,
+        read: true,
+        name: 'workflow_test',
+    ),
+    new Get(
+        uriTemplate: '/workflows/{id}/steps',
+        controller: WorkflowStepsController::class,
+        output: false,
+        read: true,
+        name: 'workflow_steps',
+    ),
+    new Post(
+        uriTemplate: '/workflows/{id}/steps',
+        controller: WorkflowStepsController::class,
+        output: false,
+        read: true,
+        deserialize: false,
+        name: 'workflow_steps_create',
+    ),
+], security: "is_granted('ROLE_ADMIN')")]
 class Workflow implements ResourceInterface
 {
     #[ORM\Id]

@@ -18,14 +18,13 @@ use Symfony\Component\Messenger\MessageBusInterface;
  * done; poll GET /api/documents/{id} for the final status.
  */
 #[AsController]
-final class DocumentProcessController
+final readonly class DocumentProcessController
 {
     public function __construct(
-        private readonly DocumentChunkRepository $chunkRepository,
-        private readonly EntityManagerInterface $entityManager,
-        private readonly MessageBusInterface $messageBus,
-    ) {
-    }
+        private DocumentChunkRepository $chunkRepository,
+        private EntityManagerInterface $entityManager,
+        private MessageBusInterface $messageBus,
+    ) {}
 
     public function __invoke(Document $data): JsonResponse
     {

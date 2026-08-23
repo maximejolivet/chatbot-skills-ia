@@ -14,22 +14,21 @@ use Symfony\Component\HttpFoundation\Response;
  * the default API Platform delete operation would only remove the DB row.
  */
 #[AsController]
-final class DocumentDeleteController
+final readonly class DocumentDeleteController
 {
     public function __construct(
-        private readonly DocumentIndexingService $documentIndexingService,
-        private readonly EntityManagerInterface $entityManager,
+        private DocumentIndexingService $documentIndexingService,
+        private EntityManagerInterface $entityManager,
         #[Autowire('%app.document_upload_dir%')]
-        private readonly string $uploadDir,
-    ) {
-    }
+        private string $uploadDir,
+    ) {}
 
     public function __invoke(Document $data): Response
     {
         $this->documentIndexingService->deleteVectorsAndChunks($data);
 
         if ($data->getFilePath()) {
-            @unlink($this->uploadDir.'/'.$data->getFilePath());
+            @unlink($this->uploadDir . '/' . $data->getFilePath());
         }
 
         $this->entityManager->remove($data);

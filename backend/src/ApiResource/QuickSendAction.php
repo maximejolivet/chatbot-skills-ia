@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\ApiResource;
 
 use ApiPlatform\Metadata\ApiResource;
@@ -11,13 +13,11 @@ use App\Controller\QuickSendController;
         new Post(
             uriTemplate: '/chat/quick-send',
             controller: QuickSendController::class,
+            output: false,
             read: false,
             deserialize: false,
-            output: false,
             name: 'chat_quick_send',
         ),
     ],
 )]
-final class QuickSendAction
-{
-}
+final class QuickSendAction {}

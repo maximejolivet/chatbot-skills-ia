@@ -17,13 +17,13 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * supports the `tools` parameter and returns `message.tool_calls`, which real
  * tool-calling requires.
  */
-final class OllamaLlmClient implements LlmClientInterface
+final readonly class OllamaLlmClient implements LlmClientInterface
 {
     private HttpClientInterface $httpClient;
 
     public function __construct(
-        public readonly string $baseUrl,
-        public readonly string $model,
+        public string $baseUrl,
+        public string $model,
         ?HttpClientInterface $httpClient = null,
     ) {
         $this->httpClient = $httpClient ?? HttpClient::create();
@@ -31,11 +31,11 @@ final class OllamaLlmClient implements LlmClientInterface
 
     public function complete(array $messages, ?array $tools = null, float $temperature = 0.7, int $maxTokens = 3000): CompletionResult
     {
-        $response = $this->httpClient->request('POST', rtrim($this->baseUrl, '/').'/api/chat', [
+        $response = $this->httpClient->request('POST', rtrim($this->baseUrl, '/') . '/api/chat', [
             'json' => [
                 'model' => $this->model,
-                'messages' => self::toOllamaMessages($messages),
-                'tools' => self::toToolSpecs($tools),
+                'messages' => $this->toOllamaMessages($messages),
+                'tools' => $this->toToolSpecs($tools),
                 'stream' => false,
                 'options' => [
                     'temperature' => $temperature,
@@ -52,7 +52,7 @@ final class OllamaLlmClient implements LlmClientInterface
         foreach ($message['tool_calls'] ?? [] as $tc) {
             $function = $tc['function'] ?? [];
             $toolCalls[] = new ToolCall(
-                id: 'call_'.substr(bin2hex(random_bytes(4)), 0, 8),
+                id: 'call_' . substr(bin2hex(random_bytes(4)), 0, 8),
                 name: $function['name'] ?? '',
                 arguments: $function['arguments'] ?? [],
             );
@@ -84,10 +84,10 @@ final class OllamaLlmClient implements LlmClientInterface
 
     public function stream(array $messages, float $temperature = 0.7, int $maxTokens = 3000): iterable
     {
-        $response = $this->httpClient->request('POST', rtrim($this->baseUrl, '/').'/api/chat', [
+        $response = $this->httpClient->request('POST', rtrim($this->baseUrl, '/') . '/api/chat', [
             'json' => [
                 'model' => $this->model,
-                'messages' => self::toOllamaMessages($messages),
+                'messages' => $this->toOllamaMessages($messages),
                 'stream' => true,
                 'options' => [
                     'temperature' => $temperature,
@@ -118,11 +118,11 @@ final class OllamaLlmClient implements LlmClientInterface
     public function checkStatus(): array
     {
         try {
-            $response = $this->httpClient->request('GET', rtrim($this->baseUrl, '/').'/api/tags', ['timeout' => 5]);
+            $response = $this->httpClient->request('GET', rtrim($this->baseUrl, '/') . '/api/tags', ['timeout' => 5]);
             if (200 === $response->getStatusCode()) {
                 $models = $response->toArray()['models'] ?? [];
-                $modelNames = array_map(static fn (array $m) => $m['name'], $models);
-                $modelAvailable = array_any($modelNames, fn (string $name) => str_starts_with($name, $this->model));
+                $modelNames = array_map(static fn(array $m) => $m['name'], $models);
+                $modelAvailable = array_any($modelNames, fn(string $name): bool => str_starts_with($name, $this->model));
 
                 return [
                     'status' => 'running',
@@ -134,7 +134,7 @@ final class OllamaLlmClient implements LlmClientInterface
             }
 
             return ['status' => 'error', 'message' => sprintf('HTTP %d', $response->getStatusCode())];
-        } catch (TransportException $e) {
+        } catch (TransportException) {
             return ['status' => 'not_running', 'message' => "Ollama n'est pas démarré"];
         } catch (\Throwable $e) {
             return ['status' => 'error', 'message' => $e->getMessage()];
@@ -146,14 +146,14 @@ final class OllamaLlmClient implements LlmClientInterface
      *
      * @return array<int, array<string, mixed>>
      */
-    private static function toOllamaMessages(array $messages): array
+    private function toOllamaMessages(array $messages): array
     {
         $result = [];
         foreach ($messages as $msg) {
             $entry = ['role' => $msg->role, 'content' => $msg->content];
             if ($msg->toolCalls) {
                 $entry['tool_calls'] = array_map(
-                    static fn (ToolCall $tc) => ['function' => ['name' => $tc->name, 'arguments' => $tc->arguments ?: new \stdClass()]],
+                    static fn(ToolCall $tc): array => ['function' => ['name' => $tc->name, 'arguments' => $tc->arguments ?: new \stdClass()]],
                     $msg->toolCalls,
                 );
             }
@@ -168,14 +168,14 @@ final class OllamaLlmClient implements LlmClientInterface
      *
      * @return array<int, array<string, mixed>>|null
      */
-    private static function toToolSpecs(?array $tools): ?array
+    private function toToolSpecs(?array $tools): ?array
     {
         if (!$tools) {
             return null;
         }
 
         return array_map(
-            static fn (ToolSpec $tool) => [
+            static fn(ToolSpec $tool): array => [
                 'type' => 'function',
                 'function' => [
                     'name' => $tool->name,

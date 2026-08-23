@@ -10,12 +10,12 @@ use Psr\Log\LoggerInterface;
  * Extracts structured metadata from a document using the dedicated Ollama analysis
  * model (OLLAMA_ANALYSIS_MODEL), through the shared ai_providers LLM client transport.
  */
-final class DocumentAnalysisService
+final readonly class DocumentAnalysisService
 {
     /**
      * @var array<string, mixed>
      */
-    public const DEFAULT_DOCUMENT_METADATA = [
+    public const array DEFAULT_DOCUMENT_METADATA = [
         'document_type' => 'document',
         'category' => 'général',
         'language' => 'fr',
@@ -32,10 +32,9 @@ final class DocumentAnalysisService
     ];
 
     public function __construct(
-        private readonly ProviderSelectionService $providerSelectionService,
-        private readonly LoggerInterface $logger,
-    ) {
-    }
+        private ProviderSelectionService $providerSelectionService,
+        private LoggerInterface $logger,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -60,7 +59,7 @@ final class DocumentAnalysisService
 
     private function buildAnalysisPrompt(string $content, string $filename): string
     {
-        $contentPreview = mb_strlen($content) > 8000 ? mb_substr($content, 0, 8000).'...' : $content;
+        $contentPreview = mb_strlen($content) > 8000 ? mb_substr($content, 0, 8000) . '...' : $content;
 
         return <<<PROMPT
             Tu es un expert en analyse de documents. Analyse le contenu suivant et extrais des métadonnées intelligentes.
@@ -126,7 +125,7 @@ final class DocumentAnalysisService
      */
     private function validateMetadata(array $metadata): array
     {
-        $clampScore = static fn (mixed $value): int => min(max((int) ($value ?? 5), 1), 10);
+        $clampScore = static fn(mixed $value): int => min(max((int) ($value ?? 5), 1), 10);
 
         $keywords = \is_array($metadata['keywords'] ?? null) ? array_slice($metadata['keywords'], 0, 10) : [];
         $topics = \is_array($metadata['topics'] ?? null) ? array_slice($metadata['topics'], 0, 5) : [];

@@ -10,13 +10,12 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[AsController]
-final class VectorSearchController
+final readonly class VectorSearchController
 {
     public function __construct(
-        private readonly VectorSearchService $vectorSearchService,
-        private readonly ValidatorInterface $validator,
-    ) {
-    }
+        private VectorSearchService $vectorSearchService,
+        private ValidatorInterface $validator,
+    ) {}
 
     public function __invoke(Request $request): JsonResponse
     {
@@ -51,7 +50,7 @@ final class VectorSearchController
             'document_type' => $dto->documentType,
             'language' => $dto->language,
             'complexity' => $dto->complexity,
-        ], static fn (mixed $v) => null !== $v);
+        ], static fn(mixed $v): bool => null !== $v);
         $filterConditions = $filterConditions ?: null;
 
         $results = $this->vectorSearchService->search(

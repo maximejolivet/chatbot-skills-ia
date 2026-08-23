@@ -8,13 +8,12 @@ use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 #[AsController]
-final class EmbeddingStatusController
+final readonly class EmbeddingStatusController
 {
     public function __construct(
-        private readonly ProviderSelectionService $providerSelectionService,
-        private readonly LoggerInterface $logger,
-    ) {
-    }
+        private ProviderSelectionService $providerSelectionService,
+        private LoggerInterface $logger,
+    ) {}
 
     public function __invoke(): JsonResponse
     {

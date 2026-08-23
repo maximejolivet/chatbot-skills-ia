@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\MessageHandler;
 
 use App\Entity\WorkflowExecution;
@@ -10,14 +12,13 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-final class ExecuteWorkflowMessageHandler
+final readonly class ExecuteWorkflowMessageHandler
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly WorkflowExecutionService $workflowExecutionService,
-        private readonly LoggerInterface $logger,
-    ) {
-    }
+        private EntityManagerInterface $entityManager,
+        private WorkflowExecutionService $workflowExecutionService,
+        private LoggerInterface $logger,
+    ) {}
 
     public function __invoke(ExecuteWorkflowMessage $message): void
     {

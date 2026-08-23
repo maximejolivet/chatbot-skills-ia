@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\AiProvider\Client;
 
 /**
@@ -17,6 +19,5 @@ final class ChatMessage
         public array $toolCalls = [],
         public ?string $toolCallId = null,
         public ?string $name = null,
-    ) {
-    }
+    ) {}
 }

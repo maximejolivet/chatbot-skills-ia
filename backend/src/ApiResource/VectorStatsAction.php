@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\ApiResource;
 
 use ApiPlatform\Metadata\ApiResource;
@@ -11,12 +13,10 @@ use App\Controller\VectorStatsController;
         new Get(
             uriTemplate: '/vector/stats',
             controller: VectorStatsController::class,
-            read: false,
             output: false,
+            read: false,
             name: 'vector_stats',
         ),
     ],
 )]
-final class VectorStatsAction
-{
-}
+final class VectorStatsAction {}

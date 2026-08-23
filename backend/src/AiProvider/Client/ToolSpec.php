@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\AiProvider\Client;
 
 /**
@@ -14,6 +16,5 @@ final readonly class ToolSpec
         public string $name,
         public string $description,
         public array $parameters,
-    ) {
-    }
+    ) {}
 }

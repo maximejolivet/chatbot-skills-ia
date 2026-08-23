@@ -11,8 +11,8 @@ use Smalot\PdfParser\Parser as PdfParser;
  */
 final class DocumentProcessorService
 {
-    private const CHUNK_SIZE = 1000; // characters
-    private const CHUNK_OVERLAP = 200; // characters
+    private const int CHUNK_SIZE = 1000; // characters
+    private const int CHUNK_OVERLAP = 200; // characters
 
     /**
      * Supports two sources: a physical uploaded file, or (as a fallback,
@@ -42,9 +42,9 @@ final class DocumentProcessorService
     private function extractPdfText(string $filePath): string
     {
         try {
-            return (new PdfParser())->parseFile($filePath)->getText();
+            return new PdfParser()->parseFile($filePath)->getText();
         } catch (\Throwable $e) {
-            throw new \RuntimeException("Error extracting PDF text: {$e->getMessage()}", previous: $e);
+            throw new \RuntimeException("Error extracting PDF text: {$e->getMessage()}", $e->getCode(), previous: $e);
         }
     }
 
@@ -71,7 +71,7 @@ final class DocumentProcessorService
         $xml = str_replace(['</w:p>', '<w:br/>', '<w:br />'], "</w:p>\n", $xml);
         $text = html_entity_decode(strip_tags($xml), \ENT_QUOTES | \ENT_XML1, 'UTF-8');
 
-        return trim($text)."\n";
+        return trim($text) . "\n";
     }
 
     private function extractHtmlText(string $filePath): string
@@ -83,7 +83,7 @@ final class DocumentProcessorService
     {
         $decoded = json_decode(file_get_contents($filePath), true);
         if (\JSON_ERROR_NONE !== json_last_error()) {
-            throw new \RuntimeException('Error extracting JSON text: '.json_last_error_msg());
+            throw new \RuntimeException('Error extracting JSON text: ' . json_last_error_msg());
         }
 
         return json_encode($decoded, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES);

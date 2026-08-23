@@ -29,13 +29,10 @@ use Sylius\Resource\Model\ResourceInterface;
  */
 #[ORM\Entity(repositoryClass: AiAgentRepository::class)]
 #[ORM\HasLifecycleCallbacks]
-#[ApiResource(
-    security: "is_granted('ROLE_ADMIN')",
-    operations: [
-        new GetCollection(paginationEnabled: false, security: "is_granted('PUBLIC_ACCESS')"),
-        new Get(security: "is_granted('PUBLIC_ACCESS')"),
-    ],
-)]
+#[ApiResource(operations: [
+    new GetCollection(paginationEnabled: false, security: "is_granted('PUBLIC_ACCESS')"),
+    new Get(security: "is_granted('PUBLIC_ACCESS')"),
+], security: "is_granted('ROLE_ADMIN')")]
 class AiAgent implements ResourceInterface
 {
     public const DEFAULT_SYSTEM_PROMPT = <<<'PROMPT'
@@ -66,7 +63,7 @@ class AiAgent implements ResourceInterface
     #[ApiProperty(readable: false)]
     private DoctrineCollection $workflows;
 
-    #[ORM\OneToOne(mappedBy: 'agent', targetEntity: Collection::class)]
+    #[ORM\OneToOne(targetEntity: Collection::class, mappedBy: 'agent')]
     #[ApiProperty(readable: false)]
     private ?Collection $collection = null;
 
@@ -165,7 +162,7 @@ class AiAgent implements ResourceInterface
     #[ApiProperty(readable: false)]
     public function getActiveWorkflows(): DoctrineCollection
     {
-        return $this->workflows->filter(static fn (Workflow $w) => $w->isActive());
+        return $this->workflows->filter(static fn(Workflow $w): bool => $w->isActive());
     }
 
     #[ApiProperty(readable: false)]

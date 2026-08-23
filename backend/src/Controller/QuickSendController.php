@@ -19,14 +19,13 @@ use Symfony\Component\RateLimiter\RateLimiterFactory;
  * widget who don't need history.
  */
 #[AsController]
-final class QuickSendController
+final readonly class QuickSendController
 {
     public function __construct(
-        private readonly ChatService $chatService,
+        private ChatService $chatService,
         #[Autowire(service: 'limiter.chat_message')]
-        private readonly RateLimiterFactory $chatMessageLimiter,
-    ) {
-    }
+        private RateLimiterFactory $chatMessageLimiter,
+    ) {}
 
     public function __invoke(Request $request): JsonResponse
     {
@@ -54,6 +53,14 @@ final class QuickSendController
             'token_usage' => $result->usage,
             'tool_calls' => $result->toolCalls,
             'sources' => $result->sources,
+            // Same convention as MessageSerializer::serialize() for persisted
+            // messages: `sources` stays in the payload (still useful for an
+            // admin-authenticated embedder), but flagged so any public-facing
+            // consumer knows not to render it -- this app's own widget never
+            // shows RAG sources to a visitor (see MessageBubble.vue), and
+            // quick-send is the one entry point aimed at third-party
+            // embedders, not this repo's own frontend.
+            'sources_hidden' => true,
         ]);
     }
 }

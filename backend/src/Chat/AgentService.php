@@ -7,11 +7,9 @@ use App\Entity\Collection;
 use App\Repository\AiAgentRepository;
 use Doctrine\Common\Collections\Collection as DoctrineCollection;
 
-final class AgentService
+final readonly class AgentService
 {
-    public function __construct(private readonly AiAgentRepository $agentRepository)
-    {
-    }
+    public function __construct(private AiAgentRepository $agentRepository) {}
 
     public function getAgent(int $agentId): ?AiAgent
     {

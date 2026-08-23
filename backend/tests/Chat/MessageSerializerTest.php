@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Chat;
 
 use App\Chat\MessageSerializer;
@@ -12,7 +14,7 @@ final class MessageSerializerTest extends TestCase
 {
     public function testSerializeIncludesSourcesHiddenFlag(): void
     {
-        $message = (new Message())
+        $message = new Message()
             ->setRole(MessageRole::Assistant)
             ->setContent('Bonjour')
             ->setMetadata(['sources' => [['document_id' => 1]]]);
@@ -25,7 +27,7 @@ final class MessageSerializerTest extends TestCase
 
     public function testSerializeDefaultsFeedbackToNull(): void
     {
-        $message = (new Message())->setRole(MessageRole::User)->setContent('Salut');
+        $message = new Message()->setRole(MessageRole::User)->setContent('Salut');
 
         $serialized = MessageSerializer::serialize($message);
 
@@ -35,7 +37,7 @@ final class MessageSerializerTest extends TestCase
 
     public function testSerializeExposesFeedbackValue(): void
     {
-        $message = (new Message())
+        $message = new Message()
             ->setRole(MessageRole::Assistant)
             ->setContent('Bonjour')
             ->setFeedback(MessageFeedback::Positive);

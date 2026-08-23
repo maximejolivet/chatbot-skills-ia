@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\MessageHandler;
 
 use App\Entity\Document;
@@ -16,14 +18,13 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * within the HTTP request (see DocumentIndexingService).
  */
 #[AsMessageHandler]
-final class IndexDocumentMessageHandler
+final readonly class IndexDocumentMessageHandler
 {
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
-        private readonly DocumentIndexingService $documentIndexingService,
-        private readonly LoggerInterface $logger,
-    ) {
-    }
+        private EntityManagerInterface $entityManager,
+        private DocumentIndexingService $documentIndexingService,
+        private LoggerInterface $logger,
+    ) {}
 
     public function __invoke(IndexDocumentMessage $message): void
     {

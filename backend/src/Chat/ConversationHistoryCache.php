@@ -16,13 +16,12 @@ use Symfony\Contracts\Cache\CacheInterface;
  * TTL comes from the pool's own default_lifetime (config/packages/cache.yaml),
  * not set per-item here.
  */
-final class ConversationHistoryCache
+final readonly class ConversationHistoryCache
 {
     public function __construct(
         #[Autowire(service: 'cache.conversation_history')]
-        private readonly CacheInterface $cache,
-    ) {
-    }
+        private CacheInterface $cache,
+    ) {}
 
     /**
      * @param callable(): LlmChatMessage[] $callback
@@ -33,14 +32,14 @@ final class ConversationHistoryCache
     {
         $rows = $this->cache->get(
             $this->key($conversationId),
-            static fn () => array_map(
-                static fn (LlmChatMessage $m) => ['role' => $m->role, 'content' => $m->content],
+            static fn(): array => array_map(
+                static fn(LlmChatMessage $m): array => ['role' => $m->role, 'content' => $m->content],
                 $callback(),
             ),
         );
 
         return array_map(
-            static fn (array $row) => new LlmChatMessage(role: $row['role'], content: $row['content']),
+            static fn(array $row): LlmChatMessage => new LlmChatMessage(role: $row['role'], content: $row['content']),
             $rows,
         );
     }

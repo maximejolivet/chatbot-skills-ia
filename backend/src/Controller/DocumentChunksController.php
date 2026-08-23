@@ -9,11 +9,9 @@ use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 #[AsController]
-final class DocumentChunksController
+final readonly class DocumentChunksController
 {
-    public function __construct(private readonly DocumentChunkRepository $chunkRepository)
-    {
-    }
+    public function __construct(private DocumentChunkRepository $chunkRepository) {}
 
     public function __invoke(Document $data): JsonResponse
     {

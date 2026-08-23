@@ -19,13 +19,12 @@ use Symfony\Component\Messenger\MessageBusInterface;
  * GET /api/workflow_executions/{id} for the final status.
  */
 #[AsController]
-final class WorkflowTriggerController
+final readonly class WorkflowTriggerController
 {
     public function __construct(
-        private readonly WorkflowExecutionService $workflowExecutionService,
-        private readonly MessageBusInterface $messageBus,
-    ) {
-    }
+        private WorkflowExecutionService $workflowExecutionService,
+        private MessageBusInterface $messageBus,
+    ) {}
 
     public function __invoke(Workflow $data, Request $request): JsonResponse
     {

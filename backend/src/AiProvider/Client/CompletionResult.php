@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\AiProvider\Client;
 
 final readonly class CompletionResult
@@ -10,6 +12,5 @@ final readonly class CompletionResult
     public function __construct(
         public ChatMessage $message,
         public array $usage,
-    ) {
-    }
+    ) {}
 }

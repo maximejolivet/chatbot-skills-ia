@@ -20,23 +20,20 @@ use Sylius\Resource\Model\ResourceInterface;
 
 #[ORM\Entity(repositoryClass: AiProviderConfigRepository::class)]
 #[ORM\HasLifecycleCallbacks]
-#[ApiResource(
-    security: "is_granted('ROLE_ADMIN')",
-    operations: [
-        new GetCollection(),
-        new Get(),
-        new Post(),
-        new Patch(),
-        new Delete(),
-        new Post(
-            uriTemplate: '/ai_provider_configs/{id}/test',
-            controller: TestAiProviderConfigController::class,
-            read: true,
-            deserialize: false,
-            name: 'test_ai_provider_config',
-        ),
-    ],
-)]
+#[ApiResource(operations: [
+    new GetCollection(),
+    new Get(),
+    new Post(),
+    new Patch(),
+    new Delete(),
+    new Post(
+        uriTemplate: '/ai_provider_configs/{id}/test',
+        controller: TestAiProviderConfigController::class,
+        read: true,
+        deserialize: false,
+        name: 'test_ai_provider_config',
+    ),
+], security: "is_granted('ROLE_ADMIN')")]
 class AiProviderConfig implements ResourceInterface
 {
     #[ORM\Id]

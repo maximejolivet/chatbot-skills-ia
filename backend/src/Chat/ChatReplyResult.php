@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Chat;
 
 final readonly class ChatReplyResult
@@ -14,6 +16,5 @@ final readonly class ChatReplyResult
         public array $usage,
         public array $toolCalls = [],
         public array $sources = [],
-    ) {
-    }
+    ) {}
 }

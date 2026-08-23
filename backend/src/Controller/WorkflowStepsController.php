@@ -13,13 +13,12 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 #[AsController]
-final class WorkflowStepsController
+final readonly class WorkflowStepsController
 {
     public function __construct(
-        private readonly WorkflowStepRepository $workflowStepRepository,
-        private readonly EntityManagerInterface $entityManager,
-    ) {
-    }
+        private WorkflowStepRepository $workflowStepRepository,
+        private EntityManagerInterface $entityManager,
+    ) {}
 
     public function __invoke(Workflow $data, Request $request): JsonResponse
     {
@@ -41,17 +40,14 @@ final class WorkflowStepsController
 
         $stepType = WorkflowStepType::tryFrom($body['step_type'] ?? '');
         if (!$stepType) {
-            throw new BadRequestHttpException(sprintf(
-                'Invalid step_type. Allowed: %s',
-                implode(', ', array_map(static fn (WorkflowStepType $t) => $t->value, WorkflowStepType::cases())),
-            ));
+            throw new BadRequestHttpException(sprintf('Invalid step_type. Allowed: %s', implode(', ', array_map(static fn(WorkflowStepType $t) => $t->value, WorkflowStepType::cases()))));
         }
 
         if (!isset($body['order']) || !is_numeric($body['order'])) {
             throw new BadRequestHttpException('Missing or invalid order.');
         }
 
-        $step = (new WorkflowStep())
+        $step = new WorkflowStep()
             ->setName($name)
             ->setStepType($stepType)
             ->setOrder((int) $body['order'])

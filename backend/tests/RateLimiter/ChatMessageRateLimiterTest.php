@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\RateLimiter;
 
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -19,7 +21,7 @@ final class ChatMessageRateLimiterTest extends KernelTestCase
         /** @var RateLimiterFactory $factory */
         $factory = self::getContainer()->get('limiter.chat_message');
 
-        $limiter = $factory->create(__METHOD__.uniqid('', true));
+        $limiter = $factory->create(__METHOD__ . uniqid('', true));
 
         for ($i = 0; $i < 20; ++$i) {
             self::assertTrue($limiter->consume()->isAccepted(), "Request {$i} should be accepted");
