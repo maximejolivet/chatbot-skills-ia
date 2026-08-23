@@ -789,6 +789,19 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       qui ne se résout qu'à l'abandon du signal) vérifie qu'annuler ne pose
       pas d'erreur et laisse le fil dans un état cohérent — suite passée de
       33 à 34 tests.
+- [x] **Champ de saisie multi-ligne** — le champ était un `<input type="text">`
+      à une seule ligne : impossible de coller un extrait de code ou
+      d'écrire un message sur plusieurs lignes sans que le texte défile
+      horizontalement. Remplacé par un `<textarea>` auto-agrandissant
+      (`resizeTextarea`, jusqu'à 120px puis défilement interne, remis à une
+      ligne dès que `inputValue` se vide). Entrée envoie (`onInputKeydown`,
+      `preventDefault` + `sendMessage()` — un `<textarea>` ne soumet jamais
+      son formulaire sur Entrée nativement, contrairement à l'ancien
+      `<input>`), Maj+Entrée insère un saut de ligne. `rounded-full` →
+      `rounded-3xl` sur les deux variantes (pilule plein écran, barre du
+      widget flottant) : identique en apparence à une ligne (le rayon
+      coïncide avec `hauteur/2` à ce stade), mais évite la forme "stade"
+      extrême une fois le champ étiré sur plusieurs lignes.
 
 ---
 
