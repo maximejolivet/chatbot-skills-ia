@@ -758,6 +758,23 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       conditions réelles contre le vrai Redis de dev : 177 ms au premier
       appel (calcul + mise en cache), ~45 ms ensuite (cache hit), clé
       `dashboard_stats` confirmée présente dans Redis après coup.
+- [x] **Recherche/filtrage des messages dans une conversation admin** —
+      `/admin/conversations/{id}` affichait déjà tous les messages, mais sans
+      aucun moyen de les parcourir : une conversation longue (42 messages
+      testée en conditions réelles) obligeait à tout scroller à l'œil. Nouveau
+      contrôleur Stimulus `conversation-filter`
+      (`assets/controllers/conversation_filter_controller.js`) : champ
+      recherche (substring insensible à la casse) + `<select>` de rôle
+      (affiché seulement si la conversation contient plus d'un rôle) — filtre
+      purement côté client, la conversation est déjà entièrement dans le DOM,
+      pas d'aller-retour serveur pour un filtrage aussi simple. Piège
+      rencontré : le filtre `unique` de Twig n'existe pas dans ce projet
+      (Twig 3.28 sans l'extension qui l'apporte) — dédoublonnage des rôles
+      fait à la main via une boucle + `not in`. Vérifié en conditions réelles
+      (vraie session admin) sur deux conversations réelles (42 et 14
+      messages) : page 200, les 3 cibles Stimulus (`search`/`role`/`item`)
+      bien présentes, `<select>` peuplé de `user`/`assistant`, asset JS servi
+      (200) à son URL versionnée par AssetMapper.
 
 ---
 

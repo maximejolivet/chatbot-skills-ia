@@ -9,41 +9,68 @@
         {% if resource.messages|length == 0 %}
             <p class="text-sm text-muted-foreground">Aucun message.</p>
         {% else %}
-            <ol class="space-y-3">
-                {% for message in resource.messages %}
-                    <li class="border border-border rounded-md p-3">
-                        <div class="flex items-center gap-2 text-sm">
-                            <span class="inline-flex items-center rounded bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-                                {{ message.role.value }}
-                            </span>
-                            <span class="text-xs text-muted-foreground">{{ message.createdAt|date('d/m/Y H:i') }}</span>
-                            {% if message.feedback %}
-                                <span class="text-xs {{ message.feedback.value == 'positive' ? 'text-emerald-600' : 'text-destructive' }}">
-                                    {{ message.feedback.value == 'positive' ? '👍' : '👎' }}
-                                </span>
-                            {% endif %}
-                        </div>
-                        <p class="text-sm text-foreground mt-1.5 whitespace-pre-wrap">{{ message.content }}</p>
+            {% set roles = [] %}
+            {% for message in resource.messages %}
+                {% if message.role.value not in roles %}
+                    {% set roles = roles|merge([message.role.value]) %}
+                {% endif %}
+            {% endfor %}
+            <div data-controller="conversation-filter">
+                <div class="flex gap-2 mb-4">
+                    <input type="search"
+                           placeholder="Rechercher dans les messages…"
+                           data-conversation-filter-target="search"
+                           data-action="input->conversation-filter#filter"
+                           class="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                    {% if roles|length > 1 %}
+                        <select data-conversation-filter-target="role"
+                                data-action="change->conversation-filter#filter"
+                                class="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                            <option value="">Tous les rôles</option>
+                            {% for role in roles %}
+                                <option value="{{ role }}">{{ role }}</option>
+                            {% endfor %}
+                        </select>
+                    {% endif %}
+                </div>
 
-                        {% set sources = message.metadata.sources|default([]) %}
-                        {% if sources|length > 0 %}
-                            <div class="mt-2 pt-2 border-t border-border">
-                                <p class="text-xs font-medium text-muted-foreground mb-1">Sources</p>
-                                <ul class="space-y-0.5">
-                                    {% for source in sources %}
-                                        <li class="text-xs text-muted-foreground">
-                                            · {{ source.document_title ?? 'Document' }}
-                                            {% if source.score is not null %}
-                                                <span class="text-muted-foreground/70">({{ (source.score * 100)|round }}%)</span>
-                                            {% endif %}
-                                        </li>
-                                    {% endfor %}
-                                </ul>
+                <ol class="space-y-3">
+                    {% for message in resource.messages %}
+                        <li class="border border-border rounded-md p-3" data-conversation-filter-target="item" data-role="{{ message.role.value }}">
+                            <div class="flex items-center gap-2 text-sm">
+                                <span class="inline-flex items-center rounded bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                                    {{ message.role.value }}
+                                </span>
+                                <span class="text-xs text-muted-foreground">{{ message.createdAt|date('d/m/Y H:i') }}</span>
+                                {% if message.feedback %}
+                                    <span class="text-xs {{ message.feedback.value == 'positive' ? 'text-emerald-600' : 'text-destructive' }}">
+                                        {{ message.feedback.value == 'positive' ? '👍' : '👎' }}
+                                    </span>
+                                {% endif %}
                             </div>
-                        {% endif %}
-                    </li>
-                {% endfor %}
-            </ol>
+                            <p class="text-sm text-foreground mt-1.5 whitespace-pre-wrap">{{ message.content }}</p>
+
+                            {% set sources = message.metadata.sources|default([]) %}
+                            {% if sources|length > 0 %}
+                                <div class="mt-2 pt-2 border-t border-border">
+                                    <p class="text-xs font-medium text-muted-foreground mb-1">Sources</p>
+                                    <ul class="space-y-0.5">
+                                        {% for source in sources %}
+                                            <li class="text-xs text-muted-foreground">
+                                                · {{ source.document_title ?? 'Document' }}
+                                                {% if source.score is not null %}
+                                                    <span class="text-muted-foreground/70">({{ (source.score * 100)|round }}%)</span>
+                                                {% endif %}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ol>
+                <p data-conversation-filter-target="empty" class="hidden text-sm text-muted-foreground">Aucun message ne correspond à la recherche.</p>
+            </div>
         {% endif %}
     </div>
 {% endblock %}
