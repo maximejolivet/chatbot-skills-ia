@@ -1021,6 +1021,16 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       headless, 8 messages) : bouton visible une fois scrollé, `scrollTop`
       bien à `0` après clic.
 
+- [x] **Toast "connexion rétablie"** — `useOnlineStatus()` signalait déjà
+      le passage hors ligne (bandeau d'erreur), mais rien ne confirmait le
+      retour. Nouveau `watch` sur `isOnline` (`Chatbot.vue`) détectant
+      spécifiquement la transition `false → true` (jamais au montage,
+      `watch` non-`immediate` — se déclencher sur la valeur initiale
+      aurait affiché le toast à chaque ouverture du widget) : toast affiché
+      3s. Vérifié en conditions réelles (Chrome headless,
+      `page.setOfflineMode` + événements `offline`/`online`) : toast bien
+      présent après le retour en ligne.
+
 ---
 
 *Ce fichier est un backlog vivant : cocher au fur et à mesure, ajouter/retirer
