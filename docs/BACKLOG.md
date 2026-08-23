@@ -940,6 +940,25 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       indicateur purement informatif pour un message qui commence à être
       long. Vérifié en conditions réelles (Chrome headless) : compteur
       absent à 5 caractères, affiche bien "501" à 501 caractères.
+- [x] **Respect de `prefers-reduced-motion`** — les animations en boucle
+      s'étaient accumulées au fil des features (frappe, curseur de
+      streaming, pastilles de statut/écoute, badge de première visite,
+      skeletons) sans jamais vérifier qu'elles se coupent pour un visiteur
+      qui a demandé moins de mouvement côté OS — seul `animate-aura-drift`
+      (fond des pages `/` et `/chat`) l'avait déjà. Audit complet du
+      dossier `components/` : chaque `animate-bounce-slow`/`animate-blink`/
+      `animate-pulse-dot`/`animate-pulse-ring`/`animate-pulse` gagne
+      `motion-reduce:animate-none`. `animate-spin` (spinners de
+      chargement) volontairement épargné : information fonctionnelle
+      (opération en cours), pas décoration — même exception que la
+      plupart des implémentations sérieuses de cette préférence.
+      Transitions Vue et `transition-*` déclenchées par interaction non
+      concernées non plus (mouvement bref/localisé, pas la catégorie
+      visée). Vérifié en conditions réelles (Chrome headless,
+      `emulateMediaFeatures('prefers-reduced-motion', 'reduce')`) :
+      `animation-name` bien `none` sur le skeleton de restauration
+      d'historique avec la préférence active, `aura-drift` bien présent
+      sans elle — la bascule fonctionne dans les deux sens.
 
 ---
 
