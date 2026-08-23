@@ -1002,6 +1002,17 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       suite passée de 43 à 46 tests. Vérifié en conditions réelles (Chrome
       headless) : padding de bulle bien `6px 12px` après bascule (contre
       `10px 16px` par défaut).
+- [x] **Séparateur de date collant** — "Aujourd'hui"/"Hier" défilait avec
+      le contenu au lieu de rester visible pendant qu'on parcourt
+      l'historique. Chaque séparateur passe en `position: sticky` (`top-12`
+      en variante `page`, décalé sous la barre de navigation elle-même
+      collante ; `top-0` en widget, qui n'en a pas) — façon WhatsApp/
+      Telegram, chaque séparateur reste affiché en haut du défilement
+      jusqu'à ce que le suivant le pousse. Aucun JS nécessaire, juste du
+      CSS (plusieurs éléments `sticky` frères dans un même conteneur
+      défilant s'empilent nativement dans l'ordre du DOM). Vérifié en
+      conditions réelles (Chrome headless, 8 messages) : `position:
+      sticky` bien appliqué sur le wrapper.
 
 ---
 
