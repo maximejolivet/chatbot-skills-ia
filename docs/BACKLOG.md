@@ -1031,6 +1031,22 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       `page.setOfflineMode` + événements `offline`/`online`) : toast bien
       présent après le retour en ligne.
 
+- [x] **Raccourci `Cmd`/`Ctrl+K`** — ouvre/ferme le widget flottant
+      (`StickyChatBubble.vue`) depuis n'importe où sur la page, pas
+      seulement en cliquant la bulle — distinct du raccourci `/` déjà
+      existant dans `Chatbot.vue`, qui ne fait que redonner le focus une
+      fois le panneau déjà ouvert (le widget n'est même pas monté quand il
+      est fermé). Réutilise directement `onBubbleClick()` (même logique
+      que le clic : redirige vers `/chat` si une conversation existe déjà
+      plutôt que de rouvrir un second fil). En documentant cette section,
+      correction au passage de deux inexactitudes trouvées dans le cahier
+      des charges (`docs/frontend/SPECIFICATION.md` §4.1/§5.2) : le
+      composant s'appelle `StickyChatBubble.vue` (pas `ChatWidget.vue`,
+      qui n'existe pas), et il n'y a pas de composable `useChatWidget()`
+      partagé — `isOpen` est un simple `ref` local. Vérifié en conditions
+      réelles (Chrome headless, page d'accueil) : `Ctrl+K` ouvre puis
+      referme bien le widget.
+
 ---
 
 *Ce fichier est un backlog vivant : cocher au fur et à mesure, ajouter/retirer

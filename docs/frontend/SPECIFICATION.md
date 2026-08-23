@@ -117,14 +117,16 @@ Les agents étant exposés par API Platform sous `/api/ai_agents` (hors du préf
 
 ## 4. Composants
 
-### 4.1 `ChatWidget.vue` — bulle flottante
+### 4.1 `StickyChatBubble.vue` — bulle flottante
 
-- Positionné en `fixed bottom-5 right-5` (coin bas-droit), z-index élevé.
-- **Bouton bulle** (icône bulle de dialogue / croix), avec un anneau pulsant (`animate-pulse-ring`) tant que le chat est fermé, pour attirer l'œil.
-- **Tooltip d'accroche** ("Une question ? Discutons avec mon assistant IA.") apparaissant automatiquement **1,5 s après le montage** si le widget n'a pas déjà été ouvert ou fermé manuellement (`showTooltip`/`tooltipDismissed`).
-- Au clic sur la bulle : bascule l'ouverture (`useChatWidget().toggle()`) et masque le tooltip.
-- Rendu conditionnel de `<Chatbot />` uniquement quand `isOpen === true`, avec transitions Vue (`<Transition>`, fade + scale/translate).
-- Expose `open()`/`close()` via `defineExpose` pour un pilotage externe éventuel.
+Montée uniquement sur `pages/index.vue` (`pages/chat.vue` n'en a pas besoin, le chat y occupe déjà toute la page) ; `isOpen` est un simple `ref` local, pas d'état partagé — rien d'autre n'a besoin de le lire.
+
+- Positionnée en `fixed bottom-6 right-6` (coin bas-droit), z-index élevé.
+- **Bouton bulle** (icône bulle de dialogue / croix selon `isOpen`), avec un anneau pulsant (`animate-pulse-ring`, `motion-reduce:animate-none`) **seulement lors de la toute première visite** (`showFirstVisitBadge`, persisté via `chatbot:bubble_seen` en `localStorage` — disparaît pour de bon dès la première interaction, sur n'importe quel onglet/visite ultérieure) pour attirer l'œil.
+- **Tooltip d'accroche** ("Commencer la conversation") révélé au survol/focus (CSS `group-hover`/`group-focus-within`, pas de minuterie JS), uniquement tant que `!isOpen`.
+- Au clic (`onBubbleClick`) : si une conversation existe déjà (`CONVERSATION_ID_STORAGE_KEY` en `localStorage`, posé par `useChatbot`), redirige vers `/chat` pour la reprendre là plutôt que de rouvrir un second fil dans le popin ; sinon bascule `isOpen`.
+- **Raccourci `Cmd`/`Ctrl+K`** : ouvre/ferme le widget depuis n'importe où sur la page (même logique que le clic sur la bulle, `onBubbleClick` appelé directement) — écouteur `window` posé à `onMounted`/retiré à `onBeforeUnmount`. Distinct du raccourci `/` de `Chatbot.vue` (§4.2), qui ne fait que redonner le focus une fois le panneau déjà ouvert.
+- Rendu conditionnel de `<Chatbot variant="widget" />` uniquement quand `isOpen === true`, avec transitions Vue (`<Transition>`, fade + scale/translate).
 
 ### 4.2 `Chatbot.vue` — fenêtre de conversation
 
@@ -196,9 +198,9 @@ Composable Vue exposant tout l'état et les actions nécessaires à un composant
 
 **Pas de streaming** : la réponse est attendue en un seul bloc (`await $fetch(...)`) — aucun appel à l'endpoint SSE `/api/conversations/{id}/stream` du backend n'est fait ici (celui-ci nécessiterait une conversation persistée).
 
-### 5.2 `useChatWidget()` — état d'ouverture partagé
+### 5.2 État d'ouverture du widget
 
-Wrapper minimal autour de `useState<boolean>('chat-widget-open', () => false)` — l'utilitaire d'état partagé natif de Nuxt (safe SSR : évite les fuites d'état entre requêtes serveur). Expose `isOpen`, `open()`, `close()`, `toggle()`.
+Pas de composable dédié : `isOpen` est un `ref` local à `StickyChatBubble.vue` (§4.1), le seul endroit qui en a besoin — rien d'autre dans l'app ne lit ni ne pilote l'état d'ouverture du widget flottant depuis l'extérieur.
 
 ---
 
