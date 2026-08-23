@@ -3,11 +3,15 @@
 namespace App\Controller;
 
 use App\Chat\ChatService;
+use App\Chat\MessageSerializer;
 use App\Entity\Conversation;
 use Symfony\Bundle\FrameworkBundle\Controller\AsController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
@@ -16,17 +20,23 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * tool-calling in this design (see ChatOrchestrationService).
  */
 #[AsController]
-final class ConversationStreamController
+final readonly class ConversationStreamController
 {
-    public function __construct(private readonly ChatService $chatService)
-    {
-    }
+    public function __construct(
+        private ChatService $chatService,
+        #[Autowire(service: 'limiter.chat_message')]
+        private RateLimiterFactory $chatMessageLimiter,
+    ) {}
 
     // See ConversationMessagesController for why this is an #[IsGranted]
     // check rather than relying on ApiResource's `security:` alone.
     #[IsGranted('OWNER', subject: 'data')]
     public function __invoke(Conversation $data, Request $request): StreamedResponse
     {
+        if (!$this->chatMessageLimiter->create($request->getClientIp())->consume()->isAccepted()) {
+            throw new TooManyRequestsHttpException(60, 'Too many messages, please slow down.');
+        }
+
         $body = json_decode($request->getContent(), true) ?? [];
         $userMessage = trim((string) ($body['message'] ?? ''));
         if ('' === $userMessage) {
@@ -34,12 +44,12 @@ final class ConversationStreamController
         }
         $agentId = isset($body['agent_id']) ? (int) $body['agent_id'] : null;
 
-        $response = new StreamedResponse(function () use ($data, $userMessage, $agentId) {
+        $response = new StreamedResponse(function () use ($data, $userMessage, $agentId): void {
             $this->emit(['type' => 'user_message', 'content' => $userMessage]);
 
             try {
                 $assistantMessage = $this->chatService->sendMessage($data, $userMessage, $agentId);
-                $this->emit(['type' => 'ai_complete', 'content' => $assistantMessage->getContent(), 'done' => true]);
+                $this->emit(['type' => 'ai_complete', 'done' => true, ...MessageSerializer::serialize($assistantMessage)]);
             } catch (\Throwable $e) {
                 $this->emit(['type' => 'error', 'content' => $e->getMessage()]);
             }
@@ -60,7 +70,7 @@ final class ConversationStreamController
      */
     private function emit(array $payload): void
     {
-        echo 'data: '.json_encode($payload, \JSON_PARTIAL_OUTPUT_ON_ERROR)."\n\n";
+        echo 'data: ' . json_encode($payload, \JSON_PARTIAL_OUTPUT_ON_ERROR) . "\n\n";
         flush();
     }
 }
