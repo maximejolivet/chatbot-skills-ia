@@ -1013,6 +1013,13 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       défilant s'empilent nativement dans l'ordre du DOM). Vérifié en
       conditions réelles (Chrome headless, 8 messages) : `position:
       sticky` bien appliqué sur le wrapper.
+- [x] **Bouton "remonter en haut"** — symétrique de la pastille "nouveau
+      message" existante. Le même `onMessagesScroll` (`Chatbot.vue`)
+      pilote maintenant aussi `showScrollToTop` (au-delà de 400px depuis
+      le haut) ; `jumpToTop()` fait un `scrollTo({ top: 0, behavior:
+      'smooth' })` sur le conteneur. Vérifié en conditions réelles (Chrome
+      headless, 8 messages) : bouton visible une fois scrollé, `scrollTop`
+      bien à `0` après clic.
 
 ---
 
