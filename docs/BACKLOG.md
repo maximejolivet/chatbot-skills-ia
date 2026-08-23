@@ -818,6 +818,19 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       Deux nouveaux tests (`useChatbot.test.ts`) vérifient le gate de
       `scrollToBottom()` et la réactivation par `sendMessage()` — suite
       passée de 34 à 36 tests.
+- [x] **Actions de bulle révélées au survol** — les boutons
+      écouter/copier/feedback/régénérer d'une bulle assistant étaient
+      visibles en permanence, alourdissant visuellement le fil. Masqués par
+      défaut à partir de `sm:` (`opacity-0`), révélés par
+      `group-hover`/`group-focus-within` sur la bulle (classe `group`) —
+      l'opacité (pas `hidden`/`display:none`) garde les boutons dans l'arbre
+      d'accessibilité, donc toujours atteignables au clavier même invisibles.
+      En dessous de `sm:` (tactile, pas de vrai survol) ils restent visibles
+      en permanence, aucune régression mobile. Deux exceptions forcent
+      `opacity-100` même hors survol : la confirmation "Copié !" (1.5s) et un
+      feedback déjà actif (👍/👎 sélectionné) — un état posé par le visiteur
+      ne doit pas disparaître simplement parce que la souris a quitté la
+      bulle.
 
 ---
 

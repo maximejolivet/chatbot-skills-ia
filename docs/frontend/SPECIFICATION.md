@@ -148,6 +148,8 @@ Mode sombre activable par le visiteur (bouton lune/soleil dans l'en-tête) — c
 
 Affiche un message unique, alignement à droite/bleu pour l'utilisateur, à gauche/gris (avatar bulle) pour l'assistant. Gère un état `isTyping` (3 points animés à la place du contenu — actuellement non déclenché par `useChatbot`, qui affiche plutôt `TypingIndicator` séparément). Horodatage formaté en `fr-FR` (`HH:mm`).
 
+**Actions au survol** (écouter/copier/feedback/régénérer) : masquées par défaut à partir de `sm:` (`opacity-0`), révélées par `group-hover`/`group-focus-within` sur la bulle (classe `group`) — décharge visuellement le fil sans les retirer de l'arbre d'accessibilité (`opacity` reste focusable au clavier, contrairement à `hidden`/`display:none`). En dessous de `sm:` (tactile, pas de vrai survol) elles restent visibles en permanence, aucune régression. Le bouton copier et les deux boutons feedback ont chacun une exception qui force `opacity-100` même hors survol : la confirmation "Copié !" (`copied`, 1.5s) et un feedback déjà actif (`message.feedback === 'positive'/'negative'`) — un état que le visiteur a lui-même posé ne doit pas disparaître simplement parce que la souris a quitté la bulle.
+
 ### 4.4 `TypingIndicator.vue`
 
 Indicateur "en train d'écrire" façon Messenger (avatar + 3 points qui rebondissent en cascade, `animate-bounce-slow` avec délais échelonnés). Affiché entre le dernier message et le champ de saisie tant que `isLoading === true`.
