@@ -79,8 +79,11 @@ jobs:
       - name: Composer audit -- CVE scan
         run: composer audit
 
-      # No PHPStan/static-analysis suite is configured yet in this project --
-      # add a step here once one exists, rather than fabricating one.
+      - name: PHPStan -- static analysis (level 9, phpstan-baseline.neon for pre-existing findings)
+        run: composer phpstan
+
+      - name: PHP-CS-Fixer -- coding style (@Symfony + @PER-CS)
+        run: composer cs:check
 
       # Rebuilt here (on the runner), never on the server -- no vendor/ from
       # a previous deploy sits around to accidentally corrupt.

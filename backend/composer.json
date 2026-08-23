@@ -16,6 +16,7 @@
         "doctrine/orm": "^3.6.8",
         "nelmio/api-doc-bundle": "^5.11",
         "nelmio/cors-bundle": "^2.6",
+        "netresearch/composer-agent-skill-plugin": "^2.1",
         "pagerfanta/doctrine-orm-adapter": "^4.8",
         "phpdocumentor/reflection-docblock": "^6.0",
         "phpstan/phpdoc-parser": "^2.3",
@@ -50,7 +51,9 @@
         "allow-plugins": {
             "php-http/discovery": true,
             "symfony/flex": true,
-            "symfony/runtime": true
+            "symfony/runtime": true,
+            "netresearch/composer-agent-skill-plugin": true,
+            "phpstan/extension-installer": true
         },
         "bump-after-update": true,
         "sort-packages": true
@@ -88,6 +91,16 @@
         ],
         "post-update-cmd": [
             "@auto-scripts"
+        ],
+        "cs:fix": "vendor/bin/php-cs-fixer fix",
+        "cs:check": "vendor/bin/php-cs-fixer fix --dry-run --diff",
+        "phpstan": "vendor/bin/phpstan analyse --no-progress --memory-limit=1G",
+        "phpstan:baseline": "vendor/bin/phpstan analyse --no-progress --memory-limit=1G --generate-baseline",
+        "rector": "vendor/bin/rector process",
+        "rector:check": "vendor/bin/rector process --dry-run",
+        "qa": [
+            "@cs:check",
+            "@phpstan"
         ]
     },
     "conflict": {
@@ -97,10 +110,41 @@
         "symfony": {
             "allow-contrib": false,
             "require": "8.1.*"
+        },
+        "ai-agent-skills": {
+            "version": 1,
+            "install-dir": "vendor/agent-skills/installed",
+            "sources-dir": "vendor/agent-skills/sources",
+            "cache-dir": "vendor/agent-skills/cache",
+            "sources": [
+                {
+                    "name": "netresearch/php-modernization-skill",
+                    "type": "github",
+                    "skills": [
+                        "php-modernization"
+                    ],
+                    "install-mode": "copy",
+                    "url": "https://github.com/netresearch/php-modernization-skill.git"
+                }
+            ]
+        },
+        "ai-agent-skill": {
+            "allow-skills": {
+                "netresearch/php-modernization-skill": true,
+                "direct:netresearch/php-modernization-skill/php-modernization": true
+            }
         }
     },
     "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.2",
+        "phpstan/phpstan-deprecation-rules": "^2.0",
+        "phpstan/phpstan-doctrine": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpstan/phpstan-symfony": "^2.0",
         "phpunit/phpunit": "^13.3",
+        "rector/rector": "^2.6",
         "symfony/browser-kit": "8.1.*",
         "symfony/css-selector": "8.1.*",
         "symfony/maker-bundle": "^1.67"

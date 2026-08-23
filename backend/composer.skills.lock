@@ -1,0 +1,23 @@
+{
+    "version": 1,
+    "plugin-version": "v2.1.1",
+    "content-hash": "02e80265b0c363f58fe046f395818bb75232bf2b292d845cfb1ac9f6bbf8c347",
+    "generated-at": "2026-08-23T11:54:15+00:00",
+    "packages": [
+        {
+            "name": "php-modernization",
+            "source": "netresearch/php-modernization-skill",
+            "type": "github",
+            "commit": "378947f9ee0ccfcaa647158335887b25a85f1ae2",
+            "path": "skills/php-modernization",
+            "checksum": "sha256:709a6b0c54279b825a36c5316047364fe501fc7d9fd6fbfb67aa739070495b68",
+            "install-path": "vendor/agent-skills/installed/php-modernization",
+            "url": "https://github.com/netresearch/php-modernization-skill.git",
+            "ref": "main",
+            "metadata": {
+                "description": "Use when modernizing PHP code: PHP 8.1-8.5 features, PSR/PHP-FIG/PER-CS compliance, PHPStan/Rector/PHP-CS-Fixer/PHPat tooling, DTOs/enums/readonly/property hooks, type safety. Triggers: PHP modernization, type safety, PHPStan, Rector, PHP-CS-Fixer, enum, DTO, readonly, strict_types, property hooks, PHP 8.4, PHP 8.5.",
+                "schema": "SKILL.md"
+            }
+        }
+    ]
+}

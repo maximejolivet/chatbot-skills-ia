@@ -22,3 +22,14 @@
 /phpunit.xml
 /.phpunit.cache/
 ###< phpunit/phpunit ###
+
+###> friendsofphp/php-cs-fixer ###
+/.php-cs-fixer.php
+/.php-cs-fixer.cache
+###< friendsofphp/php-cs-fixer ###
+
+# netresearch/composer-agent-skill-plugin -- run cache/output (verify_php_project.py
+# etc.) and a transient file lock used while writing composer.json, neither
+# is project source.
+/.build/
+/composer.json.skill-trust.lock
