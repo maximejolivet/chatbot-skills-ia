@@ -831,6 +831,22 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       feedback déjà actif (👍/👎 sélectionné) — un état posé par le visiteur
       ne doit pas disparaître simplement parce que la souris a quitté la
       bulle.
+- [x] **Séparateurs de date** — une conversation restaurée après plusieurs
+      jours (`restoreConversation`, id persisté en `localStorage`) affichait
+      tous les messages à la suite avec juste `HH:mm`, sans repère de jour.
+      `Chatbot.vue` calcule un `messageItems` (computed) qui insère un
+      séparateur ("Aujourd'hui" / "Hier" / date complète en `fr-FR`, année
+      incluse seulement si différente de l'année courante) à chaque
+      changement de jour entre deux messages consécutifs.
+- [x] **Regroupement des messages consécutifs** — deux messages du même
+      rôle envoyés à la suite (ex. l'utilisateur qui complète sa question)
+      s'affichaient avec le même espacement qu'entre deux tours de parole
+      différents. `messageItems` calcule aussi `isGrouped` (même rôle que le
+      message précédent, pas de séparateur de date entre les deux) ;
+      `MessageBubble.vue` resserre sa marge (`mb-1` au lieu de `mb-3`) en
+      conséquence. Avatar/horodatage/actions restent affichés sur chaque
+      bulle malgré tout — seul l'espacement change, pas l'information
+      disponible.
 
 ---
 
