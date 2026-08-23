@@ -857,6 +857,16 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       headless, requête interceptée avec un délai de 4s) : le skeleton
       s'affiche bien pendant l'attente, à la bonne position (bas du
       panneau).
+- [x] **Contrôle du son des notifications** — `playMessageSound()` se
+      déclenchait à chaque réponse sans qu'il y ait de moyen de le couper
+      depuis l'UI. `useNotificationSound.ts` gagne un état `muted`
+      persisté en `localStorage` (même schéma que `useColorScheme.ts`) et
+      un `toggleMuted()` ; `playMessageSound()` devient un no-op silencieux
+      tant que `muted` est actif. Bouton dédié dans l'en-tête (widget et
+      plein écran), icône haut-parleur/haut-parleur barré, `aria-pressed`.
+      4 nouveaux tests (`useNotificationSound.test.ts`, nouveau fichier :
+      valeur par défaut, lecture d'un choix persisté, toggle + persistance,
+      pas d'erreur pendant que muet) — suite passée de 36 à 40 tests.
 
 ---
 
