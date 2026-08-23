@@ -12,7 +12,7 @@
         {%- endif -%}
         {{ form_errors(form) }}
         {%- if form.vars.help is defined and form.vars.help -%}
-            <p class="mt-1 text-xs text-slate-500">{{ form.vars.help }}</p>
+            <p class="mt-1 text-xs text-muted-foreground">{{ form.vars.help }}</p>
         {%- endif -%}
     </div>
     {%- else -%}
@@ -22,13 +22,13 @@
 
 {% block form_label %}
     {%- if label is not same as(false) and 'checkbox' not in block_prefixes -%}
-        <label {% if id is defined %}for="{{ id }}"{% endif %} class="block text-sm font-medium text-slate-700 mb-1">
+        <label {% if id is defined %}for="{{ id }}"{% endif %} class="block text-sm font-medium leading-none text-foreground mb-1.5">
             {{- label is not empty ? label|trans : name|humanize -}}
         </label>
     {%- elseif 'checkbox' not in block_prefixes -%}
-        <label class="block text-sm font-medium text-slate-700 mb-1">{{ name|humanize }}</label>
+        <label class="block text-sm font-medium leading-none text-foreground mb-1.5">{{ name|humanize }}</label>
     {%- else -%}
-        <label {% if id is defined %}for="{{ id }}"{% endif %} class="text-sm text-slate-700">
+        <label {% if id is defined %}for="{{ id }}"{% endif %} class="text-sm leading-none text-foreground">
             {{- label is not empty ? label|trans : name|humanize -}}
         </label>
     {%- endif -%}
@@ -36,7 +36,7 @@
 
 {% block form_errors %}
     {%- if errors|length > 0 -%}
-        <ul class="mt-1 text-sm text-red-600 space-y-0.5">
+        <ul class="mt-1.5 text-sm text-destructive space-y-0.5">
             {%- for error in errors -%}
                 <li>{{ error.message }}</li>
             {%- endfor -%}
@@ -44,22 +44,24 @@
     {%- endif -%}
 {% endblock %}
 
+{# shadcn/ui Input: h-9, border-input, focus-visible ring instead of a
+   colored border+ring pair -- see assets/styles/app.css for the tokens. #}
 {% block form_widget_simple %}
-    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500')|trim}) -%}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50')|trim}) -%}
     {{- parent() -}}
 {% endblock %}
 
 {% block textarea_widget %}
-    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500')|trim}) -%}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50')|trim}) -%}
     {{- parent() -}}
 {% endblock %}
 
 {% block choice_widget_collapsed %}
-    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' block w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500')|trim}) -%}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50')|trim}) -%}
     {{- parent() -}}
 {% endblock %}
 
 {% block checkbox_widget %}
-    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500')|trim}) -%}
+    {%- set attr = attr|merge({class: (attr.class|default('') ~ ' h-4 w-4 rounded-sm border border-input text-primary shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring')|trim}) -%}
     {{- parent() -}}
 {% endblock %}

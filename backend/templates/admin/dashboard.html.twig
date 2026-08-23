@@ -4,15 +4,15 @@
 {% block header %}Backoffice{% endblock %}
 
 {% block content %}
-    <p class="text-slate-600 mb-6">Gestion des données du chatbot. Choisis une ressource dans le menu de gauche.</p>
+    <p class="text-muted-foreground mb-6">Gestion des données du chatbot. Choisis une ressource dans le menu de gauche.</p>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for group in admin_nav() %}
-            <div class="bg-white rounded-lg border border-slate-200 p-4">
-                <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">{{ group.label }}</h2>
+            <div class="rounded-xl border border-border bg-card text-card-foreground shadow-sm p-4">
+                <h2 class="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">{{ group.label }}</h2>
                 <ul class="space-y-1">
                     {% for item in group.items %}
                         <li>
-                            <a href="{{ path(item.route) }}" class="text-brand-700 hover:text-brand-900 hover:underline text-sm">{{ item.label }}</a>
+                            <a href="{{ path(item.route) }}" class="text-primary hover:underline text-sm">{{ item.label }}</a>
                         </li>
                     {% endfor %}
                 </ul>
