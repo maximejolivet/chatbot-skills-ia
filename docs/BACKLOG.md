@@ -285,6 +285,44 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       (`curl` à travers le proxy Nuxt : conversation + message créés,
       `PATCH .../feedback` avec `{"feedback":"positive"}`, `GET
       .../messages` confirme la persistance) puis nettoyé.
+- [x] **Bouton "régénérer la réponse"** — relance la dernière réponse
+      assistant sans retaper le message. Réutilise le mécanisme existant :
+      nouveau `useChatbot().regenerateLastReply()`, quasi identique à
+      `retryLastMessage()` (déjà là pour le bandeau d'erreur) mais retire
+      d'abord la dernière bulle assistant du fil (`messages.pop()`) avant de
+      relancer `requestAssistantReply()`, pour que le nouveau message la
+      remplace au lieu de s'empiler — `retryLastMessage()` n'avait pas ce
+      problème car il ne s'exécute qu'après un échec, donc aucune bulle
+      assistant n'existe encore pour ce tour. L'ancienne réponse reste en
+      base (nouvelle ligne `Message` créée par le stream), simplement plus
+      affichée côté client. Bouton visible uniquement sur la dernière bulle
+      assistant (prop `isLast` sur `MessageBubble.vue`, calculée dans
+      `Chatbot.vue`). 2 tests ajoutés (no-op si le dernier message n'est pas
+      une réponse assistant, remplacement sans doublon) — suite passée de 30
+      à 32 tests.
+- [x] **En-têtes de sécurité HTTP** (CSP, HSTS) sur le widget public —
+      `nuxt.config.ts`, `routeRules['/**'].headers`. Pas de nonce CSP (aurait
+      demandé de brancher l'injection par requête dans le SSR de Nuxt) :
+      `'unsafe-inline'` sur `script-src`/`style-src`, compromis pragmatique
+      pour une app SSR Vue sans cette infrastructure — le payload
+      d'hydratation de Nuxt est un `<script>` inline, et les styles scopés
+      Vue peuvent atterrir inline aussi. `'unsafe-eval'`/`connect-src ws:`
+      uniquement en dev (détecté via `NODE_ENV`, pas `process.dev` qui n'est
+      pas défini dans ce contexte d'évaluation top-level du fichier de
+      config — piège rencontré, corrigé). Seules ressources externes
+      autorisées : Google Fonts (`style-src`/`font-src`), déjà la seule
+      dépendance externe réelle du frontend (vérifié : aucune autre URL
+      `http(s)://` dans `components/`/`pages/`). Pas de `frame-ancestors`
+      trop permissif (`'self'`), `object-src 'none'`. **Portée** : le
+      frontend n'a pas de déploiement en prod pour l'instant (voir
+      `DEPLOYMENT.md`), donc ce durcissement ne protège encore personne en
+      pratique — préparé pour quand ce sera le cas. Vérifié : en-têtes
+      confirmés présents (`curl -sI`) sur `/` et `/chat`, avec les
+      directives dev (`unsafe-eval`, `ws:`) bien présentes en local ; pas de
+      vérification visuelle dans un vrai navigateur (extension Chrome
+      indisponible pendant la session) — vérification statique à la place
+      (aucune ressource externe au-delà de Google Fonts référencée nulle
+      part dans le code).
 
 ## Backend (`backend/`)
 
