@@ -12,10 +12,40 @@ use Symfony\Component\Uid\Uuid;
  * RAG orchestration: search, index, delete. Collection names are always
  * provided by the caller -- this service does not know about agents, documents,
  * or collections as domain concepts (that's knowledge_base's job).
+ *
+ * search() is hybrid: Qdrant's vector similarity is fused with a lexical
+ * (BM25-style) pass over App\Entity\DocumentChunk.content via MariaDB's
+ * native FULLTEXT index (see migrations/Version20260822220000.php),
+ * combined with Reciprocal Rank Fusion (RRF) rather than a single vector
+ * pass -- catches exact-keyword matches (names, dates, error codes) semantic
+ * similarity alone sometimes ranks low. Not "real" Qdrant sparse-vector BM25
+ * (miniCOIL/Fastembed): that needs a second vectorizer in the stack, a
+ * bigger infra change than the payoff warranted here for a single-server
+ * deployment with a modest document count.
+ *
+ * The query embedding itself is cached (QueryEmbeddingCache, Redis) --
+ * repeated/frequent identical questions skip the Ollama round-trip for the
+ * embed step. Only the embed step: Qdrant search, the lexical pass, and RRF
+ * fusion below all still run per call.
  */
 class VectorSearchService
 {
     public const DEFAULT_COLLECTION_NAME = 'chatbot_embeddings';
+
+    /**
+     * RRF constant (k=60 is the value from the original Cormack et al. paper
+     * and the one most hybrid-search implementations default to) -- dampens
+     * the influence of any single rank-1 hit so one list doesn't dominate
+     * the fused order just for topping its own ranking.
+     */
+    private const int RRF_K = 60;
+
+    /**
+     * How many candidates to pull from each leg before fusing, relative to
+     * the caller's requested $limit -- fusion needs a wider pool than the
+     * final cut to have anything to compare across both lists.
+     */
+    private const int OVERFETCH_MULTIPLIER = 4;
 
     public function __construct(
         private readonly QdrantClient $qdrantClient,
@@ -24,8 +54,8 @@ class VectorSearchService
         private readonly VectorIndexRepository $vectorIndexRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
-    ) {
-    }
+        private readonly QueryEmbeddingCache $queryEmbeddingCache,
+    ) {}
 
     /**
      * Deterministic UUID so the same point ID can be regenerated later for deletion.
@@ -48,27 +78,138 @@ class VectorSearchService
     ): array {
         $collectionName ??= self::DEFAULT_COLLECTION_NAME;
         $start = microtime(true);
+        $overfetch = max($limit * self::OVERFETCH_MULTIPLIER, $limit + 20);
 
-        $queryEmbedding = $this->embeddingService->generateEmbedding($query);
-        $rawResults = $this->qdrantClient->search($collectionName, $queryEmbedding, $limit, $filterConditions);
+        $queryEmbedding = $this->queryEmbeddingCache->remember(
+            $query,
+            fn(): array => $this->embeddingService->generateEmbedding($query),
+        );
+        $vectorResults = $this->qdrantClient->search($collectionName, $queryEmbedding, $overfetch, $filterConditions);
+        $lexicalResults = $this->lexicalSearch($query, $overfetch, $filterConditions['category_id'] ?? null);
 
-        $results = array_map(static function (array $r): array {
-            $payload = $r['payload'] ?: [];
-
-            return [
-                'id' => $r['id'],
-                'score' => $r['score'],
-                'content' => $payload['content'] ?? '',
-                'document_id' => $payload['document_id'] ?? null,
-                'document_title' => $payload['document_title'] ?? '',
-                'chunk_index' => $payload['chunk_index'] ?? null,
-                'metadata' => $payload['metadata'] ?? [],
-            ];
-        }, $rawResults);
+        $results = $this->fuseResults($vectorResults, $lexicalResults, $limit);
 
         $this->logSearchQuery($query, $collectionName, count($results), microtime(true) - $start);
 
         return $results;
+    }
+
+    /**
+     * BM25-style lexical candidates via MariaDB's native FULLTEXT index (see
+     * migrations/Version20260822220000.php) -- a second, independent
+     * ranking signal fused with vector similarity in fuseResults().
+     *
+     * Only `category_id` of VectorSearchController's filter set is applied
+     * here (a plain join on Document.category); document_type/language/
+     * complexity live only in the Qdrant payload's `intelligent_analysis`
+     * metadata (see addDocumentChunks()), not as DocumentChunk/Document
+     * columns, so they can't be pushed down into this SQL query without
+     * denormalizing them onto the entity -- not done here, out of scope for
+     * what hybrid search needed to add. Best-effort: any failure (e.g. a
+     * query MariaDB's FULLTEXT parser rejects) logs and degrades to
+     * vector-only instead of failing the whole search.
+     *
+     * @return array<int, array{document_id: int, chunk_index: int, content: string, document_title: string, score: float}>
+     */
+    private function lexicalSearch(string $query, int $limit, ?int $categoryId = null): array
+    {
+        if ('' === trim($query)) {
+            return [];
+        }
+
+        $sql = 'SELECT dc.document_id AS document_id, dc.chunk_index AS chunk_index, dc.content AS content,
+                       d.title AS document_title,
+                       MATCH(dc.content) AGAINST (:query IN NATURAL LANGUAGE MODE) AS score
+                FROM document_chunk dc
+                INNER JOIN document d ON d.id = dc.document_id
+                WHERE MATCH(dc.content) AGAINST (:query IN NATURAL LANGUAGE MODE)';
+        $params = ['query' => $query];
+
+        if (null !== $categoryId) {
+            $sql .= ' AND d.category_id = :categoryId';
+            $params['categoryId'] = $categoryId;
+        }
+
+        $sql .= ' ORDER BY score DESC LIMIT ' . max(1, $limit);
+
+        try {
+            return $this->entityManager->getConnection()->executeQuery($sql, $params)->fetchAllAssociative();
+        } catch (\Throwable $e) {
+            $this->logger->warning('Lexical search failed, continuing with vector results only: {error}', ['error' => $e->getMessage()]);
+
+            return [];
+        }
+    }
+
+    /**
+     * Reciprocal Rank Fusion: each result's fused score is the sum of
+     * 1/(RRF_K + rank) across every list it appears in (rank 0-based), so a
+     * chunk found by both signals outranks one found by only one -- without
+     * needing to normalize/calibrate cosine similarity against a FULLTEXT
+     * relevance score, two numbers on entirely different scales.
+     *
+     * The `score` field on the returned rows stays a Qdrant cosine
+     * similarity whenever the chunk was a vector hit (unchanged meaning for
+     * existing consumers -- see docs/backend/SPECIFICATION.md §8.6); only a
+     * lexical-only hit (no vector match at all) falls back to the FULLTEXT
+     * relevance value, which is not on a 0-1 scale.
+     *
+     * @param array<int, array{id: string|int, score: float, payload: array<string, mixed>}>                               $vectorResults
+     * @param array<int, array{document_id: int, chunk_index: int, content: string, document_title: string, score: float}> $lexicalResults
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function fuseResults(array $vectorResults, array $lexicalResults, int $limit): array
+    {
+        $fused = [];
+
+        foreach (array_values($vectorResults) as $rank => $r) {
+            $payload = $r['payload'] ?: [];
+            $documentId = $payload['document_id'] ?? null;
+            $chunkIndex = $payload['chunk_index'] ?? null;
+            if (null === $documentId || null === $chunkIndex) {
+                continue; // no stable fusion key without both
+            }
+
+            $key = "{$documentId}:{$chunkIndex}";
+            $fused[$key] ??= [
+                'id' => $r['id'],
+                'score' => $r['score'],
+                'content' => $payload['content'] ?? '',
+                'document_id' => $documentId,
+                'document_title' => $payload['document_title'] ?? '',
+                'chunk_index' => $chunkIndex,
+                'metadata' => $payload['metadata'] ?? [],
+                'rrf_score' => 0.0,
+            ];
+            $fused[$key]['rrf_score'] += 1 / (self::RRF_K + $rank);
+        }
+
+        foreach (array_values($lexicalResults) as $rank => $r) {
+            $key = "{$r['document_id']}:{$r['chunk_index']}";
+            $fused[$key] ??= [
+                'id' => self::generatePointId((int) $r['document_id'], (int) $r['chunk_index']),
+                'score' => (float) $r['score'],
+                'content' => $r['content'],
+                'document_id' => (int) $r['document_id'],
+                'document_title' => $r['document_title'],
+                'chunk_index' => (int) $r['chunk_index'],
+                'metadata' => [],
+                'rrf_score' => 0.0,
+            ];
+            $fused[$key]['rrf_score'] += 1 / (self::RRF_K + $rank);
+        }
+
+        usort($fused, static fn(array $a, array $b): int => $b['rrf_score'] <=> $a['rrf_score']);
+
+        return array_map(
+            static function (array $entry): array {
+                unset($entry['rrf_score']);
+
+                return $entry;
+            },
+            array_slice($fused, 0, $limit),
+        );
     }
 
     /**
@@ -90,7 +231,7 @@ class VectorSearchService
                 ? $this->documentAnalysisService->analyzeDocument($documentContent, $documentFilename)
                 : DocumentAnalysisService::DEFAULT_DOCUMENT_METADATA;
 
-            $texts = array_map(static fn (array $chunk) => $chunk['content'], $chunks);
+            $texts = array_map(static fn(array $chunk): string => $chunk['content'], $chunks);
             $embeddings = $this->embeddingService->generateEmbeddingsBatch($texts);
 
             $points = [];
@@ -181,7 +322,7 @@ class VectorSearchService
                 return;
             }
 
-            $searchQuery = (new SearchQuery())
+            $searchQuery = new SearchQuery()
                 ->setQuery($query)
                 ->setVectorIndex($vectorIndex)
                 ->setResultsCount($resultsCount)

@@ -26,3 +26,14 @@ framework:
             cache.conversation_history:
                 adapter: cache.adapter.redis
                 default_lifetime: 3600
+
+            # Dedicated pool for App\VectorConnector\QueryEmbeddingCache --
+            # same rationale as cache.conversation_history above. Longer
+            # lifetime than conversation_history: an embedding for a given
+            # question text never goes stale on its own (unlike conversation
+            # history, which changes every turn), the only staleness risk is
+            # the active embedding model/provider changing underneath it --
+            # see the class docblock for why that's an accepted tradeoff.
+            cache.query_embedding:
+                adapter: cache.adapter.redis
+                default_lifetime: 604800 # 7 days
