@@ -7,6 +7,7 @@ namespace App\Tests\Chat;
 use App\AiProvider\Client\ChatMessage;
 use App\AiProvider\Client\CompletionResult;
 use App\AiProvider\Client\LlmClientInterface;
+use App\AiProvider\Client\ToolCall;
 use App\AiProvider\ProviderSelectionService;
 use App\Chat\ChatOrchestrationService;
 use App\Chat\ChatReplyResult;
@@ -41,17 +42,31 @@ final class FakeLlmClient implements LlmClientInterface
     /** @var ChatMessage[] the argument of the last complete()/stream() call */
     public array $lastMessages = [];
 
+    private int $completeCallCount = 0;
+
     /**
-     * @param string[] $streamChunks
+     * @param string[]           $streamChunks
+     * @param CompletionResult[] $completionResults returned in order by successive
+     *                                              complete() calls (the tool-calling loop calls it more than once);
+     *                                              the last one repeats once exhausted. Takes priority over
+     *                                              $completionResult when non-empty.
      */
     public function __construct(
         private readonly ?CompletionResult $completionResult = null,
         private readonly array $streamChunks = [],
+        private readonly array $completionResults = [],
     ) {}
 
     public function complete(array $messages, ?array $tools = null, float $temperature = 0.7, int $maxTokens = 3000): CompletionResult
     {
         $this->lastMessages = $messages;
+
+        if ([] !== $this->completionResults) {
+            $index = min($this->completeCallCount, count($this->completionResults) - 1);
+            ++$this->completeCallCount;
+
+            return $this->completionResults[$index];
+        }
 
         return $this->completionResult ?? new CompletionResult(new ChatMessage(role: 'assistant', content: ''), []);
     }
@@ -83,8 +98,11 @@ final class ChatOrchestrationServiceTest extends TestCase
     /**
      * @param array<int, array<string, mixed>> $ragResults
      */
-    private function service(array $ragResults = []): ChatOrchestrationService
-    {
+    private function service(
+        array $ragResults = [],
+        ?WorkflowRepository $workflowRepository = null,
+        ?WorkflowStepRepository $workflowStepRepository = null,
+    ): ChatOrchestrationService {
         $providerSelection = new ProviderSelectionService(
             $this->createStub(AiProviderConfigRepository::class),
             $this->createStub(LoggerInterface::class),
@@ -112,8 +130,8 @@ final class ChatOrchestrationServiceTest extends TestCase
         );
 
         $workflowExecutionService = new WorkflowExecutionService(
-            $this->createStub(WorkflowRepository::class),
-            $this->createStub(WorkflowStepRepository::class),
+            $workflowRepository ?? $this->createStub(WorkflowRepository::class),
+            $workflowStepRepository ?? $this->createStub(WorkflowStepRepository::class),
             $this->createStub(EntityManagerInterface::class),
             $this->createStub(LoggerInterface::class),
             $this->createStub(MailerInterface::class),
@@ -133,9 +151,10 @@ final class ChatOrchestrationServiceTest extends TestCase
         array $history = [],
         ?AiAgent $agent = null,
         ?callable $onDelta = null,
+        ?callable $onToolCall = null,
     ): ChatReplyResult {
         return (new \ReflectionMethod($service, 'orchestrate'))
-            ->invoke($service, $llmClient, $userMessage, $history, $agent, null, $onDelta);
+            ->invoke($service, $llmClient, $userMessage, $history, $agent, null, $onDelta, $onToolCall);
     }
 
     public function testNoAgentAndOnDeltaStreamsIncrementally(): void
@@ -241,5 +260,48 @@ final class ChatOrchestrationServiceTest extends TestCase
         self::assertSame([], $client->streamed);
         self::assertSame(['Pas besoin d\'outil cette fois'], $deltas);
         self::assertSame('Pas besoin d\'outil cette fois', $result->content);
+    }
+
+    public function testToolCallInvokesOnToolCallBeforeExecutingTheWorkflow(): void
+    {
+        $workflow = new Workflow()->setName('planifier_entretien')->setStatus(WorkflowStatus::Active);
+        new \ReflectionProperty(Workflow::class, 'id')->setValue($workflow, 42);
+
+        $agent = new AiAgent();
+        $agent->addWorkflow($workflow);
+        new \ReflectionProperty(AiAgent::class, 'id')->setValue($agent, 1);
+
+        $workflowRepository = $this->createStub(WorkflowRepository::class);
+        $workflowRepository->method('getActive')->willReturn($workflow);
+        $workflowStepRepository = $this->createStub(WorkflowStepRepository::class);
+        $workflowStepRepository->method('findActiveOrdered')->willReturn([]);
+
+        $toolCallRequest = new CompletionResult(
+            new ChatMessage(
+                role: 'assistant',
+                content: '',
+                toolCalls: [new ToolCall(id: 'call_1', name: 'planifier_entretien', arguments: ['start_time' => '2026-09-01T10:00:00'])],
+            ),
+            [],
+        );
+        $finalAnswer = new CompletionResult(new ChatMessage(role: 'assistant', content: 'Entretien confirmé.'), []);
+        $client = new FakeLlmClient(completionResults: [$toolCallRequest, $finalAnswer]);
+        $toolCalls = [];
+
+        $result = $this->orchestrate(
+            $this->service(workflowRepository: $workflowRepository, workflowStepRepository: $workflowStepRepository),
+            $client,
+            agent: $agent,
+            onToolCall: function (string $name) use (&$toolCalls): void {
+                $toolCalls[] = $name;
+            },
+        );
+
+        // Fired exactly once, for the resolved workflow, before its result
+        // comes back from WorkflowExecutionService -- lets a caller (the SSE
+        // controller) surface progress before the (silent, buffered) second
+        // complete() call that produces the final answer.
+        self::assertSame(['planifier_entretien'], $toolCalls);
+        self::assertSame('Entretien confirmé.', $result->content);
     }
 }

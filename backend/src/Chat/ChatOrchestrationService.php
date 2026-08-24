@@ -58,10 +58,14 @@ final readonly class ChatOrchestrationService
 
     /**
      * @param ChatMessage[]                 $history
-     * @param (callable(string): void)|null $onDelta invoked with each chunk of
-     *                                               the final answer as it's produced -- see class docblock for why
-     *                                               this only streams incrementally on the no-tools path, and still
-     *                                               fires exactly once (with the full content) on the buffered path
+     * @param (callable(string): void)|null $onDelta    invoked with each chunk of
+     *                                                  the final answer as it's produced -- see class docblock for why
+     *                                                  this only streams incrementally on the no-tools path, and still
+     *                                                  fires exactly once (with the full content) on the buffered path
+     * @param (callable(string): void)|null $onToolCall invoked with a resolved workflow's tool name
+     *                                                  right before it executes, once per tool call -- lets a caller
+     *                                                  surface progress ("checking availability...") while the
+     *                                                  buffered tool-calling loop runs, since it never streams
      */
     public function generateReply(
         string $userMessage,
@@ -69,10 +73,11 @@ final readonly class ChatOrchestrationService
         ?AiAgent $agent = null,
         ?Conversation $conversation = null,
         ?callable $onDelta = null,
+        ?callable $onToolCall = null,
     ): ChatReplyResult {
         $llmClient = $this->providerSelectionService->getLlmClient(AiProviderUsage::Chat);
 
-        return $this->orchestrate($llmClient, $userMessage, $history, $agent, $conversation, $onDelta);
+        return $this->orchestrate($llmClient, $userMessage, $history, $agent, $conversation, $onDelta, $onToolCall);
     }
 
     /**
@@ -91,6 +96,7 @@ final readonly class ChatOrchestrationService
         ?AiAgent $agent,
         ?Conversation $conversation,
         ?callable $onDelta,
+        ?callable $onToolCall = null,
     ): ChatReplyResult {
         $ragResults = $this->ragContextService->buildContext($userMessage, $agent);
         $messages = $this->buildMessages($agent, $history, $userMessage, $ragResults, $conversation);
@@ -119,6 +125,9 @@ final readonly class ChatOrchestrationService
                     $output = ['error' => "Unknown tool '{$call->name}'"];
                     $execStatus = 'failed';
                 } else {
+                    if (null !== $onToolCall) {
+                        $onToolCall($call->name);
+                    }
                     $execution = $this->workflowExecutionService->execute($workflow->getId(), $call->arguments, $conversation);
                     $output = 'completed' === $execution->getStatus()->value
                         ? $execution->getOutputData()

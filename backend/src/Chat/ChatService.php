@@ -36,9 +36,10 @@ final readonly class ChatService
     ) {}
 
     /**
-     * @param (callable(string): void)|null $onDelta see ChatOrchestrationService::generateReply()
+     * @param (callable(string): void)|null $onDelta    see ChatOrchestrationService::generateReply()
+     * @param (callable(string): void)|null $onToolCall see ChatOrchestrationService::generateReply()
      */
-    public function sendMessage(Conversation $conversation, string $userMessage, ?int $agentId = null, ?callable $onDelta = null): Message
+    public function sendMessage(Conversation $conversation, string $userMessage, ?int $agentId = null, ?callable $onDelta = null, ?callable $onToolCall = null): Message
     {
         $userMsg = new Message()->setRole(MessageRole::User)->setContent($userMessage);
         $conversation->addMessage($userMsg);
@@ -52,7 +53,7 @@ final readonly class ChatService
         $agent = $agentId ? $this->agentRepository->getActive($agentId) : null;
         $history = $this->historyAsChatMessages($conversation->getId());
 
-        $result = $this->orchestrator->generateReply($userMessage, $history, $agent, $conversation, $onDelta);
+        $result = $this->orchestrator->generateReply($userMessage, $history, $agent, $conversation, $onDelta, $onToolCall);
 
         $assistantMsg = new Message()
             ->setRole(MessageRole::Assistant)

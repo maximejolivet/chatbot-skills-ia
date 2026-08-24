@@ -21,7 +21,10 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * the full serialized message once persisted -- the frontend builds up the
  * bubble from deltas and only reads ai_complete for metadata (id, sources,
  * tool_calls, feedback), not for content, since a delta stream may have
- * already rendered it.
+ * already rendered it. On the buffered (tool-calling) path, a `type:
+ * tool_call` frame is also emitted right before each resolved workflow
+ * executes, so the frontend can show a progress label instead of a silent
+ * wait -- see ChatOrchestrationService::generateReply()'s $onToolCall.
  */
 #[AsController]
 final readonly class ConversationStreamController
@@ -55,7 +58,10 @@ final readonly class ConversationStreamController
                 $onDelta = function (string $chunk): void {
                     $this->emit(['type' => 'delta', 'content' => $chunk]);
                 };
-                $assistantMessage = $this->chatService->sendMessage($data, $userMessage, $agentId, $onDelta);
+                $onToolCall = function (string $tool): void {
+                    $this->emit(['type' => 'tool_call', 'tool' => $tool]);
+                };
+                $assistantMessage = $this->chatService->sendMessage($data, $userMessage, $agentId, $onDelta, $onToolCall);
                 $this->emit(['type' => 'ai_complete', 'done' => true, ...MessageSerializer::serialize($assistantMessage)]);
             } catch (\Throwable $e) {
                 $this->emit(['type' => 'error', 'content' => $e->getMessage()]);
