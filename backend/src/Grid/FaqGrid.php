@@ -21,8 +21,9 @@ final class FaqGrid
     public function __invoke(GridBuilderInterface $gridBuilder): void
     {
         $gridBuilder
-            ->orderBy('updatedAt', 'desc')
+            ->orderBy('priority', 'asc')
             ->withFields(
+                StringField::create('priority')->setLabel('Priorité')->setSortable(true),
                 StringField::create('question')->setLabel('Question')->setSortable(true),
                 StringField::create('category')->setLabel('Catégorie')->setPath('category.name'),
                 StringField::create('isActive')->setLabel('Actif'),

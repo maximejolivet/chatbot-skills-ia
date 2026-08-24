@@ -54,6 +54,16 @@ class Faq implements ResourceInterface
     #[ORM\Column]
     private bool $isActive = true;
 
+    // Display order for the public collection (GetCollection, see
+    // FaqActiveCollectionExtension's ORDER BY) and the /admin/faqs grid --
+    // ascending, lower value shown first. Defaults to 0 (new FAQs land at
+    // the front until an admin resequences them); no auto-increment-to-last
+    // logic, the expected FAQ count for this project is small enough that
+    // manually typing a number in the admin form is simpler than adding
+    // reordering machinery for it.
+    #[ORM\Column]
+    private int $priority = 0;
+
     /**
      * @var array<int, string>
      */
@@ -131,6 +141,18 @@ class Faq implements ResourceInterface
     public function setIsActive(bool $isActive): static
     {
         $this->isActive = $isActive;
+
+        return $this;
+    }
+
+    public function getPriority(): int
+    {
+        return $this->priority;
+    }
+
+    public function setPriority(int $priority): static
+    {
+        $this->priority = $priority;
 
         return $this;
     }

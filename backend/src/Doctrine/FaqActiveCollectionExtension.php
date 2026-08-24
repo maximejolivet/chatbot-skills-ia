@@ -27,6 +27,10 @@ final class FaqActiveCollectionExtension implements QueryCollectionExtensionInte
 
         $queryBuilder
             ->andWhere(sprintf('%s.isActive = :faqIsActive', $alias))
-            ->setParameter('faqIsActive', true);
+            ->setParameter('faqIsActive', true)
+            // Admin-controlled order (App\Entity\Faq::$priority, ascending --
+            // lower shown first), not left to whatever the DB happens to
+            // return -- see /admin/faqs for where it's actually set.
+            ->addOrderBy(sprintf('%s.priority', $alias), 'ASC');
     }
 }

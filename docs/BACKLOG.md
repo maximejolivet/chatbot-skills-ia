@@ -1059,6 +1059,15 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       champ de recherche vers l'emoji d'index 0 puis 1 après
       `ArrowDown`/`ArrowRight`, anneau de focus visible sur la capture.
 
+- [x] **Priorité d'affichage des FAQ** — nouveau champ `Faq.priority`
+      (entier, 0 par défaut, migration manuelle `dbal:run-sql` +
+      `doctrine_migration_versions` — `doctrine:migrations:*` toujours cassé
+      dans cet environnement). `FaqActiveCollectionExtension` trie désormais
+      la collection publique par `priority ASC` (avant : ordre non garanti).
+      Colonne triable + tri par défaut dans la grille `/admin/faqs`, champ
+      numérique dans le formulaire d'édition. Aucun changement frontend
+      nécessaire (`useFaqs.ts` faisait déjà confiance à l'ordre renvoyé par
+      l'API).
 ---
 
 *Ce fichier est un backlog vivant : cocher au fur et à mesure, ajouter/retirer
