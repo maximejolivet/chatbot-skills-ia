@@ -7,6 +7,7 @@ use App\Repository\SearchQueryRepository;
 use App\Repository\VectorIndexRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[AsController]
 final readonly class VectorStatsController
@@ -16,6 +17,9 @@ final readonly class VectorStatsController
         private SearchQueryRepository $searchQueryRepository,
     ) {}
 
+    // See VectorSearchController's comment -- same gap, same fix, also
+    // defense-in-depth (not in the Nuxt proxy's allowlist).
+    #[IsGranted('ROLE_ADMIN')]
     public function __invoke(): JsonResponse
     {
         return new JsonResponse([

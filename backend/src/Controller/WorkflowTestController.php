@@ -10,6 +10,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Same async pattern as /trigger (see WorkflowTriggerController) -- unlike
@@ -23,6 +24,9 @@ final readonly class WorkflowTestController
         private MessageBusInterface $messageBus,
     ) {}
 
+    // See WorkflowStepsController's comment -- Workflow's resource-level
+    // security doesn't apply to custom-controller operations.
+    #[IsGranted('ROLE_ADMIN')]
     public function __invoke(Workflow $data, Request $request): JsonResponse
     {
         $body = json_decode($request->getContent(), true) ?? [];

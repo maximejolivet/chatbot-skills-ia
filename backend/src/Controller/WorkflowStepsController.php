@@ -11,6 +11,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[AsController]
 final readonly class WorkflowStepsController
@@ -20,6 +21,12 @@ final readonly class WorkflowStepsController
         private EntityManagerInterface $entityManager,
     ) {}
 
+    // Workflow's resource-level `security: "is_granted('ROLE_ADMIN')")` does
+    // NOT apply to this custom-controller operation -- same API Platform
+    // limitation as ConversationMessagesController, see its comment. Without
+    // this, the operation was reachable by anyone (the Nuxt proxy always
+    // authenticates as admin at the HTTP layer regardless of visitor).
+    #[IsGranted('ROLE_ADMIN')]
     public function __invoke(Workflow $data, Request $request): JsonResponse
     {
         if ($request->isMethod('POST')) {

@@ -7,12 +7,17 @@ use App\Entity\DocumentChunk;
 use App\Repository\DocumentChunkRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 #[AsController]
 final readonly class DocumentChunksController
 {
     public function __construct(private DocumentChunkRepository $chunkRepository) {}
 
+    // See DocumentUploadController's comment -- Document's resource-level
+    // security doesn't apply to custom-controller operations. Chunk content
+    // is raw RAG source text, not meant for a public visitor to enumerate.
+    #[IsGranted('ROLE_ADMIN')]
     public function __invoke(Document $data): JsonResponse
     {
         $chunks = $this->chunkRepository->findForDocument($data->getId());

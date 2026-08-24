@@ -11,6 +11,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Creates the WorkflowExecution row (status 'pending') and dispatches it to
@@ -26,6 +27,9 @@ final readonly class WorkflowTriggerController
         private MessageBusInterface $messageBus,
     ) {}
 
+    // See WorkflowStepsController's comment -- Workflow's resource-level
+    // security doesn't apply to custom-controller operations.
+    #[IsGranted('ROLE_ADMIN')]
     public function __invoke(Workflow $data, Request $request): JsonResponse
     {
         if (WorkflowStatus::Active !== $data->getStatus()) {

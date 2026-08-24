@@ -7,6 +7,7 @@ use App\VectorConnector\VectorSearchService;
 use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[AsController]
@@ -17,6 +18,13 @@ final readonly class VectorSearchController
         private ValidatorInterface $validator,
     ) {}
 
+    // VectorSearchAction (not a Doctrine entity, no resource-level
+    // `security:` to begin with) had no access control at all -- same class
+    // of gap as the 9 custom controllers fixed earlier this session, found
+    // in a follow-up audit pass. Triggers a real Qdrant query per call
+    // (cost/DoS surface) and isn't in the Nuxt proxy's allowlist, so this is
+    // defense-in-depth rather than closing a currently-reachable hole.
+    #[IsGranted('ROLE_ADMIN')]
     public function __invoke(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true) ?? [];

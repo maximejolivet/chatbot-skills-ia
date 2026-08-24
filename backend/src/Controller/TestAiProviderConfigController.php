@@ -11,6 +11,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Live-test an AiProviderConfig and persist the result on the row.
@@ -24,6 +25,13 @@ final readonly class TestAiProviderConfigController
         private LoggerInterface $logger,
     ) {}
 
+    // AiProviderConfig's resource-level `security: "is_granted('ROLE_ADMIN')")`
+    // does NOT apply to this custom-controller operation -- same API
+    // Platform limitation as ConversationMessagesController, see its
+    // comment. Without this, any visitor could spend real provider credits
+    // via the public widget's Nuxt proxy (always authenticated as admin at
+    // the HTTP layer, regardless of visitor).
+    #[IsGranted('ROLE_ADMIN')]
     public function __invoke(AiProviderConfig $data): JsonResponse
     {
         $result = [

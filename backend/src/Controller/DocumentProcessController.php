@@ -10,6 +10,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Single canonical (re)processing entry point. Resets to 'pending' and
@@ -26,6 +27,9 @@ final readonly class DocumentProcessController
         private MessageBusInterface $messageBus,
     ) {}
 
+    // See DocumentUploadController's comment -- Document's resource-level
+    // security doesn't apply to custom-controller operations.
+    #[IsGranted('ROLE_ADMIN')]
     public function __invoke(Document $data): JsonResponse
     {
         $this->chunkRepository->deleteForDocument($data->getId());

@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Custom upload endpoint (multipart), not API Platform's generated Post --
@@ -36,6 +37,13 @@ final readonly class DocumentUploadController
         private string $uploadDir,
     ) {}
 
+    // Document's resource-level `security: "is_granted('ROLE_ADMIN')")` does
+    // NOT apply to this custom-controller operation -- same API Platform
+    // limitation as ConversationMessagesController, see its comment. Without
+    // this, any visitor could upload arbitrary files into the RAG knowledge
+    // base via the public widget's Nuxt proxy (always authenticated as admin
+    // at the HTTP layer, regardless of visitor).
+    #[IsGranted('ROLE_ADMIN')]
     public function __invoke(Request $request): JsonResponse
     {
         $file = $request->files->get('file');
