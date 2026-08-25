@@ -64,6 +64,13 @@ class Faq implements ResourceInterface
     #[ORM\Column]
     private int $priority = 0;
 
+    // Distinct from `priority` (which only orders the list): this visually
+    // sets a FAQ apart in the public collection/widget (see
+    // frontend/composables/useFaqs.ts) regardless of where it sorts --
+    // an admin can highlight a question without also forcing it first.
+    #[ORM\Column]
+    private bool $isHighlighted = false;
+
     /**
      * @var array<int, string>
      */
@@ -153,6 +160,18 @@ class Faq implements ResourceInterface
     public function setPriority(int $priority): static
     {
         $this->priority = $priority;
+
+        return $this;
+    }
+
+    public function isHighlighted(): bool
+    {
+        return $this->isHighlighted;
+    }
+
+    public function setIsHighlighted(bool $isHighlighted): static
+    {
+        $this->isHighlighted = $isHighlighted;
 
         return $this;
     }

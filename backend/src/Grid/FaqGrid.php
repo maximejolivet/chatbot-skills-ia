@@ -26,6 +26,7 @@ final class FaqGrid
                 StringField::create('priority')->setLabel('Priorité')->setSortable(true),
                 StringField::create('question')->setLabel('Question')->setSortable(true),
                 StringField::create('category')->setLabel('Catégorie')->setPath('category.name'),
+                StringField::create('isHighlighted')->setLabel('Mise en avant'),
                 StringField::create('isActive')->setLabel('Actif'),
                 StringField::create('updatedAt')->setLabel('Modifiée le')->setSortable(true),
             )

@@ -31,6 +31,7 @@ final class FaqType extends AbstractType
             ])
             ->add('tags', CommaListType::class, ['required' => false, 'help' => 'Séparés par des virgules'])
             ->add('priority', IntegerType::class, ['help' => 'Ordre d\'affichage -- plus petit affiché en premier'])
+            ->add('isHighlighted', CheckboxType::class, ['required' => false, 'label' => 'Mise en avant'])
             ->add('isActive', CheckboxType::class, ['required' => false])
         ;
     }
