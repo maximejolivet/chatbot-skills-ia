@@ -21,14 +21,12 @@ yarn-error.log*
 .npm
 .yarn-integrity
 
-# Frontend (not version-controlled in this repo)
-frontend/
-
 # Frontend build outputs
 dist/
 build/
 .next/
 .nuxt/
+.output/
 
 # IDE
 .vscode/

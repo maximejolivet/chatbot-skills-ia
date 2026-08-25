@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /*
+   * Design tokens as RGB triplets (not hex) so tailwind.config.js can wrap
+   * them in rgb(var(--x) / <alpha-value>) and support opacity modifiers
+   * (bg-accent/10) -- see the comment there for the full rationale.
+   *
+   * Brand palette: warm cream (#f3f4f0) + deep ink-teal (#1d3540), a gold
+   * CTA color and a mint/teal accent that both stay fixed across light and
+   * dark (same reasoning as upstream: gold and accent always sit on a
+   * surface light enough, or are used as a solid fill, that a single ink
+   * foreground reads on either theme, so there's no separate dark variant
+   * to compute). --muted/--muted-foreground below are solid pre-mixed
+   * approximations of the upstream --stripe/--subtle ink-on-background
+   * overlays, since this token system multiplies opaque triplets by a
+   * Tailwind opacity modifier rather than storing rgba() directly.
+   */
+  :root {
+    --background: 243 244 240; /* #f3f4f0 */
+    --foreground: 29 53 64; /* #1d3540, ink */
+    --card: 251 252 250; /* #fbfcfa */
+    --card-foreground: 29 53 64;
+    --muted: 224 227 224; /* ink @ ~9% over background */
+    --muted-foreground: 119 133 138; /* ink @ ~58% over background */
+    --accent: 79 179 156; /* #4fb39c, mint */
+    --accent-foreground: 29 53 64; /* always ink -- accent stays fixed across themes */
+    --primary: 239 199 138; /* #efc78a, gold */
+    --primary-foreground: 29 53 64; /* always ink -- gold stays fixed across themes */
+    --destructive: 179 38 30; /* not part of the brand palette -- a plain error red is
+      the one semantic role it doesn't cover */
+    --border: 29 53 64; /* = foreground, alpha applied in tailwind.config.js */
+    --highlight: 224 138 92; /* #e08a5c, terracotta -- stays fixed across themes, same as gold/accent */
+    --highlight-foreground: 29 53 64; /* always ink, same reasoning as primary/accent foreground */
+    --panel: 36 65 79; /* #24414f, dark surface for content that sits on a sunken panel
+      regardless of page theme (e.g. code/log surfaces) */
+    --panel-2: 22 48 60; /* #16303c */
+    --panel-foreground: 243 244 240; /* #f3f4f0, always light -- panel is dark in both themes */
+  }
+
+  .dark {
+    --background: 21 40 51; /* #152833 */
+    --foreground: 243 244 240; /* #f3f4f0 */
+    --card: 30 57 69; /* #1e3945 */
+    --card-foreground: 243 244 240;
+    --muted: 37 54 64; /* light ink @ ~7% over background */
+    --muted-foreground: 165 173 174; /* light ink @ ~65% over background -- the brand
+      palette's own --subtle (~50%) reads fine on maxime.bzh's small mono labels, but
+      this token also carries real paragraph text (empty states, hero subheading) here,
+      where 50% fell to ~3.6:1 against --card, below the 4.5:1 AA floor */
+    --border: 243 244 240; /* = foreground */
+    --panel: 16 32 42; /* #10202a, darker panel variant for the dark theme */
+    --panel-2: 13 27 35; /* #0d1b23 */
+    /* accent, primary, highlight and panel-foreground intentionally not redefined
+       here -- same reasoning as the brand palette's own --gold/--accent/--highlight,
+       which aren't redefined under its dark theme either. --destructive IS
+       redefined below: unlike those, it's rendered as plain text/borders directly
+       on --background (error banner, retry button, unpin hover) rather than
+       always as a solid fill, so the light-mode red (~2.3:1 on #152833) is
+       effectively invisible -- this lighter red keeps ~5:1. */
+    --destructive: 248 113 113; /* #f87171 */
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  ::selection {
+    background: rgb(var(--muted));
+    color: rgb(var(--accent));
+  }
+}
+
+@layer components {
+  .chatbot-container {
+    @apply relative;
+  }
+
+  .message-bubble {
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  .typing-indicator {
+    @apply animate-pulse-dot;
+  }
+
+  .hero-wash {
+    background: linear-gradient(180deg, #f3f4f0 0%, #e5f2ee 55%, #f3f4f0 100%);
+  }
+
+  .dark .hero-wash {
+    background: linear-gradient(180deg, #152833 0%, #1c3530 55%, #152833 100%);
+  }
+
+  .hero-aura {
+    background:
+      radial-gradient(closest-side, rgba(79, 179, 156, 0.35), transparent),
+      radial-gradient(closest-side, rgba(239, 199, 138, 0.4), transparent 70%),
+      radial-gradient(closest-side, rgba(224, 138, 92, 0.3), transparent 70%);
+    background-position:
+      35% 40%,
+      65% 35%,
+      50% 65%;
+    background-repeat: no-repeat;
+    background-size:
+      60% 60%,
+      55% 55%,
+      65% 65%;
+    filter: blur(48px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

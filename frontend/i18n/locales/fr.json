@@ -1,0 +1,88 @@
+{
+  "meta": {
+    "title": "Maxime - Chatbot IA",
+    "description": "Un assistant conversationnel IA branché sur ton entreprise, disponible à tout moment."
+  },
+  "home": {
+    "badge": "Assistant IA sur-mesure",
+    "heading": "Un chatbot qui connaît Maxime par cœur.",
+    "subheading": "Réponses instantanées et fiables, branchées sur mes données, disponibles à toute heure."
+  },
+  "heroChatBar": {
+    "placeholder": "Pose ta question sur ton entreprise...",
+    "send": "Envoyer"
+  },
+  "stickyBubble": {
+    "start": "Commencer la conversation",
+    "close": "Fermer la conversation"
+  },
+  "chatbot": {
+    "defaultTitle": "Assistant IA",
+    "writePlaceholder": "Écris ton message...",
+    "clearConversation": "Effacer la conversation",
+    "fullscreenEnter": "Ouvrir en plein écran",
+    "themeToggleDark": "Activer le mode sombre",
+    "themeToggleLight": "Activer le mode clair",
+    "close": "Fermer",
+    "backHome": "Retour à l'accueil",
+    "statusOnline": "en ligne",
+    "statusOffline": "indisponible",
+    "statusChecking": "connexion…",
+    "emptyTitle": "Lancer la discussion",
+    "emptyGreeting": "Bonjour, je suis l'assistant de Maxime. N'hésitez pas à poser vos propres questions.",
+    "emojiSearchPlaceholder": "Rechercher un emoji…",
+    "emojiSearchEmpty": "Aucun emoji trouvé",
+    "emojiLoading": "Chargement…",
+    "insertEmoji": "Insérer un emoji",
+    "micStart": "Dicter un message",
+    "micStop": "Arrêter la dictée",
+    "send": "Envoyer",
+    "retry": "Réessayer",
+    "newMessage": "Nouveau message",
+    "soundMute": "Couper le son des notifications",
+    "soundUnmute": "Activer le son des notifications",
+    "dateToday": "Aujourd'hui",
+    "dateYesterday": "Hier",
+    "scrollToTop": "Remonter en haut",
+    "backOnline": "Connexion rétablie",
+    "bookSlotMessage": "Je réserve le créneau du {label} ({iso}).",
+    "identityMessage": "Je m'appelle {firstName} {lastName}, mon email est {email}.",
+    "slashClear": "Effacer la conversation",
+    "slashTheme": "Changer de thème clair/sombre",
+    "slashSound": "Couper ou réactiver le son",
+    "slashFullscreen": "Ouvrir la conversation en plein écran",
+    "slashExport": "Exporter la conversation en Markdown",
+    "slashCV": "Voir le CV de Maxime (PDF)",
+    "slashPinned": "Afficher les messages épinglés",
+    "slashEmpty": "Aucune commande ne correspond",
+    "pinnedMessages": "Messages épinglés",
+    "exportConversation": "Exporter la conversation",
+    "toolCallPlanifierEntretien": "Réservation du créneau en cours…",
+    "toolCallListerCreneaux": "Vérification des disponibilités…",
+    "toolCallEnregistrerIdentite": "Enregistrement de tes coordonnées…",
+    "toolCallGeneric": "Traitement en cours…",
+    "discoveryHint": "Tape / pour les commandes rapides (thème, son, export…), ou Cmd/Ctrl+K pour rouvrir le chat depuis n'importe où."
+  },
+  "messageBubble": {
+    "speakStart": "Écouter la réponse",
+    "speakStop": "Arrêter la lecture",
+    "copy": "Copier la réponse",
+    "copied": "Copié !",
+    "pin": "Épingler ce message",
+    "unpin": "Retirer l'épingle",
+    "identityFirstName": "Prénom",
+    "identityLastName": "Nom",
+    "identityValidate": "Valider",
+    "emailPlaceholder": "Adresse email",
+    "copyCode": "Copier le code",
+    "feedbackPositive": "Bonne réponse",
+    "feedbackNegative": "Mauvaise réponse",
+    "regenerate": "Régénérer la réponse",
+    "interviewConfirmed": "Entretien confirmé pour {name}",
+    "debugModeHint": "Visible uniquement avec ?debug=1 dans l'URL"
+  },
+  "errors": {
+    "sendFailed": "Erreur lors de l'envoi du message. Veuillez réessayer.",
+    "offline": "Vous êtes hors ligne. Vérifiez votre connexion puis réessayez."
+  }
+}
