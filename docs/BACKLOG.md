@@ -1,8 +1,104 @@
-clo# Chantier — pistes d'amélioration
+# Chantier — pistes d'amélioration
 
 > Backlog de pistes identifiées en analysant `docs/backend/SPECIFICATION.md` et
 > `docs/frontend/SPECIFICATION.md`. Non priorisé formellement,
 > non planifié — à trier au fur et à mesure.
+
+## Sommaire
+
+75 faites, 8 retirées/rejetées, 2 restantes. Détail complet (rationale, notes de vérification) dans les sections ci-dessous.
+
+| Statut     | Domaine  | Fonctionnalité                                              | Résumé                                                                                                                          |
+| ---------- | -------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| ✅ Fait    | Frontend | Rendu Markdown                                              | déjà fait (`MessageBubble.vue`, `marked` + `isomorphic-dompurify`).                                                             |
+| ✅ Fait    | Frontend | Statut LLM réel                                             | `useChatbot.ts` appelle `GET /api/chat/llm-status` au montage du panneau (`checkLlmStatus`), expose `llmStatus`…                |
+| ✅ Fait    | Frontend | Persistance de conversation                                 | déjà fait (`useChatbot.ts` utilise `/api/conversations` + `conversation_id` en `localStorage`, restauré au montage).            |
+| ✅ Fait    | Frontend | Streaming (SSE)                                             | branché malgré l'absence de gain UX (voir note) : - Backend (`ConversationStreamController.php`) : ajout du rate-limiting (20…  |
+| ✅ Fait    | Frontend | Questions suggérées pilotées par API                        | `HeroChatBar.vue` (hero de la home) et le panneau `Chatbot.vue` (état vide) affichaient chacun la même liste de questions…      |
+| ✅ Fait    | Frontend | Afficher `token_usage`                                      | au moins en mode debug/admin. La donnée existait déjà côté API (`metadata.token_usage`, cf. `MessageSerializer`) mais n'était…  |
+| ✅ Fait    | Frontend | Tests                                                       | aucun test unitaire/e2e n'était configuré. Scope choisi : **tests unitaires des composables** (pas de test de composant…        |
+| ✅ Fait    | Frontend | i18n                                                        | tout était en français en dur. Scope choisi (décision produit explicite) : **infrastructure seulement, une seule locale** pour… |
+| ✅ Fait    | Frontend | Gestion d'erreur réseau plus robuste                        | pousser la bulle utilisateur (`sendMessage`) vs. requête/réponse (`requestAssistantReply`, nouveau). `retryLastMessage()`…      |
+| ✅ Fait    | Frontend | Bouton "copier la réponse"                                  | pas de feature-detection comme pour `speechSupported`, le Clipboard API est largement disponible, l'échec (permission refusée,… |
+| ✅ Fait    | Frontend | Questions de relance dynamiques                             | prend `{message, answer}` directement, pas de lookup DB) et `App\Chat\FollowUpQuestionsService::generate()` — appelle le…       |
+| ✅ Fait    | Frontend | Indicateur discret sur la bulle sticky                      | localStorage pour ne l'afficher qu'une fois. `StickyChatBubble.vue` : nouvelle clé `chatbot:bubble_seen` (distincte de…         |
+| ✅ Fait    | Frontend | Mode sombre activable par le visiteur                       | le prop `theme="dark"` existait déjà sur `Chatbot.vue` mais rien ne le pilotait (pas de toggle, pas de détection…               |
+| ✅ Fait    | Frontend | Chargement paresseux des données emoji                      | au premier clic sur le sélecteur plutôt qu'eagerly. `import()` dynamique dans `loadEmojiData()`, mémoïsé (un seul chargement…   |
+| ✅ Fait    | Frontend | Feedback 👍/👎 câblé côté frontend                          | le backend l'exposait déjà (`Message.feedback`, `PATCH /conversations/{id}/messages/{messageId}/feedback` via…                  |
+| ✅ Fait    | Frontend | Bouton "régénérer la réponse"                               | relance la dernière réponse assistant sans retaper le message. Réutilise le mécanisme existant : nouveau…                       |
+| ✅ Fait    | Frontend | En-têtes de sécurité HTTP                                   | `nuxt.config.ts`, `routeRules['/**'].headers`. Pas de nonce CSP (aurait demandé de brancher l'injection par requête dans le…    |
+| ✅ Fait    | Frontend | Curseur clignotant pendant le streaming                     | visuel indiquant que la réponse est en train de se générer, maintenant que le streaming token-par-token existe vraiment (voir…  |
+| ✅ Fait    | Frontend | Cache HTTP léger sur les endpoints publics en lecture seule | ces deux endpoints sont identiques pour tout visiteur (pas de variation par utilisateur, gérés uniquement via le backoffice…    |
+| ✅ Fait    | Frontend | Mode sombre appliqué à toute l'app (2026-08-25)              | ne changeait en réalité que `Chatbot.vue` ; `pages/index.vue` restait toujours clair. `app.vue` résout désormais lui aussi…    |
+| ✅ Fait    | Frontend | Avatar photo réel (2026-08-25)                               | remplace l'avatar-lettre "M" partout (en-tête, écran vide, `TypingIndicator`, chaque réponse assistant, portrait du hero)…    |
+| ✅ Fait    | Frontend | Suppression du plein écran par expansion du widget (2026-08-25) | `isFullscreen`/`fixed inset-4` retiré, remplacé par une navigation directe vers `/chat` (page déjà plein écran dédiée)…    |
+| ✅ Fait    | Frontend | Panneau des épingles qui restait ouvert et vide (2026-08-25) | bug : désépingler le dernier item depuis le panneau le laissait ouvert et vide, le bouton pour le fermer disparaissant…      |
+| ✅ Fait    | Frontend | Passe accessibilité/responsive (audit mobile) (2026-08-25)   | cibles tactiles à 44px, contraste sombre renforcé, `text-base sm:text-sm` anti-zoom iOS, `env(safe-area-inset-bottom)`…       |
+| ✅ Fait    | Frontend | En-têtes de sécurité HTTP sur le backoffice admin           | le durcissement CSP/HSTS précédent ne couvrait que le widget Nuxt public ; `/admin` (données métier réelles, plus sensible)…    |
+| ✅ Fait    | Frontend | Annuler une réponse en cours au clavier (Échap)             | le widget de chat n'avait aucun raccourci clavier : Entrée pour envoyer marchait déjà nativement (`<input>` simple dans un…     |
+| ✅ Fait    | Frontend | Champ de saisie multi-ligne                                 | le champ était un `<input type="text">` à une seule ligne : impossible de coller un extrait de code ou d'écrire un message sur… |
+| ✅ Fait    | Frontend | Pastille "nouveau message"                                  | un message qui arrivait pendant que le visiteur avait remonté dans l'historique le ramenait brutalement en bas…                 |
+| ✅ Fait    | Frontend | Actions de bulle révélées au survol                         | les boutons écouter/copier/feedback/régénérer d'une bulle assistant étaient visibles en permanence, alourdissant visuellement…  |
+| ✅ Fait    | Frontend | Séparateurs de date                                         | une conversation restaurée après plusieurs jours (`restoreConversation`, id persisté en `localStorage`) affichait tous les…     |
+| ✅ Fait    | Frontend | Regroupement des messages consécutifs                       | deux messages du même rôle envoyés à la suite (ex. l'utilisateur qui complète sa question) s'affichaient avec le même…          |
+| ✅ Fait    | Frontend | Skeleton pendant la restauration de l'historique            | `restoreConversation` fait un aller-retour réseau avant d'afficher quoi que ce soit ; le panneau passait d'un écran vide à la…  |
+| ✅ Fait    | Frontend | Contrôle du son des notifications                           | `playMessageSound()` se déclenchait à chaque réponse sans qu'il y ait de moyen de le couper depuis l'UI.…                       |
+| ✅ Fait    | Frontend | Copier un bloc de code                                      | le seul bouton copier existant (`MessageBubble.vue`) copiait tout le message ; copier juste un extrait de code depuis une…      |
+| ✅ Fait    | Frontend | Focus automatique + raccourci `/`                           | le champ de saisie n'était jamais focus automatiquement (ouverture du widget, chargement de `/chat`, après un envoi via clic…   |
+| ✅ Fait    | Frontend | Notification desktop en arrière-plan                        | le son (voir plus haut) ne signale rien si le visiteur a changé d'onglet et est muet. `useChatbot.ts` gagne…                    |
+| ✅ Fait    | Frontend | Aperçu de lien (titre + favicon)                            | un lien dans une réponse s'affichait comme du texte brut souligné, sans contexte sur la destination. Nouvelle route Nitro `GET… |
+| ✅ Fait    | Frontend | Compteur de caractères                                      | aucun repère sur la longueur d'un message en train d'être tapé. `showCharCount` (`Chatbot.vue`) affiche `inputValue.length` en… |
+| ✅ Fait    | Frontend | Respect de `prefers-reduced-motion`                         | les animations en boucle s'étaient accumulées au fil des features (frappe, curseur de streaming, pastilles de statut/écoute,…   |
+| ✅ Fait    | Frontend | Tableaux markdown défilants                                 | `prose-table` n'avait qu'une marge (`prose-table:my-2`), aucun `overflow-x-auto` : un tableau plus large que la bulle…          |
+| ✅ Fait    | Frontend | Aperçu d'image inline                                       | extension du système d'aperçu de lien (`GET /api/link-preview`) : si l'URL pointe directement sur une image, tranché sur le…    |
+| ✅ Fait    | Frontend | Séparateur de date collant                                  | "Aujourd'hui"/"Hier" défilait avec le contenu au lieu de rester visible pendant qu'on parcourt l'historique. Chaque séparateur… |
+| ✅ Fait    | Frontend | Bouton "remonter en haut"                                   | symétrique de la pastille "nouveau message" existante. Le même `onMessagesScroll` (`Chatbot.vue`) pilote maintenant aussi…      |
+| ✅ Fait    | Frontend | Toast "connexion rétablie"                                  | `useOnlineStatus()` signalait déjà le passage hors ligne (bandeau d'erreur), mais rien ne confirmait le retour. Nouveau…        |
+| ✅ Fait    | Frontend | Raccourci `Cmd`/`Ctrl+K`                                    | ouvre/ferme le widget flottant (`StickyChatBubble.vue`) depuis n'importe où sur la page, pas seulement en cliquant la bulle —…  |
+| ✅ Fait    | Frontend | Navigation clavier dans le picker d'emoji                   | seuls le clic et la recherche texte fonctionnaient. Roving tabindex sur la grille (un seul bouton dans l'ordre de tabulation à… |
+| ✅ Fait    | Frontend | Commandes slash                                             | menu déclenché en tapant `/` en tout début de champ (filtré à la frappe, navigable au clavier), même style visuel que le…       |
+| ✅ Fait    | Frontend | Avatar animé                                                | animation `breathe` (Tailwind, scale 1→1.06→1, 4s, `motion-reduce:animate-none`) sur les avatars "M" de l'en-tête et de…        |
+| ✅ Fait    | Frontend | Effet machine à écrire réel                                 | les deltas de streaming arrivent parfois par rafales (un mot entier d'un coup), rendu saccadé. `MessageBubble.vue` fait…        |
+| ✅ Fait    | Frontend | Export de conversation                                      | `useChatbot().exportConversation()` génère un `Blob` + `<a download>` à partir de `state.messages` (auteur, horodatage,…        |
+| ✅ Fait    | Frontend | Épingler un message                                         | bouton sur chaque bulle (question ou réponse), persistance purement client (`localStorage`, aucun champ backend), ré-appliqué…  |
+| ✅ Fait    | Frontend | Aperçu au survol de la bulle flottante fermée               | `useChatbot.ts` sauvegarde un extrait (120 caractères) de chaque réponse assistant en `localStorage`, lu par…                   |
+| ✅ Fait    | Frontend | Barre de progression indéterminée                           | segment glissant en boucle (style GitHub/YouTube) posé sur le bord supérieur du panneau pendant `isLoading`, en plus du…        |
+| ✅ Fait    | Frontend | Célébration après réservation confirmée                     | effet ponctuel (pop + anneau de couleur accent qui s'étend et s'efface, une seule fois à l'insertion) sur la carte "✅…         |
+| ✅ Fait    | Frontend | Formulaire inline prénom/nom                                | quand l'assistant demande l'identité du visiteur en texte libre, une petite carte (deux champs + bouton "Valider") apparaît…    |
+| ✅ Fait    | Frontend | États de progression pendant le tool-calling                | le chemin bufferisé (LLM → exécution d'un workflow → second appel LLM) n'émettait aucun `delta`, donc rien à part le…           |
+| ✅ Fait    | Frontend | Astuce de découverte des commandes                          | ce widget a accumulé plusieurs raccourcis puissants (commandes slash, Cmd/Ctrl+K) qu'un visiteur ne devine jamais seul.…        |
+| ✅ Fait    | Frontend | Commande `/cv`                                              | ouvre le vrai CV en ligne de Maxime (`https://www.maxime.bzh/cv-...pdf`, trouvé en suivant le lien fourni par lui —…            |
+| 🚫 Retiré  | Frontend | Afficher les sources RAG                                    | (commit `318b03a`) : le backend force `metadata.sources_hidden = true` sur tous les messages, les sources ne remontent que…     |
+| 🚫 Retiré  | Frontend | Afficher `tool_calls` (trace générique)                     | les workflows réels (`planifier_entretien` → API Cal.eu avec les coordonnées du recruteur, `enregistrer_identite`)…             |
+| 🚫 Retiré  | Frontend | Mode compact                                                | implémentée puis retirée à la demande explicite, sans remplacement.                                                             |
+| 🚫 Retiré  | Frontend | Question surprise                                           | implémentée puis retirée à la demande explicite, sans remplacement.                                                             |
+| 🚫 Retiré  | Frontend | Carte de contact `/contact`                                 | implémentée puis retirée à la demande explicite, remplacée par `/cv` (voir plus bas) plutôt que par un équivalent direct.       |
+| 🚫 Retiré  | Frontend | Partage natif d'une réponse                                 | implémentée puis retirée à la demande explicite, sans remplacement.                                                             |
+| 🚫 Retiré  | Frontend | Mode mains-libres                                           | implémentée puis retirée à la demande explicite, sans remplacement.                                                             |
+| ⏳ À faire | Backend  | 2FA sur `/admin`                                            | aujourd'hui mot de passe seul (firewall `form_login` classique).                                                                |
+| ⏳ À faire | Backend  | CAPTCHA/Turnstile léger sur `quick-send`                    | le seul endpoint pensé pour des embedders tiers, donc le plus exposé à un abus anonyme malgré le rate-limiting déjà en place.   |
+| ✅ Fait    | Backend  | `GET /api/faqs` rendu public (lecture seule)                | `Faq` n'exposait que du CRUD réservé `ROLE_ADMIN` sur toute la ressource. `GetCollection` et `Get` sont désormais…              |
+| ✅ Fait    | Backend  | Streaming compatible tool-calling                           | limite précédemment assumée (§12.1 de la spec backend) : réponse générée entièrement côté serveur puis émise en SSE en un seul… |
+| ✅ Fait    | Backend  | `quick-send` n'expose pas les `sources`                     | **la prémisse s'est révélée fausse en creusant** : `QuickSendController` renvoyait déjà `sources` en clair depuis le commit…    |
+| ✅ Fait    | Backend  | Recherche hybride                                           | pas de "vraie" recherche BM25 côté Qdrant (vecteurs creux/miniCOIL : demanderait un second vectorizer dans la stack,…           |
+| ✅ Fait    | Backend  | Étendre la couverture de tests                              | `KnowledgeBase`, `VectorConnector`, `AiProvider` n'avaient aucun test. +48 tests (19 → 67, tous verts) : `TokenEstimatorTest`,… |
+| ✅ Fait    | Backend  | Endpoint de santé agrégé                                    | nouveau `GET /api/health` (`App\Controller\HealthController` + `App\ApiResource\HealthAction`, même schéma que…                 |
+| ✅ Fait    | Backend  | Workflow step `condition`                                   | seule l'action `set_field` était implémentée pour `true_action`/`false_action`. Étendu à `add_field` et `remove_field`, en…     |
+| ✅ Fait    | Backend  | Dashboard analytics                                         | usage de tokens, feedback 👍👎 (`Message.feedback`), requêtes vectorielles (`SearchQuery`) : les données existaient déjà mais…  |
+| ✅ Fait    | Backend  | Journal d'audit des actions admin                           | qui a créé/modifié/supprimé quelle ressource (`AiProviderConfig`, `Faq`, `Workflow`...) et quand. Nouvelle table `audit_log`…   |
+| ✅ Fait    | Backend  | Cache d'embeddings                                          | évite un aller-retour Ollama à chaque recherche identique. Nouveau `App\VectorConnector\QueryEmbeddingCache`, même schéma que…  |
+| ✅ Fait    | Backend  | Toolchain de qualité PHP                                    | absente jusqu'ici (voir l'item couverture de tests plus haut, et le commentaire laissé dans `deploy-backend.yml` : "No…         |
+| ✅ Fait    | Backend  | Durcissement anti-injection de prompt sur le contenu RAG    | le contenu des chunks de documents était concaténé brut dans le prompt système, sans délimitation ni avertissement. N'importe…  |
+| ✅ Fait    | Backend  | Cache du dashboard `/admin/analytics`                       | revient sur une décision explicite antérieure ("No caching: admin-only, low-traffic page, cheap queries", commentaire de…       |
+| ✅ Fait    | Backend  | Recherche/filtrage des messages dans une conversation admin | `/admin/conversations/{id}` affichait déjà tous les messages, mais sans aucun moyen de les parcourir : une conversation longue… |
+| ✅ Fait    | Backend  | Priorité d'affichage des FAQ                                | nouveau champ `Faq.priority` (entier, 0 par défaut, migration manuelle `dbal:run-sql` + `doctrine_migration_versions` —…        |
+| ✅ Fait    | Backend  | Audit de sécurité + performance                             | trouvé et corrigé : 9 contrôleurs API Platform à contrôleur personnalisé (`WorkflowStepsController`,…                           |
+| ✅ Fait    | Repo     | `composer audit`/`npm audit` en CI                          | déjà disponibles en local (`make audit`), pas encore branchés sur chaque PR. Nouveau workflow `.github/workflows/audit.yml`…    |
+| 🚫 Retiré  | Repo     | Temps de réflexion affiché                                  | implémentée puis retirée à la demande explicite, sans remplacement.                                                             |
+
+---
+
+---
 
 ## Frontend (`frontend/`)
 
@@ -1213,6 +1309,92 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       identifié mais **non corrigé** — impact jugé faible au volume actuel,
       laissé pour une session dédiée. `composer audit`/`npm audit` : 0
       vulnérabilité aux deux passes.
+- [x] **Mode sombre appliqué à toute l'app** (2026-08-25) — le mode sombre
+      (voir l'item plus haut) ne changeait en réalité que `Chatbot.vue` :
+      `useColorScheme()` y était résolu indépendamment sur son propre
+      conteneur racine, donc `pages/index.vue` (le hero, hors de
+      `Chatbot.vue` tant que `StickyChatBubble.vue` n'est pas ouvert) ne
+      passait jamais en sombre. Corrigé : `app.vue` résout lui aussi
+      `useColorScheme()` et pose la classe `dark` sur son propre conteneur
+      racine (aux côtés de `text-foreground`, pour que la couleur de texte
+      hérite correctement — voir `docs/frontend/SPECIFICATION.md` §3.1/§4.2).
+      Comme chaque instance de `useColorScheme()` a son propre état `ref`
+      local, un toggle depuis le bouton de `Chatbot.vue` ne suffisait pas à
+      lui seul à changer `app.vue` : `useColorScheme.ts` diffuse désormais
+      chaque `toggle()` à toutes les instances montées dans le même onglet
+      via un `CustomEvent` (`chatbot:color_scheme_change`) en plus de
+      l'écriture en `localStorage` (l'event natif `storage` ne notifie que
+      les *autres* onglets, jamais celui qui vient d'écrire). Vérifié par
+      lecture directe du code (`frontend/` est gitignored, `git diff` ne
+      montre rien pour ce dossier — vérification faite sur les fichiers
+      réels, pas sur un diff) ; vérification visuelle déjà faite en dehors
+      de cette passe de synchronisation documentaire.
+- [x] **Avatar photo réel** (2026-08-25) — remplace l'avatar-lettre "M"
+      partout où une identité visuelle apparaît : en-tête et écran vide de
+      `Chatbot.vue`, `TypingIndicator.vue`, à côté de chaque réponse
+      assistant dans `MessageBubble.vue` (nouveau — auparavant réservé à
+      l'en-tête), et nouveau portrait du hero sur `pages/index.vue`. Photo
+      réelle (`frontend/public/maximejolivet.jpg`), rendue via `<NuxtImg>`
+      (nouvelle dépendance **`@nuxt/image`**, ajoutée aux `modules` de
+      `nuxt.config.ts`) plutôt qu'un `<img>` brut, pour l'optimisation
+      (`format="webp"`) et le dimensionnement déclaratifs. Au passage sur la
+      home : le lien de contact `mailto:` a été retiré (et la clé i18n
+      `home.contactLink` associée, devenue inutile), et le fond `hero-aura`
+      (`tailwind.config.js`, keyframes `aura-drift`) a été intensifié — dérive
+      organique à 4 points nettement plus visible plutôt que l'alternance à
+      2 points d'origine, à peine perceptible. Vérifié par lecture directe du
+      code (même limite `git diff` que ci-dessus).
+- [x] **Suppression du mode plein écran par expansion du widget** (2026-08-25)
+      — le bouton *plein écran* du widget flottant (`isFullscreen`, classe
+      `fixed inset-4 z-[60] sm:inset-8`, icônes agrandir/réduire) est retiré
+      entièrement, remplacé par une simple navigation `navigateTo('/chat')` :
+      le widget avait déjà une vraie page plein écran dédiée (`pages/chat.vue`,
+      `variant="page"`), l'expansion en place faisait doublon. Impacts en
+      cascade tous vérifiés dans `components/Chatbot.vue` : la commande slash
+      `/ecran` (`chatbot.slashFullscreen`) appelle désormais la même
+      navigation au lieu de basculer `isFullscreen` ; la branche Échap qui
+      fermait le mode plein écran a disparu de l'ordre des couches (désormais
+      : sélecteur d'emoji → menu de commandes slash → panneau des épingles →
+      annulation d'une génération en cours) ; clé i18n `chatbot.fullscreenExit`
+      supprimée, `chatbot.fullscreenEnter`/`chatbot.slashFullscreen` reformulées
+      pour décrire une navigation plutôt qu'une expansion. **Correction au
+      passage** : l'entrée "Annuler une réponse en cours au clavier (Échap)"
+      plus haut dans ce backlog décrit encore l'ancien ordre
+      (`… → plein écran → …`) — description exacte au moment où elle a été
+      écrite, obsolète depuis ce changement, volontairement laissée telle
+      quelle comme trace historique plutôt que réécrite. `docs/frontend/
+      SPECIFICATION.md` a été corrigé pour refléter le comportement actuel.
+      Vérifié par lecture directe du code (même limite `git diff` que
+      ci-dessus).
+- [x] **Panneau des épingles qui restait ouvert et vide** (2026-08-25) — bug
+      trouvé et corrigé dans `Chatbot.vue` : désépingler le dernier message
+      épinglé *depuis le panneau lui-même* le laissait ouvert sur une liste
+      vide, parce que le bouton d'en-tête qui permet normalement de le
+      fermer est `v-if="pinnedMessages.length > 0"` — il disparaît au même
+      instant que le dernier item, ne laissant plus aucun moyen de fermer le
+      panneau autrement qu'Échap. Corrigé par un `watch(pinnedMessages, …)`
+      qui referme `showPinnedList` dès que la liste devient vide. Vérifié
+      par lecture directe du code (même limite `git diff` que ci-dessus).
+- [x] **Passe accessibilité/responsive (audit mobile)** (2026-08-25) —
+      plusieurs correctifs issus d'un audit mobile antérieur : cibles
+      tactiles agrandies à 44px (`h-11 w-11`) sur la nav collante de la
+      variante `page` et sur les boutons emoji/envoi du composeur
+      (auparavant `h-8 w-8`/plus petits — sous la recommandation WCAG de
+      44×44px) ; contraste renforcé en mode sombre sur les tokens
+      `--destructive`/`--muted-foreground` (`assets/css/main.css`) ; les
+      champs de saisie passent à `text-base sm:text-sm` pour éviter le
+      zoom automatique de Safari iOS sur un `<input>`/`<textarea>` en
+      dessous de 16px ; le composeur gagne un padding
+      `env(safe-area-inset-bottom)` pour ne pas passer sous la zone
+      d'encoche/barre gestuelle des mobiles récents. Sur la même lancée,
+      la nav collante de la variante `page` (`/chat`) gagne un fond opaque
+      (`bg-background`) sur mobile, transparent à partir de `sm:`
+      (`sm:bg-transparent`) — sans ça, les bulles défilaient visuellement à
+      travers elle sur petit écran. Vérifié par lecture directe du code
+      (même limite `git diff` que ci-dessus) ; pas de vérification visuelle
+      dans un vrai navigateur pendant cette passe de synchronisation
+      documentaire (cette passe ne touche que `docs/`/`bruno`, jamais le
+      code source frontend).
 
 ---
 

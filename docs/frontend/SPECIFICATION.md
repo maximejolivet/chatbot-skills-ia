@@ -14,7 +14,9 @@ Ce frontend **ne contient aucune logique métier IA** : il n'appelle pas de LLM,
 
 ### 1.1 Identité visuelle
 
-Le head HTML (`nuxt.config.ts`) définit un titre **"Maxime - Chatbot IA"** et charge les polices Google Fonts *IBM Plex Sans* / *IBM Plex Mono*. Palette Tailwind en variables CSS (`assets/css/main.css`, tokens `--background`/`--foreground`/`--card`/`--muted`/`--accent`/`--primary`/`--destructive`/`--border`, triplet RGB pour supporter les modificateurs d'opacité `bg-accent/10`), claire par défaut (encre `#17151f` sur blanc cassé, accent indigo `#3a3170`) et sombre au choix du visiteur (encre devient le fond, lilas `#efebfb` devient le texte — voir `composables/useColorScheme.ts`, §4.2).
+Le head HTML (`nuxt.config.ts`) définit un titre **"Maxime - Chatbot IA"** et charge les polices Google Fonts *IBM Plex Sans* / *IBM Plex Mono*. Palette Tailwind en variables CSS (`assets/css/main.css`, tokens `--background`/`--foreground`/`--card`/`--muted`/`--accent`/`--primary`/`--destructive`/`--border`, triplet RGB pour supporter les modificateurs d'opacité `bg-accent/10`), claire par défaut (encre `#17151f` sur blanc cassé, accent indigo `#3a3170`) et sombre au choix du visiteur (encre devient le fond, lilas `#efebfb` devient le texte — voir `composables/useColorScheme.ts`, §4.2), appliquée à l'app entière (`app.vue`, §3.1), pas composant par composant.
+
+Une vraie photo de Maxime (`public/maximejolivet.jpg`) sert d'avatar partout où une identité visuelle est attendue — en-tête et écran vide de `Chatbot.vue`, `TypingIndicator.vue`, à côté de chaque réponse assistant dans `MessageBubble.vue`, portrait du hero sur `pages/index.vue` — rendue via `<NuxtImg>` (module **`@nuxt/image`**, `nuxt.config.ts` `modules`) plutôt qu'une balise `<img>` brute, pour l'optimisation (`format="webp"`) et le redimensionnement déclaratifs (`width`/`height`).
 
 ---
 
@@ -27,6 +29,7 @@ Le head HTML (`nuxt.config.ts`) définit un titre **"Maxime - Chatbot IA"** et c
 | Bundler / dev server  | **Vite 8.2** (via Nuxt)                                                                                                  |                                                                                                                                  |
 | UI                    | **Vue 3.5** (Composition API, `<script setup>`)                                                                          |                                                                                                                                  |
 | Style                 | **`@nuxtjs/tailwindcss` 6.14** (Tailwind CSS)                                                                            | Thème custom (`tailwind.config.js`), classes utilitaires (`assets/css/main.css`)                                                 |
+| Images                | **`@nuxt/image` 2.1**                                                                                                   | `<NuxtImg>` (optimisation/format `webp`) pour l'avatar photo (`public/maximejolivet.jpg`), utilisé à la place d'un `<img>` brut  |
 | Langage               | **TypeScript 7.0**                                                                                                       |                                                                                                                                  |
 | HTTP client (déclaré) | **axios 1.19**                                                                                                           | Présent en dépendance mais **non utilisé dans le code actuel** — les appels réseau passent tous par `$fetch` (natif Nuxt/ofetch) |
 | Emojis                | **`unicode-emoji-json` 0.9**                                                                                             | Données statiques (par groupe) pour le sélecteur d'emoji du composant `Chatbot`                                                  |
@@ -36,7 +39,7 @@ Le head HTML (`nuxt.config.ts`) définit un titre **"Maxime - Chatbot IA"** et c
 | Devtools              | **`@nuxt/devtools`**                                                                                                     |                                                                                                                                  |
 | Conteneurisation      | Servi comme service `nuxt` dans `backend/compose.yaml` (image `node:24-alpine`, build + `node .output/server/index.mjs`) | Pas de `Dockerfile` propre à ce projet                                                                                           |
 
-**Aucun état global (Pinia/Vuex)** : l'état de l'ouverture du widget passe par `useState` (état Nuxt partagé SSR/client), l'état de la conversation par un simple `ref` local au composable `useChatbot`.
+**Aucun état global (Pinia/Vuex)** : l'état de l'ouverture du widget flottant (`isOpen`) est un simple `ref` local à `StickyChatBubble.vue` (§5.2) — rien d'autre n'a besoin de le lire ; l'état de la conversation, lui, passe par `useState` (état Nuxt partagé SSR/client, dans le composable `useChatbot`, voir §5.1) pour survivre à une navigation entre `/` et `/chat`.
 
 ---
 
@@ -46,16 +49,23 @@ Le head HTML (`nuxt.config.ts`) définit un titre **"Maxime - Chatbot IA"** et c
 
 ```
 frontend/
-├── app.vue                      # Racine de l'app — monte <ChatWidget /> en superposition plein écran
-├── pages/index.vue              # Page d'accueil, vide (app.vue suffit)
+├── app.vue                      # Racine de l'app (<NuxtPage />) — résout et applique le thème clair/sombre
+│                                 # pour toute l'app (composables/useColorScheme.ts, §4.2), pas de widget monté ici
+├── pages/
+│   ├── index.vue                 # Page d'accueil (hero, portrait, HeroChatBar, StickyChatBubble)
+│   └── chat.vue                  # Page plein écran /chat (<Chatbot variant="page" />)
 ├── components/
-│   ├── ChatWidget.vue           # Bulle flottante + tooltip d'accroche + panneau de conversation
+│   ├── StickyChatBubble.vue     # Bulle flottante + tooltip d'accroche + panneau de conversation
+│   ├── HeroChatBar.vue          # Barre de saisie rapide sur la page d'accueil
 │   ├── Chatbot.vue              # Fenêtre de chat complète (en-tête, historique, saisie, emoji picker)
 │   ├── MessageBubble.vue        # Une bulle de message (utilisateur ou assistant)
-│   └── TypingIndicator.vue      # Indicateur "en train d'écrire" (3 points animés)
+│   ├── TypingIndicator.vue      # Indicateur "en train d'écrire" (3 points animés)
+│   └── LinkPreviewCard.vue      # Carte d'aperçu de lien sous un message (§4.5)
 ├── composables/
 │   ├── useChatbot.ts            # Logique métier du chat : état, envoi de message, agents
-│   └── useChatWidget.ts         # État partagé d'ouverture/fermeture du widget (useState)
+│   ├── useColorScheme.ts        # Thème clair/sombre : résolution + persistance + synchro multi-instance (§4.2)
+│   └── …                        # useFaqs, useDebugMode, useOnlineStatus, useNotificationSound,
+│                                 # useSpeechRecognition/Synthesis — voir §8.7 pour le détail par composable
 ├── server/api/[...path].ts      # Route serveur Nitro — proxy générique vers le backend Symfony
 ├── types/index.ts                # Types partagés (Message, AIAgent, ChatbotProps, ChatbotState)
 ├── assets/css/main.css           # Directives Tailwind + classes utilitaires custom
@@ -63,14 +73,24 @@ frontend/
 └── nuxt.config.ts                # Config Nuxt (head, modules, runtimeConfig, workaround Vite/TS7)
 ```
 
+> [!NOTE]
+> `isOpen` (ouverture du widget flottant) n'est **pas** un état partagé : c'est un simple `ref` local à `StickyChatBubble.vue` (§5.2) — il n'existe ni composant `ChatWidget.vue`, ni composable `useChatWidget()` dans ce projet, malgré ce que des versions antérieures de ce document ont pu laisser penser.
+
 ### 3.2 Hiérarchie des composants
 
 ```
-app.vue
- └─ ChatWidget.vue          (bulle flottante, gère isOpen via useChatWidget)
-     └─ Chatbot.vue         (si isOpen) — utilise useChatbot()
-         ├─ MessageBubble.vue   (× N, un par message de l'historique)
-         └─ TypingIndicator.vue (affiché tant que isLoading === true)
+app.vue                              (résout le thème clair/sombre pour toute l'app, voir §4.2)
+ └─ NuxtPage
+     ├─ pages/index.vue
+     │   ├─ HeroChatBar.vue
+     │   └─ StickyChatBubble.vue     (bulle flottante, isOpen en ref local)
+     │       └─ Chatbot.vue variant="widget"  (si isOpen) — utilise useChatbot()
+     │           ├─ MessageBubble.vue   (× N, un par message de l'historique)
+     │           └─ TypingIndicator.vue (affiché tant que isLoading === true)
+     └─ pages/chat.vue
+         └─ Chatbot.vue variant="page"
+             ├─ MessageBubble.vue
+             └─ TypingIndicator.vue
 ```
 
 ### 3.3 Flux de données — envoi d'un message
@@ -142,8 +162,8 @@ Montée uniquement sur `pages/index.vue` (`pages/chat.vue` n'en a pas besoin, le
 Composant principal, réutilisable indépendamment du widget flottant (documenté comme tel dans le `README.md`, utilisable directement avec des props `title`/`theme`/`api-url`/`placeholder`/`show-close`).
 
 Sections :
-1. **En-tête** : avatar (icône bulle), titre, statut "En ligne" (pastille verte statique — pas de vérification réelle de disponibilité du backend), boutons *effacer la conversation*, *couper/activer le son des notifications* (`soundMuted`/`toggleSoundMuted`, voir §5.1 — persisté en `localStorage`, même schéma que le thème), *plein écran* (`isFullscreen`, passe en `fixed inset-4`), *fermer* (si `showClose`).
-2. **Zone de messages** : liste de `MessageBubble`, placeholder "Commencez la conversation" si vide, `TypingIndicator` pendant le chargement, ancre de scroll automatique — sauf si le visiteur a remonté dans l'historique : `onMessagesScroll` (`@scroll` sur le conteneur) désactive `autoScroll` (ref exposée par `useChatbot`, voir §5.1) dès que la distance au bas dépasse 48px, ce qui rend `scrollToBottom()` sans effet ; un `watch` profond sur `messages` détecte alors une réponse arrivée pendant ce temps et affiche une pastille flottante "Nouveau message" (`hasNewMessage`) plutôt que de forcer le défilement. `autoScroll` est remis à `true` par `useChatbot` lui-même dès qu'un envoi/regénération est déclenché (action explicite du visiteur), et par le scroll manuel du visiteur jusqu'en bas. Le même `onMessagesScroll` pilote aussi un bouton symétrique "remonter en haut" (`showScrollToTop`, au-delà de 400px depuis le haut, `jumpToTop()` fait un `scrollTo({ top: 0, behavior: 'smooth' })`). Pendant la restauration d'une conversation précédente (`isRestoringHistory`, voir §5.1), affiche un skeleton (3 bulles `animate-pulse`) plutôt qu'un écran vide qui se remplit d'un coup. `messageItems` (computed) insère un séparateur de date ("Aujourd'hui"/"Hier"/date complète) à chaque changement de jour et resserre l'espacement (`isGrouped`, voir §4.3) entre deux messages consécutifs du même rôle — chaque séparateur est `position: sticky` (décalé sous la barre de navigation collante en variante `page`, `top-0` en widget qui n'en a pas) et reste affiché en haut du défilement jusqu'au suivant, façon WhatsApp/Telegram.
+1. **En-tête** : avatar (photo de Maxime, `<NuxtImg>`, voir §1.1), titre, statut "En ligne" (pastille verte statique — pas de vérification réelle de disponibilité du backend), boutons *effacer la conversation*, *couper/activer le son des notifications* (`soundMuted`/`toggleSoundMuted`, voir §5.1 — persisté en `localStorage`, même schéma que le thème), *ouvrir en plein écran* (`navigateTo('/chat')` — simple navigation vers la page `/chat`, plus d'expansion en place : le concept `isFullscreen`/`fixed inset-4` a été retiré du widget), *fermer* (si `showClose`).
+2. **Zone de messages** : liste de `MessageBubble`, placeholder "Commencez la conversation" si vide, `TypingIndicator` pendant le chargement, ancre de scroll automatique — sauf si le visiteur a remonté dans l'historique : `onMessagesScroll` (`@scroll` sur le conteneur) désactive `autoScroll` (ref exposée par `useChatbot`, voir §5.1) dès que la distance au bas dépasse 48px, ce qui rend `scrollToBottom()` sans effet ; un `watch` profond sur `messages` détecte alors une réponse arrivée pendant ce temps et affiche une pastille flottante "Nouveau message" (`hasNewMessage`) plutôt que de forcer le défilement. `autoScroll` est remis à `true` par `useChatbot` lui-même dès qu'un envoi/regénération est déclenché (action explicite du visiteur), et par le scroll manuel du visiteur jusqu'en bas. Le même `onMessagesScroll` pilote aussi un bouton symétrique "remonter en haut" (`showScrollToTop`, au-delà de 400px depuis le haut, `jumpToTop()` fait un `scrollTo({ top: 0, behavior: 'smooth' })`). Pendant la restauration d'une conversation précédente (`isRestoringHistory`, voir §5.1), affiche un skeleton (3 bulles `animate-pulse`) plutôt qu'un écran vide qui se remplit d'un coup. `messageItems` (computed) insère un séparateur de date ("Aujourd'hui"/"Hier"/date complète) à chaque changement de jour et resserre l'espacement (`isGrouped`, voir §4.3) entre deux messages consécutifs du même rôle — chaque séparateur est `position: sticky` (décalé sous la barre de navigation collante en variante `page`, `top-0` en widget qui n'en a pas) et reste affiché en haut du défilement jusqu'au suivant, façon WhatsApp/Telegram. La barre de navigation collante elle-même (variante `page` uniquement : retour à l'accueil, thème, son, épingles, export, effacer) a un fond opaque (`bg-background`) sur mobile et reste transparente à partir de `sm:` (`sm:bg-transparent`) — sur petit écran, sans cela, les bulles défilaient visuellement à travers elle.
 3. **Bandeau d'erreur** : affiché si `useChatbot().error` est renseigné.
 4. **Formulaire de saisie** : `<textarea>` auto-agrandissant (`resizeTextarea`, jusqu'à 120px puis défilement interne, remis à une ligne quand `inputValue` se vide) plutôt qu'un `<input>` à une ligne — coller un extrait de code ou écrire un message sur plusieurs lignes ne fait plus défiler le texte horizontalement. Bouton d'envoi (spinner pendant `isLoading`), **sélecteur d'emoji** custom (recherche + groupes, données de `unicode-emoji-json`) insérant l'emoji choisi dans le champ — navigable au clavier (flèches dans la grille, `ArrowDown`/`Enter` depuis la recherche pour y entrer directement) via un roving tabindex (`focusedEmojiIndex`, un seul bouton dans l'ordre de tabulation à la fois, vrai focus DOM déplacé par `.focus()` plutôt qu'un simple surlignage CSS — Entrée/Espace déclenchent alors le `@click` du bouton nativement). Compteur de caractères discret (`showCharCount`) : masqué en dessous de 500 caractères, aucun maximum imposé — purement informatif pour un message qui commence à être long.
 
@@ -153,9 +173,11 @@ Sections :
 
 Pas de sélecteur d'agent dans l'UI : l'agent est choisi **automatiquement** par `useChatbot` (voir §5.1) plutôt que par l'utilisateur — un choix délibéré pour un widget mono-agent (voir §1).
 
-**Raccourcis clavier** : Entrée envoie le message (`onInputKeydown`, `e.preventDefault()` + `sendMessage()` — un `<textarea>` ne soumet jamais son formulaire sur Entrée, contrairement à l'ancien `<input type="text">` à une ligne), Maj+Entrée insère un saut de ligne. Échap ferme la couche la plus au premier plan, dans l'ordre : sélecteur d'emoji ouvert → mode plein écran → sinon, si une génération est en cours (`isLoading`), l'annule (`cancelReply()` de `useChatbot`, `AbortController` sur le `fetch` du flux SSE — voir §5.1). `/` ramène le focus dans le champ de saisie depuis n'importe où dans la page (`isTypingTarget` évite de voler un `/` tapé légitimement dans un champ déjà actif — le message, la recherche d'emoji…). Écouteurs posés sur `window` (Échap, `/`) à `onMounted`/retirés à `onBeforeUnmount`. Le champ reçoit aussi le focus automatiquement au montage (widget ouvert ou page `/chat` chargée) et après chaque envoi (`focusInput()`, y compris via clic sur le bouton d'envoi — Entrée ne perd jamais le focus par elle-même).
+**Raccourcis clavier** : Entrée envoie le message (`onInputKeydown`, `e.preventDefault()` + `sendMessage()` — un `<textarea>` ne soumet jamais son formulaire sur Entrée, contrairement à l'ancien `<input type="text">` à une ligne), Maj+Entrée insère un saut de ligne. Échap ferme la couche la plus au premier plan, dans l'ordre : sélecteur d'emoji ouvert → menu de commandes slash ouvert (vide le champ) → panneau des épingles ouvert → sinon, si une génération est en cours (`isLoading`), l'annule (`cancelReply()` de `useChatbot`, `AbortController` sur le `fetch` du flux SSE — voir §5.1). Il n'y a plus de branche "mode plein écran" dans cet ordre : le concept a été retiré du widget (voir plus haut, bouton *plein écran*), Échap ne fait donc plus rien de spécial à ce sujet. `/` ramène le focus dans le champ de saisie depuis n'importe où dans la page (`isTypingTarget` évite de voler un `/` tapé légitimement dans un champ déjà actif — le message, la recherche d'emoji…). Écouteurs posés sur `window` (Échap, `/`) à `onMounted`/retirés à `onBeforeUnmount`. Le champ reçoit aussi le focus automatiquement au montage (widget ouvert ou page `/chat` chargée) et après chaque envoi (`focusInput()`, y compris via clic sur le bouton d'envoi — Entrée ne perd jamais le focus par elle-même).
 
 Mode sombre activable par le visiteur (bouton lune/soleil dans l'en-tête) — classe CSS `dark` (Tailwind `darkMode: 'class'`) posée sur le conteneur racine selon `composables/useColorScheme.ts` : choix explicite du visiteur (`localStorage`) > `prefers-color-scheme` OS > prop `theme` (simple valeur de repli désormais, ne force plus rien). Palette claire/sombre en variables CSS (`assets/css/main.css` `:root`/`.dark`), voir `docs/BACKLOG.md` pour le détail des tokens.
+
+Le choix de thème s'applique à l'app entière, pas seulement à `Chatbot.vue` : `app.vue` résout lui aussi `useColorScheme()` et pose la même classe `dark` sur son propre conteneur racine (§3.1/§3.2), pour que des pages qui n'embarquent pas encore le widget au montage (`pages/index.vue`, avant l'ouverture de `StickyChatBubble.vue`) réagissent quand même au thème. Comme chaque instance de `useColorScheme()` (celle d'`app.vue`, celle de chaque `Chatbot.vue` monté) a son propre état local, un toggle depuis le bouton de `Chatbot.vue` ne changerait par défaut que sa propre instance — `useColorScheme.ts` diffuse donc chaque `toggle()` aux autres instances montées dans le même onglet via un `CustomEvent` (`chatbot:color_scheme_change`, écouté par toutes les instances), en plus de l'écriture en `localStorage` (qui, elle, ne notifie que les *autres* onglets via l'event `storage` natif — jamais celui qui vient d'écrire).
 
 **Notification desktop en arrière-plan** : complète le son (voir plus haut) pour le cas où le visiteur a changé d'onglet et est muet. Permission demandée au plus une fois par montage, uniquement depuis `sendMessage()` (un geste utilisateur, requis par la plupart des navigateurs) et seulement si elle n'a jamais été tranchée (`Notification.permission === 'default'`). Une fois accordée, chaque réponse déclenche une `Notification` **seulement si `document.hidden`** — jamais si l'onglet est déjà au premier plan. Clic sur la notification : `window.focus()` + fermeture.
 
@@ -167,7 +189,7 @@ Mode sombre activable par le visiteur (bouton lune/soleil dans l'en-tête) — c
 
 ### 4.3 `MessageBubble.vue`
 
-Affiche un message unique, alignement à droite/bleu pour l'utilisateur, à gauche/gris (avatar bulle) pour l'assistant. Gère un état `isTyping` (3 points animés à la place du contenu — actuellement non déclenché par `useChatbot`, qui affiche plutôt `TypingIndicator` séparément). Horodatage formaté en `fr-FR` (`HH:mm`). Prop `isGrouped` (calculée par `Chatbot.vue`, voir §4.2) : resserre la marge au-dessus de la bulle (`mb-1` au lieu de `mb-3`) quand le message précédent est du même rôle, sans toucher au reste (avatar/horodatage/actions restent affichés sur chaque bulle).
+Affiche un message unique, alignement à droite (`bg-accent`/`text-white`) pour l'utilisateur, à gauche (`bg-card`, avatar photo — voir §1.1) pour l'assistant. Gère un état `isTyping` (3 points animés à la place du contenu — actuellement non déclenché par `useChatbot`, qui affiche plutôt `TypingIndicator` séparément). Horodatage formaté en `fr-FR` (`HH:mm`). Prop `isGrouped` (calculée par `Chatbot.vue`, voir §4.2) : resserre la marge au-dessus de la bulle (`mb-1` au lieu de `mb-3`) quand le message précédent est du même rôle, sans toucher au reste (avatar/horodatage/actions restent affichés sur chaque bulle).
 
 **Actions au survol** (écouter/copier/feedback/régénérer) : masquées par défaut à partir de `sm:` (`opacity-0`), révélées par `group-hover`/`group-focus-within` sur la bulle (classe `group`) — décharge visuellement le fil sans les retirer de l'arbre d'accessibilité (`opacity` reste focusable au clavier, contrairement à `hidden`/`display:none`). En dessous de `sm:` (tactile, pas de vrai survol) elles restent visibles en permanence, aucune régression. Le bouton copier et les deux boutons feedback ont chacun une exception qui force `opacity-100` même hors survol : la confirmation "Copié !" (`copied`, 1.5s) et un feedback déjà actif (`message.feedback === 'positive'/'negative'`) — un état que le visiteur a lui-même posé ne doit pas disparaître simplement parce que la souris a quitté la bulle.
 
@@ -251,7 +273,7 @@ En résumé : ce frontend est une **vitrine minimaliste** du backend — beaucou
 | `ANY`   | `/api/*`             | Route Nitro catch-all (`server/api/[...path].ts`) — proxy transparent vers `${API_URL}/api/*` sur le backend Symfony                                    |
 | `GET`   | `/api/link-preview`  | `server/api/link-preview.get.ts` — récupère titre + favicon (inliné en `data:` URI, contrainte CSP `img-src`) d'une URL externe pour `LinkPreviewCard.vue`, ou l'image elle-même (`imageDataUri`, jusqu'à 3 Mo) si l'URL pointe directement sur une image (tranché sur le `Content-Type` réel de la réponse). N'appelle jamais le backend Symfony (`fetch` direct vers l'URL demandée, avec garde-fous SSRF — voir le fichier). Mis en cache 24h par URL (`defineCachedEventHandler`). |
 
-`pages/index.vue` est une page vide (le widget est monté globalement depuis `app.vue`).
+`pages/index.vue` est le hero de la home (portrait `<NuxtImg>`, titre, `HeroChatBar.vue`, fond `hero-aura` animé) — la bulle flottante (`StickyChatBubble.vue`) y est montée explicitement, pas globalement depuis `app.vue` (voir §3.1/§4.1).
 
 ### 7.2 Ce que ce frontend consomme (endpoints backend Symfony réellement appelés)
 
@@ -359,7 +381,7 @@ import { Chatbot } from '~/components/Chatbot';
 | `apiUrl`      | `string`            | `'/api'`                   | *(non utilisée pour construire les URLs d'appel réel — voir §5.1, les endpoints sont codés en dur dans `useChatbot`)* |
 | `placeholder` | `string`            | `'Tapez votre message...'` | Placeholder du champ de saisie                                                                                        |
 | `className`   | `string`            | `''`                       | Classes CSS supplémentaires sur le conteneur racine                                                                   |
-| `showClose`   | `boolean`           | `false`                    | Affiche un bouton de fermeture (utilisé par `ChatWidget`)                                                             |
+| `showClose`   | `boolean`           | `false`                    | Affiche un bouton de fermeture (utilisé par `StickyChatBubble.vue`)                                                   |
 
 ### 8.7 Tests
 
@@ -391,4 +413,4 @@ Deux techniques de mock spécifiques à connaître avant d'y toucher :
 - Interpolation : `t('chatbot.bookSlotMessage', { label, iso })` avec `"bookSlotMessage": "Je réserve le créneau du {label} ({iso})."` dans le JSON.
 
 > [!TIP]
-> Pour le widget flottant complet (bulle + tooltip + panneau), utiliser directement `<ChatWidget />` (déjà monté globalement dans `app.vue`) plutôt que `<Chatbot />` seul.
+> Pour le widget flottant complet (bulle + tooltip + panneau), utiliser directement `<StickyChatBubble />` (montée sur `pages/index.vue`, §4.1 — pas globalement dans `app.vue`, qui ne fait que résoudre le thème, voir §3.1) plutôt que `<Chatbot />` seul.
