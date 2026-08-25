@@ -2,7 +2,6 @@
 
 ![docs](https://img.shields.io/badge/docs-8%20pages-informational)
 ![format](https://img.shields.io/badge/format-Markdown-000000?logo=markdown&logoColor=white)
-![Last updated](https://img.shields.io/badge/last%20updated-2026--08--08-blue)
 
 Index de tous les fichiers Markdown du dépôt.
 

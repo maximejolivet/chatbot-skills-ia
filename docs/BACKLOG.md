@@ -1,7 +1,7 @@
 clo# Chantier — pistes d'amélioration
 
 > Backlog de pistes identifiées en analysant `docs/backend/SPECIFICATION.md` et
-> `docs/frontend/SPECIFICATION.md` (état au 2026-08-14). Non priorisé formellement,
+> `docs/frontend/SPECIFICATION.md`. Non priorisé formellement,
 > non planifié — à trier au fur et à mesure.
 
 ## Frontend (`frontend/`)
@@ -11,7 +11,7 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
 - [x] **Rendu Markdown** des réponses assistant — déjà fait
       (`MessageBubble.vue`, `marked` + `isomorphic-dompurify`).
 - [x] ~~Afficher les sources RAG~~ — **rejeté intentionnellement** (commit
-      `318b03a`, 2026-08-13) : le backend force `metadata.sources_hidden = true`
+      `318b03a`) : le backend force `metadata.sources_hidden = true`
       sur tous les messages, les sources ne remontent que côté admin
       (`GET /conversations/{id}/sources`), jamais dans le widget public.
       Un ajout d'UI avait été tenté puis retiré après avoir constaté ce flag
@@ -49,7 +49,7 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
         Pas de vérification visuelle dans un vrai navigateur (extension
         Chrome indisponible pendant la session).
 - [x] ~~Afficher `tool_calls` (trace générique)~~ — **rejeté intentionnellement** :
-      les workflows réels (`planifier_entretien` → API Cal.com avec les
+      les workflows réels (`planifier_entretien` → API Cal.eu avec les
       coordonnées du recruteur, `enregistrer_identite`) exposeraient des
       détails internes (payload/réponse API, noms de workflow en
       snake_case) à un visiteur si affichés bruts — cohérent avec le
@@ -57,8 +57,8 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       `planifier_entretien` dans `MessageBubble.vue` (carte "✅ Entretien
       confirmé pour {nom} — {date}"), construite uniquement à partir des
       `arguments` du tool call (notre propre schéma), jamais de la réponse
-      Cal.com elle-même. *Non testé de bout en bout : déclencher ce workflow
-      pour de vrai créerait une vraie réservation Cal.com + un vrai email.*
+      Cal.eu elle-même. *Non testé de bout en bout : déclencher ce workflow
+      pour de vrai créerait une vraie réservation Cal.eu + un vrai email.*
 - [x] **Questions suggérées pilotées par API** — `HeroChatBar.vue` (hero de la
       home) et le panneau `Chatbot.vue` (état vide) affichaient chacun la même
       liste de questions codée en dur. Remplacée par `composables/useFaqs.ts`
@@ -183,7 +183,7 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       (`useChatbot.test.ts`). Vérifié en conditions réelles de bout en bout
       (`curl` à travers le proxy Nuxt) : questions pertinentes et
       grammaticalement correctes générées à partir d'un vrai échange.
-      **Retiré du frontend le 2026-08-23** (décision produit explicite) :
+      **Retiré du frontend depuis** (décision produit explicite) :
       suppression complète de l'intégration côté widget —
       `fetchFollowUpQuestions()`/`followUpQuestions` retirés de
       `useChatbot.ts` (et du type `ChatbotState`), bloc de rendu retiré de
@@ -438,7 +438,7 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
         chemin sans tools (`token_usage.source: estimated`) ; un seul `delta`
         avec le contenu complet sur le chemin avec agent+tools, y compris un
         vrai déclenchement de 2 outils (`enregistrer_identite` +
-        `lister_creneaux_disponibles`, vrai appel à l'API Cal.com) — aucune
+        `lister_creneaux_disponibles`, vrai appel à l'API Cal.eu) — aucune
         fuite de deltas pendant l'exécution des outils, `token_usage.source:
         provider` comme attendu. `quick-send` et l'endpoint JSON non-streaming
         (`ConversationMessagesController`) ne passent jamais `$onDelta` :
@@ -446,7 +446,7 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
 - [x] **`quick-send` n'expose pas les `sources`** RAG (contrairement aux
       messages persistés) — **la prémisse s'est révélée fausse en creusant** :
       `QuickSendController` renvoyait déjà `sources` en clair depuis le
-      commit `47c0bca` (2026-08-08), *avant même* que `318b03a` (2026-08-13)
+      commit `47c0bca`, *avant même* que `318b03a`
       n'introduise le flag `sources_hidden` sur les messages persistés
       (`MessageSerializer` — qui ne retire d'ailleurs jamais `sources`, il se
       contente d'ajouter ce flag). Le vrai écart : `quick-send` était le seul
@@ -992,16 +992,9 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       (`isImage`) en conséquence. Vérifié en conditions réelles (Chrome
       headless, logo Wikipedia) : image affichée correctement dans la
       carte.
-- [x] **Mode compact** — bascule dans l'en-tête (widget et plein écran,
-      `isCompact`/`toggleCompact`, `composables/useCompactMode.ts`, même
-      schéma `localStorage` que le thème/le son) qui réduit le padding
-      (`px-3 py-1.5` au lieu de `px-4 py-2.5`) et les marges entre bulles
-      de `MessageBubble.vue`, sans toucher à la taille du texte — plus de
-      messages visibles à l'écran sans scroller. 3 nouveaux tests
-      (`useCompactMode.test.ts`, même trio que `useNotificationSound`) —
-      suite passée de 43 à 46 tests. Vérifié en conditions réelles (Chrome
-      headless) : padding de bulle bien `6px 12px` après bascule (contre
-      `10px 16px` par défaut).
+- [x] ~~Mode compact~~ (bascule de densité d'affichage, `useCompactMode.ts`)
+      — implémentée puis retirée à la demande explicite, sans
+      remplacement.
 - [x] **Séparateur de date collant** — "Aujourd'hui"/"Hier" défilait avec
       le contenu au lieu de rester visible pendant qu'on parcourt
       l'historique. Chaque séparateur passe en `position: sticky` (`top-12`
@@ -1059,6 +1052,64 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       champ de recherche vers l'emoji d'index 0 puis 1 après
       `ArrowDown`/`ArrowRight`, anneau de focus visible sur la capture.
 
+- [x] **Commandes slash** (`/effacer`, `/theme`, `/son`, `/compact`, `/ecran`,
+      `/exporter`, `/surprise`, `/contact`, `/epingles`) — menu déclenché en
+      tapant `/` en tout début de champ (filtré à la frappe, navigable au
+      clavier), même style visuel que le sélecteur d'emoji. Toutes des
+      actions locales déjà câblées sur des boutons existants, aucun appel
+      réseau.
+- [x] **Avatar animé** — animation `breathe` (Tailwind, scale 1→1.06→1, 4s,
+      `motion-reduce:animate-none`) sur les avatars "M" de l'en-tête et de
+      l'écran vide, au lieu de l'icône statique.
+- [x] **Effet machine à écrire réel** — les deltas de streaming arrivent
+      parfois par rafales (un mot entier d'un coup), rendu saccadé.
+      `MessageBubble.vue` fait rattraper `displayedContent` au vrai contenu à
+      un rythme fixe (3 caractères/20ms) au lieu de sauter directement au
+      texte reçu ; se cale sur le contenu final dès la fin du streaming.
+- [x] **Export de conversation** (Markdown) — `useChatbot().exportConversation()`
+      génère un `Blob` + `<a download>` à partir de `state.messages` (auteur,
+      horodatage, contenu — sans sources ni traces d'outils). Bouton dans les
+      deux en-têtes, visible seulement si la conversation n'est pas vide.
+- [x] ~~Question surprise~~ (bouton dé dans les barres de saisie, envoyait une
+      FAQ aléatoire) — implémentée puis retirée à la demande explicite,
+      sans remplacement.
+- [x] **Épingler un message** — bouton sur chaque bulle (question ou
+      réponse), persistance purement client (`localStorage`, aucun champ
+      backend), ré-appliqué à la restauration d'une conversation. Panneau
+      accessible depuis l'en-tête (badge avec le nombre d'épingles) listant
+      les messages épinglés, clic pour défiler jusqu'à la bulle via son id
+      DOM (`msg-{id}`).
+- [x] **Aperçu au survol de la bulle flottante fermée** — `useChatbot.ts`
+      sauvegarde un extrait (120 caractères) de chaque réponse assistant en
+      `localStorage`, lu par `StickyChatBubble.vue` au montage pour remplacer
+      le texte générique "Commencer la conversation" dans l'infobulle au
+      survol, quand une conversation précédente existe déjà.
+- [x] **Barre de progression indéterminée** — segment glissant en boucle
+      (style GitHub/YouTube) posé sur le bord supérieur du panneau pendant
+      `isLoading`, en plus du curseur clignotant existant. Pas soumis à
+      `prefers-reduced-motion` (même exception que les spinners de
+      chargement : signal fonctionnel, pas décoratif).
+- [x] **Célébration après réservation confirmée** — effet ponctuel (pop +
+      anneau de couleur accent qui s'étend et s'efface, une seule fois à
+      l'insertion) sur la carte "✅ Entretien confirmé" existante dans
+      `MessageBubble.vue`.
+- [x] ~~Carte de contact `/contact`~~ (téléchargeait un `.vcf` minimal) —
+      implémentée puis retirée à la demande explicite, remplacée
+      par `/cv` (voir plus bas) plutôt que par un équivalent direct.
+- [x] **Formulaire inline prénom/nom** — quand l'assistant demande l'identité
+      du visiteur en texte libre, une petite carte (deux champs + bouton
+      "Valider") apparaît sous sa dernière bulle au lieu d'obliger à taper
+      une phrase. Détection par heuristique dans `Chatbot.vue` (le modèle
+      n'émet un tool-call structuré qu'une fois les deux noms obtenus, voir
+      `enregistrer_identite` / `WorkflowExecutionService::handleSetConversation`
+      — rien à détecter avant), affichée seulement sur la toute dernière
+      bulle assistant, jamais sur l'historique restauré ni pendant le
+      streaming. La validation envoie "Je m'appelle {prénom} {nom}." comme un
+      message normal — aucun changement backend, le tool-calling existant le
+      traite comme du texte libre ordinaire. Le champ de saisie principal
+      (les deux variantes) et le bouton d'envoi sont désactivés tant que la
+      carte est affichée, pour éviter deux chemins concurrents pour répondre
+      à la même question (taper librement *et* remplir la carte).
 - [x] **Priorité d'affichage des FAQ** — nouveau champ `Faq.priority`
       (entier, 0 par défaut, migration manuelle `dbal:run-sql` +
       `doctrine_migration_versions` — `doctrine:migrations:*` toujours cassé
@@ -1068,6 +1119,101 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       numérique dans le formulaire d'édition. Aucun changement frontend
       nécessaire (`useFaqs.ts` faisait déjà confiance à l'ordre renvoyé par
       l'API).
+- [x] ~~Partage natif d'une réponse~~ (`navigator.share`) — implémentée puis
+      retirée à la demande explicite, sans remplacement.
+- [x] ~~Mode mains-libres~~ (lecture automatique de chaque réponse à voix
+      haute) — implémentée puis retirée à la demande explicite,
+      sans remplacement.
+- [x] ~~Temps de réflexion affiché~~ (`duration_ms`, mesuré dans
+      `ChatOrchestrationService::generateReply()`, affiché sous chaque bulle
+      assistant) — implémentée puis retirée à la demande explicite,
+      sans remplacement.
+- [x] **États de progression pendant le tool-calling** — le chemin bufferisé
+      (LLM → exécution d'un workflow → second appel LLM) n'émettait aucun
+      `delta`, donc rien à part le `TypingIndicator` générique pendant cette
+      fenêtre, parfois longue (ex. `planifier_entretien` : vrai appel API
+      Cal.eu). `ChatOrchestrationService::generateReply()`/`orchestrate()`
+      gagnent un `$onToolCall` optionnel, invoqué avec le nom du workflow
+      résolu juste avant son exécution ; `ConversationStreamController`
+      relaie ça en une frame SSE `type: tool_call`. Frontend :
+      `useChatbot.ts` expose `toolCallLabel` (computed) qui traduit le nom
+      interne (snake_case) vers une phrase française connue
+      (`planifier_entretien`, `lister_creneaux_disponibles`,
+      `enregistrer_identite`) avec repli générique ("Traitement en cours…")
+      pour tout nom non reconnu — jamais le nom brut affiché, même logique
+      que la carte "Entretien confirmé". `TypingIndicator.vue` gagne une prop
+      `label` optionnelle affichée à côté des points. 1 test backend ajouté
+      (`ChatOrchestrationServiceTest`, refactor du `FakeLlmClient` pour
+      supporter des `CompletionResult` séquentiels sur plusieurs appels
+      `complete()`) — suite passée de 85 à 86 tests. 2 tests frontend ajoutés
+      (lecture d'un tool name connu vs inconnu, via un stub de flux SSE gaté
+      sur deux `reader.read()` séparés pour observer l'état intermédiaire
+      avant qu'il ne soit effacé par le `delta` suivant).
+- [x] **Astuce de découverte des commandes** — ce widget a accumulé plusieurs
+      raccourcis puissants (commandes slash, Cmd/Ctrl+K) qu'un visiteur ne
+      devine jamais seul. Bandeau discret ("💡 Tape `/` pour les commandes
+      rapides…, ou Cmd/Ctrl+K…") affiché une seule fois, tous
+      visiteurs/sessions confondus (`localStorage`, `chatbot:hint_seen`),
+      après la toute première réponse assistant reçue (`onMessage` de
+      `useChatbot`) — le visiteur est déjà engagé à ce moment-là, contrairement
+      à l'ouverture du panneau où rien ne s'est encore passé. Se referme
+      manuellement, automatiquement après 8s, ou dès que le visiteur découvre
+      `/` par lui-même (`watch` sur `showSlashMenu`).
+- [x] **Commande `/cv`** — ouvre le vrai CV en ligne de Maxime
+      (`https://www.maxime.bzh/cv-...pdf`, trouvé en suivant le lien fourni
+      par lui — `maxime.bzh/fr/cv` — jusqu'au PDF réel qu'il sert) dans un
+      nouvel onglet. Lien direct plutôt qu'une copie re-hébergée ou générée :
+      ne devient jamais obsolète si le PDF change sur son site, et la base de
+      connaissances RAG ne contient qu'une extraction `.txt` pensée pour
+      l'indexation, pas un fichier présentable à un visiteur. Une première
+      version téléchargeait une carte de contact `.vcf` à la place (voir plus
+      haut) — retirée le même jour à la demande explicite, `/cv` ne l'a pas
+      remplacée par un équivalent direct.
+- [x] **Audit de sécurité + performance** (deux passes) — trouvé
+      et corrigé : 9 contrôleurs API Platform à contrôleur personnalisé
+      (`WorkflowStepsController`, `WorkflowTriggerController`,
+      `WorkflowTestController`, `WorkflowSoftDeleteController`,
+      `DocumentUploadController`, `DocumentDeleteController`,
+      `DocumentProcessController`, `DocumentChunksController`,
+      `TestAiProviderConfigController`) puis 2 de plus trouvés en deuxième
+      passe (`VectorSearchController`, `VectorStatsController`) n'avaient
+      **aucune** vérification d'autorisation propre — le `security:
+      "is_granted('ROLE_ADMIN')")` déclaratif d'API Platform ne s'applique
+      pas aux opérations à contrôleur personnalisé (même limite déjà connue
+      et contournée pour `Conversation`, jamais étendue à ces 11-là).
+      Confirmé exploitable en conditions réelles (`GET
+      /api/workflows/1/steps` → `200` sans credential, config Cal.eu en
+      clair) puis confirmé corrigé avec un compte `ROLE_USER` jetable créé
+      puis supprimé après usage (`403` après le fix, `200` avant). Correctif :
+      `#[IsGranted('ROLE_ADMIN')]` directement sur chacun des 11 contrôleurs.
+      CSRF activé au passage sur le formulaire de login `/admin`
+      (`enable_csrf: true` + `_csrf_token` dans `templates/admin/login.html.twig`,
+      absent jusque-là alors que les formulaires CRUD Symfony l'ont par
+      défaut). Détail complet dans `docs/backend/SPECIFICATION.md` §10 et
+      §12.1 (y compris le risque résiduel documenté et délibérément non
+      corrigé : énumération d'id de conversation entre visiteurs, via
+      `OwnershipVoter` + le proxy Nuxt toujours authentifié en admin).
+      **Découverte plus large en vérifiant le fix** : ces 11 correctifs ne
+      fermaient pas la vraie faille exploitable, parce que le proxy Nuxt
+      public (`frontend/server/api/[...path].ts`) s'authentifie en `ROLE_ADMIN`
+      réel sur *chaque* requête entrante, quel que soit le visiteur — `GET
+      /api/conversations` (75 conversations, noms + messages complets) et
+      `GET /api/workflow_executions` (91 exécutions, emails de recruteurs)
+      répondaient `200` sans aucun credential via ce même proxy.
+      Correctif réel : allowlist stricte ajoutée en début de handler
+      (`ALLOWED_ROUTES`, méthode + regex de chemin) — seule une dizaine de
+      routes précises que le widget utilise réellement sont relayées, tout le
+      reste reçoit `404` avant même d'appeler le backend. Vérifié : les
+      fuites d'origine bien `404` désormais, chemins légitimes du widget
+      toujours `200` (création de conversation + lecture de ses messages
+      testée en réel, nettoyée après coup), ~10 tentatives de contournement
+      (slash final, casse, `../`, verbe invalide, query string) toutes
+      bloquées lors de la deuxième passe d'audit. Perf : N+1 probable sur 6
+      grilles admin (`setPath('relation.champ')` sans `leftJoin`/`addSelect`)
+      identifié mais **non corrigé** — impact jugé faible au volume actuel,
+      laissé pour une session dédiée. `composer audit`/`npm audit` : 0
+      vulnérabilité aux deux passes.
+
 ---
 
 *Ce fichier est un backlog vivant : cocher au fur et à mesure, ajouter/retirer

@@ -8,13 +8,13 @@
 Ce frontend **ne contient aucune logique métier IA** : il n'appelle pas de LLM, ne fait pas de RAG, ne gère pas de base vectorielle — toute l'intelligence (chat, RAG, tool-calling) réside côté `backend`. Le rôle de ce projet se limite à :
 
 1. Afficher une **interface de chat** (bulle flottante + fenêtre de conversation).
-2. Envoyer les messages de l'utilisateur à l'API backend (`POST /api/chat/quick-send`) et afficher la réponse du LLM.
+2. Envoyer les messages de l'utilisateur à l'API backend (conversation persistée, réponse en streaming SSE — voir §5.1) et afficher la réponse du LLM au fil de l'eau.
 3. Utiliser automatiquement l'**agent IA** actif exposé par le backend (`GET /api/ai_agents`, sélection automatique côté frontend, aucun choix laissé à l'utilisateur) — son prompt système, son RAG (collection documentaire) et ses outils (workflows) sont configurés côté backend.
 4. Relayer (proxy) les appels `/api/*` du navigateur vers le backend Symfony, pour contourner les problèmes de réseau Docker / CORS.
 
 ### 1.1 Identité visuelle
 
-Le head HTML (`nuxt.config.ts`) définit un titre **"Maxime - Chatbot IA"** et charge les polices Google Fonts *IBM Plex Sans* / *IBM Plex Mono*. La palette Tailwind personnalisée (`tailwind.config.js`) est un thème **"Minitel / terminal rétro"** : ambre phosphore (`primary`), fond encre (`ink`), fond papier (`paper`), vert signal (`signal`), avec des classes utilitaires dédiées (`.scanlines`, `.key-btn`) — même si les composants du widget actuel restent sur une palette bleu/gris plus neutre (voir §4).
+Le head HTML (`nuxt.config.ts`) définit un titre **"Maxime - Chatbot IA"** et charge les polices Google Fonts *IBM Plex Sans* / *IBM Plex Mono*. Palette Tailwind en variables CSS (`assets/css/main.css`, tokens `--background`/`--foreground`/`--card`/`--muted`/`--accent`/`--primary`/`--destructive`/`--border`, triplet RGB pour supporter les modificateurs d'opacité `bg-accent/10`), claire par défaut (encre `#17151f` sur blanc cassé, accent indigo `#3a3170`) et sombre au choix du visiteur (encre devient le fond, lilas `#efebfb` devient le texte — voir `composables/useColorScheme.ts`, §4.2).
 
 ---
 
@@ -81,22 +81,28 @@ Utilisateur tape un message dans Chatbot.vue
         ▼
 useChatbot().sendMessage(content)
         │  1. push immédiat du message "user" dans l'état local (affichage optimiste)
-        │  2. isLoading = true
+        │  2. ensureConversation() -- POST /api/conversations la toute première fois
+        │     (id ensuite persisté en localStorage, réutilisé par les tours suivants)
+        │  3. isLoading = true
         ▼
-$fetch('/api/chat/quick-send', { method: 'POST', body: { message, agent_id? } })
-        │  (URL relative → interceptée par le serveur Nitro de CE projet)
+fetch('/api/conversations/{id}/stream', { method: 'POST', body: { message, agent_id? } })
+        │  fetch brut + ReadableStream (pas $fetch -- il faut lire le flux au fil de l'eau),
+        │  URL relative → interceptée par le serveur Nitro de CE projet
         ▼
-server/api/[...path].ts  (route catch-all Nitro)
-        │  reconstruit l'URL cible : `${API_URL}/api/chat/quick-send`
-        │  relaie méthode, headers (Content-Type, Cookie), body
+server/api/conversations/[id]/stream.post.ts  (route Nitro dédiée, prioritaire sur le catch-all)
+        │  proxyRequest() sans buffering vers ${API_URL}/api/conversations/{id}/stream
         ▼
-Backend Symfony — POST /api/chat/quick-send (QuickSendController)
-        │  chat anonyme, non persisté ; exécute RAG + tool-calling si un agent est sélectionné
+Backend Symfony — POST /api/conversations/{id}/stream (ConversationStreamController)
+        │  persiste le message utilisateur, exécute RAG + tool-calling si un agent est sélectionné,
+        │  répond en Server-Sent Events (voir le cahier des charges backend §5.5)
         ▼
-Réponse JSON { response, token_usage, tool_calls, ... }
+Frames SSE : user_message → zéro ou plusieurs delta (+ tool_call si un outil s'exécute) → ai_complete → done
         │
         ▼
-useChatbot() pousse un message "assistant" dans l'état local, isLoading = false, auto-scroll
+useChatbot() construit la bulle "assistant" en direct depuis les delta (tool_call met juste à
+jour le libellé affiché par TypingIndicator entre-temps, voir §4.4), complète
+id/sources/tool_calls/feedback depuis ai_complete, isLoading = false, auto-scroll (sauf si le
+visiteur a remonté dans l'historique)
 ```
 
 ### 3.4 Le proxy serveur — `server/api/[...path].ts`
@@ -111,7 +117,10 @@ C'est la pièce d'infrastructure la plus importante du projet. Route Nitro **cat
 
 Pourquoi ce proxy existe : en environnement Docker (`backend/compose.yaml`), le navigateur de l'utilisateur ne peut pas résoudre `chatbot-symfony` (nom de conteneur, valable uniquement sur le réseau Docker interne). Le **serveur** Nuxt (Nitro), lui, tourne sur ce même réseau et peut y accéder. En passant par des URLs relatives (`/api/...`) côté client, les appels sont toujours faits vers *le même hôte que la page*, puis c'est le serveur Nitro qui, côté serveur (où `chatbot-symfony` est résolvable), relaie vers le vrai backend.
 
-Les agents étant exposés par API Platform sous `/api/ai_agents` (hors du préfixe `chat`), le proxy relaie **tout `/api/*`**, sans distinction de préfixe.
+Les agents étant exposés par API Platform sous `/api/ai_agents` (hors du préfixe `chat`), le proxy relaie **tout `/api/*`** qui passe l'allowlist ci-dessous, sans distinction de préfixe.
+
+> [!CAUTION]
+> **Allowlist ajoutée suite à un audit de sécurité** — avant, ce proxy relayait *littéralement n'importe quel* `/api/{...path}` vers le backend, toujours avec les vraies credentials admin (le point précédent). Comme le backend traite "authentifié en `ROLE_ADMIN`" comme "c'est vraiment l'opérateur admin" (voir `OwnershipVoter`, cahier des charges backend §10), n'importe quel visiteur pouvait atteindre des ressources admin-only via ce même proxy : confirmé en conditions réelles, `GET /api/conversations` (75 conversations, noms + messages complets) et `GET /api/workflow_executions` (91 exécutions, emails de recruteurs) répondaient `200` sans aucun credential. Le proxy applique désormais une **allowlist stricte en début de handler** (`ALLOWED_ROUTES`, méthode + regex de chemin) : seule une dizaine de routes précises (celles listées en §7.2) sont relayées ; tout le reste reçoit un `404` avant même d'appeler le backend. Vérifié : les 4 endpoints ci-dessus (et `/api/workflows/{id}/steps`, `/api/documents`) renvoient bien `404` via ce proxy depuis le fix ; les chemins légitimes du widget (création de conversation, lecture de ses messages, feedback, faqs, ai_agents, llm-status, health) restent `200`. Une dizaine de tentatives de contournement testées (slash final, casse, `../`, verbe invalide, query string) — aucune n'a fonctionné. Toute nouvelle route backend que le widget doit consommer doit être ajoutée explicitement à `ALLOWED_ROUTES`, jamais supposée passer par défaut.
 
 ---
 
@@ -133,10 +142,14 @@ Montée uniquement sur `pages/index.vue` (`pages/chat.vue` n'en a pas besoin, le
 Composant principal, réutilisable indépendamment du widget flottant (documenté comme tel dans le `README.md`, utilisable directement avec des props `title`/`theme`/`api-url`/`placeholder`/`show-close`).
 
 Sections :
-1. **En-tête** : avatar (icône bulle), titre, statut "En ligne" (pastille verte statique — pas de vérification réelle de disponibilité du backend), boutons *effacer la conversation*, *couper/activer le son des notifications* (`soundMuted`/`toggleSoundMuted`, voir §5.1 — persisté en `localStorage`, même schéma que le thème), *densité d'affichage* (`isCompact`/`toggleCompact`, `composables/useCompactMode.ts` — même schéma `localStorage`, réduit le padding/les marges des bulles via la prop `isCompact` de `MessageBubble.vue` pour en montrer plus à l'écran sans changer la taille du texte), *plein écran* (`isFullscreen`, passe en `fixed inset-4`), *fermer* (si `showClose`).
+1. **En-tête** : avatar (icône bulle), titre, statut "En ligne" (pastille verte statique — pas de vérification réelle de disponibilité du backend), boutons *effacer la conversation*, *couper/activer le son des notifications* (`soundMuted`/`toggleSoundMuted`, voir §5.1 — persisté en `localStorage`, même schéma que le thème), *plein écran* (`isFullscreen`, passe en `fixed inset-4`), *fermer* (si `showClose`).
 2. **Zone de messages** : liste de `MessageBubble`, placeholder "Commencez la conversation" si vide, `TypingIndicator` pendant le chargement, ancre de scroll automatique — sauf si le visiteur a remonté dans l'historique : `onMessagesScroll` (`@scroll` sur le conteneur) désactive `autoScroll` (ref exposée par `useChatbot`, voir §5.1) dès que la distance au bas dépasse 48px, ce qui rend `scrollToBottom()` sans effet ; un `watch` profond sur `messages` détecte alors une réponse arrivée pendant ce temps et affiche une pastille flottante "Nouveau message" (`hasNewMessage`) plutôt que de forcer le défilement. `autoScroll` est remis à `true` par `useChatbot` lui-même dès qu'un envoi/regénération est déclenché (action explicite du visiteur), et par le scroll manuel du visiteur jusqu'en bas. Le même `onMessagesScroll` pilote aussi un bouton symétrique "remonter en haut" (`showScrollToTop`, au-delà de 400px depuis le haut, `jumpToTop()` fait un `scrollTo({ top: 0, behavior: 'smooth' })`). Pendant la restauration d'une conversation précédente (`isRestoringHistory`, voir §5.1), affiche un skeleton (3 bulles `animate-pulse`) plutôt qu'un écran vide qui se remplit d'un coup. `messageItems` (computed) insère un séparateur de date ("Aujourd'hui"/"Hier"/date complète) à chaque changement de jour et resserre l'espacement (`isGrouped`, voir §4.3) entre deux messages consécutifs du même rôle — chaque séparateur est `position: sticky` (décalé sous la barre de navigation collante en variante `page`, `top-0` en widget qui n'en a pas) et reste affiché en haut du défilement jusqu'au suivant, façon WhatsApp/Telegram.
 3. **Bandeau d'erreur** : affiché si `useChatbot().error` est renseigné.
 4. **Formulaire de saisie** : `<textarea>` auto-agrandissant (`resizeTextarea`, jusqu'à 120px puis défilement interne, remis à une ligne quand `inputValue` se vide) plutôt qu'un `<input>` à une ligne — coller un extrait de code ou écrire un message sur plusieurs lignes ne fait plus défiler le texte horizontalement. Bouton d'envoi (spinner pendant `isLoading`), **sélecteur d'emoji** custom (recherche + groupes, données de `unicode-emoji-json`) insérant l'emoji choisi dans le champ — navigable au clavier (flèches dans la grille, `ArrowDown`/`Enter` depuis la recherche pour y entrer directement) via un roving tabindex (`focusedEmojiIndex`, un seul bouton dans l'ordre de tabulation à la fois, vrai focus DOM déplacé par `.focus()` plutôt qu'un simple surlignage CSS — Entrée/Espace déclenchent alors le `@click` du bouton nativement). Compteur de caractères discret (`showCharCount`) : masqué en dessous de 500 caractères, aucun maximum imposé — purement informatif pour un message qui commence à être long.
+
+**Astuce de découverte** : bandeau discret ("💡 Tape `/` pour les commandes rapides…, ou Cmd/Ctrl+K…") affiché une seule fois, tous visiteurs/sessions confondus (`localStorage`, clé `chatbot:hint_seen`), après la toute première réponse assistant reçue via `onMessage` — le visiteur est déjà engagé à ce moment-là, contrairement à l'ouverture du panneau où rien ne s'est encore passé. Se referme manuellement, automatiquement après 8s, ou dès que le visiteur découvre `/` par lui-même (`watch` sur `showSlashMenu`).
+
+**Commande `/cv`** (remplace une carte de contact `.vcf` retirée depuis) : ouvre le vrai CV en ligne de Maxime (`https://www.maxime.bzh/cv-...pdf`) dans un nouvel onglet — lien direct vers son propre site plutôt qu'une copie re-hébergée ou générée, pour ne jamais devenir obsolète si le PDF change. La base de connaissances RAG contient bien un document "CV" mais c'est une extraction `.txt` pensée pour l'indexation, pas un fichier présentable à un visiteur.
 
 Pas de sélecteur d'agent dans l'UI : l'agent est choisi **automatiquement** par `useChatbot` (voir §5.1) plutôt que par l'utilisateur — un choix délibéré pour un widget mono-agent (voir §1).
 
@@ -166,6 +179,8 @@ Affiche un message unique, alignement à droite/bleu pour l'utilisateur, à gauc
 
 Indicateur "en train d'écrire" façon Messenger (avatar + 3 points qui rebondissent en cascade, `animate-bounce-slow` avec délais échelonnés). Affiché entre le dernier message et le champ de saisie tant que `isLoading === true`.
 
+**Prop `label` optionnelle** : affiche une phrase de progression à côté des points plutôt qu'un silence pendant le chemin bufferisé du tool-calling (aucun `delta` n'arrive tant qu'un outil s'exécute, voir le cahier des charges backend §5.5). Alimentée par `useChatbot().toolCallLabel` (computed) : la frame SSE `type: tool_call` (backend §5.5) transmet le nom interne de l'outil (snake_case), traduit vers un libellé français convivial via une petite table de correspondance connue (`planifier_entretien`, `lister_creneaux_disponibles`, `enregistrer_identite`), avec repli générique ("Traitement en cours…") pour tout nom non reconnu — jamais le nom brut affiché, même logique "curatée" que le reste des tool calls dans `MessageBubble.vue`. Réinitialisé au premier `delta` (le nom n'a alors plus d'utilité) et à chaque nouvel envoi.
+
 ### 4.5 `LinkPreviewCard.vue`
 
 Carte d'aperçu (favicon + titre + domaine) affichée sous un message qui contient un lien — le lien lui-même reste cliquable dans le texte, la carte est un complément en dessous (même schéma que Slack/Discord), pas un remplacement. `MessageBubble.vue` extrait jusqu'à 3 URLs `http(s)://` uniques par simple regex sur `formattedContent` (le HTML déjà sanitizé, pas de `DOMParser`/`document` — ce computed doit pouvoir tourner côté serveur aussi) ; rien n'est extrait tant que `isStreaming` est vrai, un lien encore en train de s'écrire n'est pas exploitable. Chaque carte s'appuie sur `GET /api/link-preview` (§7.1) pour récupérer titre/favicon, chargé au montage (`onMounted`, pas de blocage SSR) ; ne s'affiche pas du tout si l'aller-retour échoue ou si la page cible n'a pas de titre exploitable — pas de carte cassée/vide.
@@ -180,23 +195,28 @@ Carte d'aperçu (favicon + titre + domaine) affichée sous un message qui contie
 
 Composable Vue exposant tout l'état et les actions nécessaires à un composant `Chatbot` :
 
-**État interne** (`ChatbotState`) : `messages[]`, `isLoading`, `inputValue`, `error`, `selectedAgentId`, `agents[]`.
+> [!NOTE]
+> Cette section décrivait jusqu'ici une version bien plus ancienne du composable (mode `quick-send` anonyme uniquement, pas de persistance, pas de streaming) — corrigée ci-dessous pour refléter l'état réel. `useChatbot.ts` a beaucoup grossi depuis (~30 exports) ; le détail fin de chaque fonctionnalité (épinglage, commandes slash, séparateurs de date, export, aperçus de liens…) vit dans `docs/BACKLOG.md`, pas ici — cette section ne couvre que l'architecture générale.
 
-**Actions exposées** :
-| Fonction                    | Rôle                                                                                                                                                                              |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sendMessage(content)`      | Push optimiste du message utilisateur → `POST /api/chat/quick-send` → push du message assistant, gestion d'erreur réseau                                                          |
-| `handleSubmit(event)`       | Wrapper pour soumission de formulaire (`preventDefault` + `sendMessage`)                                                                                                          |
-| `handleInputChange(event)`  | Met à jour `inputValue`, réinitialise `error`                                                                                                                                     |
-| `clearMessages()`           | Vide l'historique local (aucun appel réseau, aucune suppression côté backend — la conversation n'est de toute façon pas persistée en mode `quick-send`)                           |
-| `setSelectedAgent(agentId)` | Change l'agent actif pour les prochains messages — exposée par le composable mais **plus appelée par aucun composant** depuis le retrait du sélecteur d'agent de l'UI (voir §4.2) |
-| `fetchAgents()`             | `GET /api/ai_agents`, appelé automatiquement à `onMounted`                                                                                                                        |
+**État interne** (`ChatbotState`, `useState` partagé — survit à une navigation entre `/` et `/chat` sans perdre le fil) : `messages[]`, `isLoading`, `inputValue`, `error`, `selectedAgentId`, `agents[]`. Le `conversation_id` réel vit séparément (autre `useState`), persisté en `localStorage` (`CONVERSATION_ID_STORAGE_KEY`) pour survivre à un rechargement de page.
+
+**Persistance et streaming réels** : le premier `sendMessage()` crée une vraie `Conversation` côté backend (`POST /api/conversations`), puis chaque tour de parole passe par `POST /api/conversations/{id}/stream` (SSE réel — `fetch` + `ReadableStream`, pas `$fetch`, pour pouvoir lire le flux au fil de l'eau) plutôt que par `/api/chat/quick-send` (voir §7.2 : cet endpoint existe toujours côté backend mais n'est plus appelé par ce widget). Au montage, `restoreConversation()` récupère l'historique complet (`GET /api/conversations/{id}/messages`) si un `conversation_id` existe déjà en `localStorage`.
+
+**Principales actions exposées** (liste non exhaustive — voir le fichier source pour le reste) :
+| Fonction                                | Rôle                                                                                                                          |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `sendMessage(content)`                   | Push optimiste du message utilisateur, puis délègue à `requestAssistantReply()`                                                  |
+| `requestAssistantReply(content)`         | Lit le flux SSE de `/stream`, construit la bulle assistant en direct depuis les frames `delta`, complète depuis `ai_complete`    |
+| `retryLastMessage()` / `regenerateLastReply()` | Rejouent le dernier tour sans dupliquer la bulle utilisateur (retry) ou en remplaçant la dernière réponse (regenerate)      |
+| `cancelReply()`                          | Abandonne la requête en cours (`AbortController`), lié à Échap                                                                    |
+| `restoreConversation()`                  | `GET /api/conversations/{id}/messages`, appelé au montage si un id est en `localStorage`                                         |
+| `setFeedback(messageId, feedback)`       | `PATCH .../feedback`, appliqué de façon optimiste avec rollback si la requête échoue                                             |
+| `exportConversation()` / `openCV()`      | Export Markdown local (`Blob`) / ouverture du vrai CV en ligne dans un nouvel onglet (voir §4.2)                                  |
+| `handleSubmit(event)` / `handleInputChange(event)` | Wrappers de formulaire                                                                                                  |
+| `clearMessages()`                        | Vide l'historique local **et** oublie le `conversation_id` (`localStorage`) — un nouveau message recréera une conversation neuve |
+| `setSelectedAgent(agentId)` / `fetchAgents()` | Changement d'agent (voir sélection automatique ci-dessous) / `GET /api/ai_agents`, appelé à `onMounted`                     |
 
 **Gestion des agents** : le backend renvoie une collection **JSON-LD Hydra** (`{ member: [...] }`, convention API Platform) où le champ booléen `AiAgent.isActive` est sérialisé `active` (convention Symfony pour les getters `is*`). Le composable **déballe** `.member`, **renomme** `active` → `is_active`, puis **sélectionne automatiquement** le premier agent actif (`agents.find(a => a.is_active)`) comme `selectedAgentId` — sans intervention de l'utilisateur. Avec un seul agent actif côté backend (cas courant), c'est équivalent à un widget mono-agent fixe.
-
-**Pas de persistance** : `sendMessage` appelle systématiquement `/api/chat/quick-send` (mode anonyme du backend) — jamais `/api/conversations/{id}/messages`. Il n'y a donc **aucune notion de conversation persistée côté backend** dans ce frontend ; fermer l'onglet perd l'historique.
-
-**Pas de streaming** : la réponse est attendue en un seul bloc (`await $fetch(...)`) — aucun appel à l'endpoint SSE `/api/conversations/{id}/stream` du backend n'est fait ici (celui-ci nécessiterait une conversation persistée).
 
 ### 5.2 État d'ouverture du widget
 
@@ -210,13 +230,13 @@ Ce frontend **ne met en œuvre aucune fonctionnalité LLM ou RAG lui-même** —
 
 | Fonctionnalité (implémentée côté backend)                                            | Ce que fait ce frontend                                                                                                                                                                                                                                                                                                                              |
 | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Chat / complétion LLM** (Ollama ou endpoint OpenAI-compatible)                     | Envoie le message utilisateur brut à `POST /api/chat/quick-send` ; affiche `response.response` tel quel. Aucune mise en forme (markdown, code, etc.) n'est appliquée — le contenu est rendu en texte brut (`white-space: pre-wrap`)                                                                                                                  |
-| **Sélection d'agent IA** (prompt système, RAG, outils spécifiques par agent)         | Récupère la liste via `GET /api/ai_agents` et sélectionne **automatiquement** le premier agent actif (aucun choix laissé à l'utilisateur, pas de `<select>` dans l'UI) ; transmet son `agent_id` dans le body de `quick-send`. Le frontend ne fait aucune recherche vectorielle lui-même, ne configure aucun paramètre RAG (top-k, collection, etc.) |
-| **RAG (recherche documentaire contextuelle)**                                        | Totalement transparent pour ce frontend : si l'agent sélectionné a une collection documentaire liée côté backend, le contexte RAG est injecté silencieusement dans le prompt système par le backend ; le frontend ne voit et n'affiche aucune source/citation                                                                                        |
-| **Tool-calling (exécution de workflows)**                                            | Le backend renvoie `tool_calls` dans la réponse de `quick-send` (trace des outils exécutés), mais **ce frontend n'affiche pas ce champ** — il n'exploite que `response.response`                                                                                                                                                                     |
-| **Usage de tokens** (`token_usage`)                                                  | Renvoyé par le backend, également **non affiché** par ce frontend                                                                                                                                                                                                                                                                                    |
-| **Statuts LLM/embedding** (`GET /api/chat/llm-status`, `/api/chat/embedding-status`) | **Non consommés** par ce frontend — le statut "En ligne" affiché dans l'en-tête du chat est un texte statique, pas une vérification réelle                                                                                                                                                                                                           |
-| **Streaming SSE** (`POST /api/conversations/{id}/stream`)                            | **Non consommé** — nécessiterait une conversation persistée, hors du mode `quick-send` utilisé ici                                                                                                                                                                                                                                                   |
+| **Chat / complétion LLM** (Ollama ou endpoint OpenAI-compatible)                     | Envoie le message via `POST /api/conversations/{id}/stream`, lit la réponse en SSE (§3.3, §5.1). Rendu markdown complet (`marked` + `isomorphic-dompurify`, tableaux/blocs de code/listes...) plutôt que du texte brut, avec un effet machine à écrire qui rattrape les deltas à rythme fixe pour lisser les rafales de tokens                        |
+| **Sélection d'agent IA** (prompt système, RAG, outils spécifiques par agent)         | Récupère la liste via `GET /api/ai_agents` et sélectionne **automatiquement** le premier agent actif (aucun choix laissé à l'utilisateur, pas de `<select>` dans l'UI) ; transmet son `agent_id` dans le body du message. Le frontend ne fait aucune recherche vectorielle lui-même, ne configure aucun paramètre RAG (top-k, collection, etc.) |
+| **RAG (recherche documentaire contextuelle)**                                        | Totalement transparent pour ce frontend : si l'agent sélectionné a une collection documentaire liée côté backend, le contexte RAG est injecté silencieusement dans le prompt système par le backend ; le frontend reçoit bien `sources`/`sources_hidden: true` mais ne les affiche jamais (décision produit assumée, voir `docs/BACKLOG.md`)          |
+| **Tool-calling (exécution de workflows)**                                            | `tool_calls` (trace des outils exécutés) n'est jamais affiché brut — mais deux workflows connus ont une UI **curatée** dans `MessageBubble.vue`, construite uniquement à partir de leurs propres arguments (jamais de la réponse de l'API tierce) : `planifier_entretien` → carte "✅ Entretien confirmé" ; `lister_creneaux_disponibles` → chips de créneaux cliquables qui renvoient directement le créneau choisi comme message. Pendant l'exécution elle-même, la frame SSE `tool_call` (backend §5.5) alimente un libellé de progression dans `TypingIndicator` (§4.4) |
+| **Usage de tokens** (`token_usage`)                                                  | Affiché sous chaque réponse assistant, **uniquement en mode debug** (`?debug=1` dans l'URL, `composables/useDebugMode.ts` — pas de notion d'auth visiteur côté frontend pour distinguer un "visiteur admin")                                                                                                                                        |
+| **Statuts LLM/embedding** (`GET /api/chat/llm-status`, `/api/chat/embedding-status`) | `llm-status` est consommé (`checkLlmStatus()` au montage du panneau) et pilote la vraie pastille de statut dans l'en-tête (`checking`/`online`/`offline`) — plus un texte statique. `embedding-status` reste **non consommé** par ce widget (voir §7.2)                                                                                              |
+| **Streaming SSE** (`POST /api/conversations/{id}/stream`)                            | **Consommé** — c'est le chemin d'envoi réel de tout message depuis ce widget (§3.3, §5.1), pas `quick-send`                                                                                                                                                                                                                                          |
 
 En résumé : ce frontend est une **vitrine minimaliste** du backend — beaucoup de capacités backend (streaming, traçabilité des outils, usage de tokens, statut des providers, conversations persistées) existent côté API mais ne sont **pas exploitées** dans l'UI actuelle. Elles constituent des évolutions naturelles (voir §9).
 
@@ -235,13 +255,26 @@ En résumé : ce frontend est une **vitrine minimaliste** du backend — beaucou
 
 ### 7.2 Ce que ce frontend consomme (endpoints backend Symfony réellement appelés)
 
-| Méthode | Endpoint backend       | Appelé depuis                             | Usage                                                                                          |
-| ------- | ---------------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `POST`  | `/api/chat/quick-send` | `useChatbot().sendMessage()`              | Envoi d'un message (chat anonyme, non persisté), body `{ message: string, agent_id?: number }` |
-| `GET`   | `/api/ai_agents`       | `useChatbot().fetchAgents()` (au montage) | Liste des agents IA disponibles, pour sélectionner automatiquement le premier actif            |
+Cette liste est aussi, depuis l'audit de sécurité, l'**allowlist exacte** que `server/api/[...path].ts` autorise à traverser le proxy (`ALLOWED_ROUTES`, voir §3.4) — tout ce qui n'y figure pas reçoit `404` avant d'atteindre le backend.
+
+| Méthode | Endpoint backend                                         | Appelé depuis                                                    | Usage                                                                                |
+| ------- | ---------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `GET`   | `/api/chat/llm-status`                                    | `useChatbot().checkLlmStatus()` (au montage du panneau)            | Statut du provider LLM actif, pastille dans l'en-tête                                   |
+| `POST`  | `/api/chat/quick-send`                                    | Non appelé par ce widget aujourd'hui                                | Chat anonyme non persisté, pensé pour des **embedders tiers** directs — laissé dans l'allowlist car public-safe et rate-limité par design |
+| `GET`   | `/api/chat/embedding-status`                               | Non appelé par ce widget aujourd'hui                                | Statut du provider d'embedding — même raison que `quick-send` (endpoint public-safe déjà existant côté backend, gardé dans l'allowlist par cohérence, pas par besoin actuel) |
+| `POST`  | `/api/chat/follow-up-questions`                             | Non appelé par ce widget aujourd'hui (retiré du frontend, voir `docs/BACKLOG.md`) | Idem — endpoint toujours fonctionnel côté backend (rate-limité), juste plus consommé ici |
+| `POST`  | `/api/conversations`                                       | `useChatbot().ensureConversation()`                                 | Création de la conversation, au premier message (`{title, is_active}`)                  |
+| `GET`   | `/api/conversations/{id}/messages`                          | `useChatbot().restoreConversation()`                                | Restauration de l'historique au montage, si un `conversation_id` existe en `localStorage` |
+| `POST`  | `/api/conversations/{id}/messages`                          | Non utilisé par ce widget (le vrai chemin d'envoi est `/stream` ci-dessous) | Chemin non-streaming de `ConversationMessagesController` — laissé dans l'allowlist car même contrôleur/protection que le `GET` ci-dessus |
+| `PATCH` | `/api/conversations/{id}/messages/{messageId}/feedback`      | `useChatbot().setFeedback()`                                        | 👍/👎 sur une réponse assistant                                                          |
+| `GET`   | `/api/faqs`                                                 | `useFaqs().fetchSuggestedQuestions()` (aussi via la route Nitro dédiée `server/api/faqs.get.ts`, cache 5 min — voir §3.4) | Questions suggérées (état vide + après chaque réponse)                                  |
+| `GET`   | `/api/ai_agents`                                            | `useChatbot().fetchAgents()` (aussi via `server/api/ai_agents.get.ts`, cache 5 min) | Liste des agents IA, pour sélectionner automatiquement le premier actif                 |
+| `GET`   | `/api/health`                                               | Non appelé par ce widget aujourd'hui                                | Endpoint de santé agrégé (DB/Qdrant/Redis/Ollama) — gardé dans l'allowlist pour un futur monitoring externe |
+
+`POST /api/conversations/{id}/stream` (l'envoi réel de message, streaming SSE) passe par une route Nitro dédiée (`server/api/conversations/[id]/stream.post.ts`), prioritaire sur le catch-all — voir §5.1.
 
 > [!NOTE]
-> Voir [le cahier des charges backend](../backend/SPECIFICATION.md#8-référence-api-complète) pour le détail complet de l'API Symfony (bien plus large que ces deux endpoints).
+> Voir [le cahier des charges backend](../backend/SPECIFICATION.md#8-référence-api-complète) pour le détail complet de l'API Symfony (bien plus large que cette liste — tout le reste, ressources admin comprises, existe côté backend mais n'est justement **pas** dans cette allowlist).
 
 ### 7.3 Configuration de la cible API
 
@@ -338,7 +371,6 @@ Couverture actuelle — composables uniquement, pas de test de composant `.vue` 
 - **`useFaqs`** : peuple `suggestedQuestions` depuis `GET /api/faqs` (mocké avec `registerEndpoint`), ne fetch qu'une fois (`hasFetched`), dégrade silencieusement en cas d'échec, état partagé entre deux appels indépendants (`useState`).
 - **`useChatbot`** : le plus gros morceau — garde-fous de `sendMessage()` (message vide, déjà en cours d'envoi, hors ligne), le chemin heureux complet (parsing des frames SSE `data: {...}\n\n`, y compris `ai_complete`/`sources`/`token_usage`), un frame `error`, une réponse HTTP non-`ok`, `retryLastMessage()` (rejoue sans dupliquer la bulle utilisateur), `clearMessages()`, `cancelReply()` (abandonne une requête en cours via `AbortController` sans poser d'erreur — le rejet `AbortError` est distingué d'un vrai échec réseau), gate `autoScroll` (`scrollToBottom()` ne fait rien tant que désactivé, `sendMessage()` le remet à `true`), notification desktop (`Notification` global stubbé — déclenchée seulement si `document.hidden` et permission accordée, jamais sinon).
 - **`useNotificationSound`** : `muted` démarre à `false`, lit un choix persisté au montage (même schéma `localStorage` que `useColorScheme`), `toggleMuted()` bascule et persiste, `playMessageSound()` ne lève pas d'erreur pendant que `muted` est actif (le chime est simplement sauté).
-- **`useCompactMode`** : même trio de tests que `useNotificationSound` (valeur par défaut, lecture d'un choix persisté, toggle + persistance) — schéma identique, juste une autre clé `localStorage`.
 
 Deux techniques de mock spécifiques à connaître avant d'y toucher :
 - **`registerEndpoint`** (`@nuxt/test-utils/runtime`) mocke une route Nitro atteinte via `$fetch`/ofetch (ex. `ensureConversation`'s `POST /api/conversations`). Le flux SSE de `sendMessage()` (`server/api/conversations/[id]/stream.post.ts`) passe lui par le `fetch` brut du navigateur, pas `$fetch` — `registerEndpoint` ne l'intercepte donc pas. `useChatbot.test.ts` stub `globalThis.fetch` directement pour les URLs `/stream` uniquement (tout le reste repasse par le vrai `fetch`, donc `registerEndpoint` continue de fonctionner en parallèle dans le même test).

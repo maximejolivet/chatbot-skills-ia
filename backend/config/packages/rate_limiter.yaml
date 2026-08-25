@@ -3,7 +3,7 @@ framework:
         # Public chat endpoints (QuickSendController, ConversationMessagesController)
         # have no authentication of their own -- anyone can hit them, and each
         # message triggers an LLM call (cost) plus possibly tool-calling
-        # (Cal.com API, mailer). Limits per client IP.
+        # (Cal.eu API, mailer). Limits per client IP.
         chat_message:
             policy: 'sliding_window'
             limit: 20

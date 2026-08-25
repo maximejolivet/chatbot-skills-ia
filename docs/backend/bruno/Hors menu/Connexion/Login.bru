@@ -1,7 +1,7 @@
 meta {
   name: Login
   type: http
-  seq: 1
+  seq: 2
 }
 
 post {
@@ -13,13 +13,15 @@ post {
 body:form-urlencoded {
   _username: {{admin_username}}
   _password: {{admin_password}}
+  _csrf_token: {{login_csrf_token}}
 }
 
 docs {
   Session-based form login for the `admin` firewall -- distinct from the
   `api` firewall's stateless HTTP Basic used by every other request in this
-  collection. No CSRF token on this form (checked: the login page only has
-  _username/_password inputs, unlike the resource create/edit forms which do
-  have one). On success: 302 to /admin/, and Bruno's cookie jar picks up the
-  PHPSESSID for subsequent /admin/* requests in "Utilisateurs" below.
+  collection. Requires "Get Login Form" to have run first in the same run
+  (populates {{login_csrf_token}}) -- CSRF was added to this form in the
+  2026-08-24 security audit; a stale/missing token 403s. On success: 302 to
+  /admin/, and Bruno's cookie jar picks up the PHPSESSID for subsequent
+  /admin/* requests in "Utilisateurs" below.
 }

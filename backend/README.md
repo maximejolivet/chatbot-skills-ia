@@ -94,7 +94,7 @@ Câble les champs différés des domaines précédents (`AiAgent.workflows`, `Co
 - `App\Chat\ChatOrchestrationService` — la vraie boucle de tool-calling (jusqu'à 3 itérations) : demande une completion au LLM, si le modèle appelle un outil, exécute le `Workflow` correspondant via `workflows.WorkflowExecutionService`, réinjecte le résultat, redemande, jusqu'à obtenir une réponse finale
 - `App\Chat\RagContextService` — résout la collection Qdrant de l'agent (`CollectionService::getQdrantCollectionNameForAgent`) et effectue la recherche vectorielle contextuelle
 - `App\Chat\ChatService` — façade `sendMessage` (conversation persistée) / `quickSend` (anonyme, non persisté, ce que consomme le frontend de démo)
-- `POST /api/conversations/{id}/messages`, `POST /api/conversations/{id}/stream` (SSE — génère la réponse complète côté serveur puis l'émet en évènements, pas de streaming token-par-token combiné au tool-calling), `POST /api/chat/quick-send`, `GET /api/chat/llm-status`, `GET /api/chat/embedding-status`
+- `POST /api/conversations/{id}/messages`, `POST /api/conversations/{id}/stream` (SSE — vrai streaming token-par-token quand l'agent n'a aucun tool actif ; sinon chemin bufferisé, complétion générée puis émise en un seul `delta`, avec une frame `tool_call` en plus juste avant qu'un outil s'exécute pour signaler la progression — voir `docs/backend/SPECIFICATION.md` §5.5), `POST /api/chat/quick-send`, `GET /api/chat/llm-status`, `GET /api/chat/embedding-status`
 
 Testé en réel de bout en bout : `quick-send` simple, mémoire conversationnelle sur plusieurs tours, SSE, **tool-calling réel** (un agent lié à un workflow `data_transform` a correctement déclenché l'outil et formulé sa réponse à partir du résultat), et **RAG réel** (un agent lié à une collection contenant un document indexé a restitué une information inventée présente uniquement dans ce document, prouvant que toute la chaîne agent → collection → Qdrant → recherche → injection dans le prompt fonctionne).
 
@@ -127,7 +127,7 @@ docker exec chatbot-symfony php bin/console tailwind:build
 
 Deux firewalls (`config/packages/security.yaml`), tous deux authentifiés contre la table `app_user` (`App\Entity\User`, provider `entity`, identifiant = email) :
 
-- **`admin`** (`^/admin`) : `form_login` classique, session cookie. Page de connexion sur `/admin/login`, déconnexion sur `/admin/logout`.
+- **`admin`** (`^/admin`) : `form_login` classique, session cookie. Page de connexion sur `/admin/login` (CSRF activé — `enable_csrf: true`, ajouté au passage d'un audit de sécurité, absent avant), déconnexion sur `/admin/logout`.
 - **`api`** (`^/`, catch-all) : `http_basic`, `stateless: true`. Couvre `/api/*` et `/doc`. Pensé pour un client machine (curl, scripts, ou le proxy serveur d'un frontend) plutôt que pour un navigateur.
 
 `access_control` exige `ROLE_ADMIN` sur `^/admin` (seule `^/admin/login` reste publique) mais seulement `ROLE_USER` (le rôle de base, tout compte authentifié l'a) sur `^/(api|doc)` — l'accès à `/api` en tant que tel n'est plus réservé aux admins, l'autorisation fine se fait ressource par ressource : `Conversation`/`WorkflowExecution` acceptent `ROLE_USER` mais restreignent chaque compte à ses propres lignes (voir "Cloisonnement par utilisateur" ci-dessous) ; toutes les autres ressources (`Document`, `Workflow`, `AiAgent`, `AiProviderConfig`, etc.) exigent explicitement `ROLE_ADMIN` sur leur propre `#[ApiResource(security: ...)]`, donc restent fermées aux comptes `ROLE_USER`. Créer un compte :
@@ -173,6 +173,18 @@ Toutes les autres ressources (`Document`, `Workflow`, `AiAgent`,
 exigent explicitement `ROLE_ADMIN` sur leur propre `#[ApiResource(security:
 ...)]`, indépendamment de la règle `access_control` globale (voir §Sécurité)
 — un compte `ROLE_USER` ne peut ni les lire ni les modifier.
+
+> [!CAUTION]
+> Ce `security:` de ressource ne s'applique pas aux opérations à contrôleur
+> personnalisé (même limite que ci-dessus) — trouvé et corrigé lors d'un
+> audit de sécurité : 11 contrôleurs (`Workflow`
+> steps/trigger/test/soft-delete, `Document` upload/delete/process/chunks,
+> `AiProviderConfig` test, `/vector/search`, `/vector/stats`) étaient
+> accessibles par n'importe quel compte authentifié, `ROLE_USER` compris —
+> et donc par n'importe quel visiteur du widget public, le proxy Nuxt
+> s'authentifiant toujours en `ROLE_ADMIN` réel. Chacun porte désormais son
+> propre `#[IsGranted('ROLE_ADMIN')]`. Détail complet, y compris le risque
+> résiduel non corrigé (énumération d'id de conversation) : `docs/backend/SPECIFICATION.md` §10/§12.1.
 
 ## File d'attente async (Symfony Messenger + Redis)
 

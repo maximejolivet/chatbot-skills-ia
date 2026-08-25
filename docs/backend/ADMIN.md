@@ -83,12 +83,15 @@ du hit).
   PATCH (`agent: "/api/ai_agents/{id}"`) qui sert à relier un agent à sa collection, `AiAgent`
   n'ayant pas ce champ dans son propre formulaire admin.
 - **FAQ** (`Faq`) — questions/réponses pré-rédigées (`question`, `answer`, `category`, `isActive`,
-  `tags`). Toujours pas branché sur le pipeline RAG/chat : aucune référence à `Faq` dans
+  `tags`, `priority` — entier, défaut `0`, ordre d'affichage croissant). Toujours pas branché sur
+  le pipeline RAG/chat : aucune référence à `Faq` dans
   `src/Chat/`, `src/KnowledgeBase/` ou `src/VectorConnector/` — pas d'indexation Qdrant, pas de
   lecture par `ChatOrchestrationService`/`RagContextService`. En l'état, un agent ne voit jamais
   ces entrées quand il répond. Consommé côté frontend comme questions de conversation suggérées
   (`frontend/composables/useFaqs.ts`, sur la home et le panneau chat) — seules les FAQ
-  `isActive = true` remontent (`App\Doctrine\FaqActiveCollectionExtension`).
+  `isActive = true` remontent, triées par `priority ASC`
+  (`App\Doctrine\FaqActiveCollectionExtension`) ; la grille `/admin/faqs` trie pareil par défaut et
+  expose `priority` comme colonne triable.
   → **API** : lecture seule, `GET /api/faqs`, `GET /api/faqs/{id}`. Création/édition/suppression
   uniquement via ce backoffice — pas de `POST`/`PATCH`/`DELETE` côté API (même schéma que
   `AiAgent`, §4.5 de `SPECIFICATION.md`).
@@ -260,7 +263,7 @@ Un opérateur ouvre le chat : une **`Conversation`** est créée, `user` stampé
 - L'utilisateur enchaîne : *"Pose-moi une demande du 10 au 15 mars"*. Le LLM décide d'appeler
   l'outil `creer_demande_conge` → un **`Message`** `role = tool` trace l'appel, et une
   **`WorkflowExecution`** est créée : `workflow = creer_demande_conge`, `status = pending →
-  running → completed`, `inputData = {"date_debut": "2026-03-10", "date_fin": "2026-03-15"}`,
+  running → completed`, `inputData = {"date_debut": "10 mars", "date_fin": "15 mars"}`,
   `conversation` = celle en cours (lien qui distingue une exécution "déclenchée par un agent en
   conversation" d'une exécution manuelle), `triggeredBy = User` de l'opérateur, `executionLog`
   détaillant le passage dans la `WorkflowStep` webhook.

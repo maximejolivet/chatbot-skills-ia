@@ -1,0 +1,28 @@
+meta {
+  name: Get Login Form
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/admin/login
+  body: none
+  auth: none
+}
+
+script:post-response {
+  const html = res.getBody();
+  const match = typeof html === "string" ? html.match(/name="_csrf_token"[^>]*value="([^"]+)"/) : null;
+  if (match) {
+    bru.setVar("login_csrf_token", match[1]);
+  }
+}
+
+docs {
+  Run this before "Login" -- CSRF was enabled on the admin login form
+  (`enable_csrf: true`, added 2026-08-24 security audit; it had none before,
+  unlike the resource create/edit forms which always did, see "Get New User
+  Form"). Symfony's form_login CSRF generates a fresh token per page load,
+  scraped here from the hidden _csrf_token input into {{login_csrf_token}},
+  consumed by "Login" right after.
+}
