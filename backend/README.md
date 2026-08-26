@@ -20,12 +20,17 @@ Backend du chatbot IA, en Symfony. Organisé en 5 domaines métier : `ai_provide
 ```bash
 cd backend
 cp .env.example .env
-# Générer ADMIN_PASSWORD_HASH (voir §Sécurité) avant de lancer, sinon impossible de se connecter à /admin ou /api
 docker network inspect chatbot-proxy >/dev/null 2>&1 || docker network create chatbot-proxy
 docker compose up -d --build
 ```
 
 Le réseau Docker externe `chatbot-proxy` est requis (le service `app` échoue à démarrer sans lui) — normalement créé automatiquement par `make start` depuis la racine du dépôt ; la commande ci-dessus le crée à la main si ce backend est lancé de façon isolée, sans passer par le `Makefile` racine (voir aussi [`../traefik/`](../traefik/)).
+
+Une fois la stack up, créer un compte pour pouvoir se connecter à `/admin` ou `/api` (comptes multi-utilisateurs, table `app_user` — voir §Sécurité) :
+
+```bash
+docker exec chatbot-symfony php bin/console app:user:create <email> <mot-de-passe>
+```
 
 L'API est servie sur http://symfony.chatbot.localhost (via Traefik ; aucun port fixe n'est publié sur l'hôte), la documentation interactive sur `/api` (API Platform) et `/doc` (Swagger/OpenAPI pur), le backoffice sur `/admin`. `docker compose up` démarre aussi un frontend de démo Nuxt sur http://nuxt.chatbot.localhost (ou http://localhost:3010 ; service `nuxt`, voir [`frontend/README.md`](../frontend/README.md)).
 
@@ -37,6 +42,8 @@ cp .env.example .env
 composer install
 symfony server:start
 ```
+
+Créer un compte admin (voir ci-dessus) une fois la base migrée.
 
 ## Domaines
 

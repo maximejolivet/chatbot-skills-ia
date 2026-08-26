@@ -31,7 +31,7 @@ Solution de chatbot administrable : backend Symfony (API Platform) avec RAG (Ret
 
 ## Démarrage rapide
 
-Premier lancement uniquement — créer le fichier d'environnement du backend et générer le mot de passe admin (voir [`backend/README.md#sécurité`](backend/README.md#sécurité)) :
+Premier lancement uniquement — créer le fichier d'environnement du backend :
 
 ```bash
 cd backend && cp .env.example .env
@@ -43,7 +43,11 @@ Puis, depuis la racine :
 make start
 ```
 
-Cette commande démarre Traefik puis la stack Symfony (backend, MariaDB, Qdrant, frontend Nuxt) via Docker Compose, et affiche les URLs des services.
+Cette commande démarre Traefik puis la stack Symfony (backend, MariaDB, Qdrant, frontend Nuxt) via Docker Compose, et affiche les URLs des services. Une fois la stack up, créer un compte pour se connecter à `/admin` (comptes multi-utilisateurs, table `app_user` — voir [`backend/README.md#sécurité`](backend/README.md#sécurité)) :
+
+```bash
+docker exec chatbot-symfony php bin/console app:user:create <email> <mot-de-passe>
+```
 
 > [!IMPORTANT]
 > Ollama doit tourner sur l'hôte **avant** `make start` (`make check-ollama` le vérifie automatiquement), avec les modèles `mxbai-embed-large` et `qwen3.6` (ou équivalent) installés — Ollama n'est pas conteneurisé ici.
@@ -76,11 +80,11 @@ Tous les services sont routés par domaine via Traefik (`*.chatbot.localhost`, r
 
 ```
 chatbot-skills-ia/
-├── backend/           # API Symfony + API Platform, backoffice /admin
-├── frontend/          # Composant chatbot Nuxt 4 + TailwindCSS
-├── traefik/           # Reverse proxy : domaines par service (*.chatbot.localhost)
-├── docs/              # Cahiers des charges
-└── .github/scripts/   # Scripts d'installation, d'affichage des URLs et de déploiement CI
+├── backend/       # API Symfony + API Platform, backoffice /admin
+├── frontend/      # Composant chatbot Nuxt 4 + TailwindCSS
+├── traefik/       # Reverse proxy : domaines par service (*.chatbot.localhost)
+├── docs/          # Guide d'onboarding, cahiers des charges, backlog, collection API (Bruno)
+└── .github/       # CI (lint/tests/PHPStan/audit), déploiement, scripts d'installation
 ```
 
 Détail de l'architecture backend (entités, services, domaines métier) dans [`backend/README.md`](backend/README.md).
@@ -105,7 +109,12 @@ Voir [`SECURITY.md`](SECURITY.md) — politique de signalement et état des audi
 
 ## Documentation
 
+- [`docs/ONBOARDING.md`](docs/ONBOARDING.md) — **point d'entrée pour un nouveau contributeur** : stack, architecture, commandes essentielles, conventions, points d'attention
 - [`backend/README.md`](backend/README.md) — installation et référence API du backend
-- [`docs/backend/SPECIFICATION.md`](docs/backend/SPECIFICATION.md)
-- [`docs/frontend/SPECIFICATION.md`](docs/frontend/SPECIFICATION.md)
+- [`frontend/README.md`](frontend/README.md) — installation et référence du widget frontend
+- [`docs/backend/SPECIFICATION.md`](docs/backend/SPECIFICATION.md) — cahier des charges backend
+- [`docs/backend/ADMIN.md`](docs/backend/ADMIN.md) — guide des pages du backoffice `/admin`
+- [`docs/frontend/SPECIFICATION.md`](docs/frontend/SPECIFICATION.md) — cahier des charges frontend
+- [`docs/BACKLOG.md`](docs/BACKLOG.md) — historique et pistes d'amélioration
 - [`DEPLOYMENT.md`](DEPLOYMENT.md) — déploiement du backend (CI/CD, secrets, prérequis serveur)
+- [`docs/README.md`](docs/README.md) — index complet de toute la documentation du dépôt
