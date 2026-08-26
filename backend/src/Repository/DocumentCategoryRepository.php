@@ -12,6 +12,7 @@ use Sylius\Resource\Doctrine\Persistence\RepositoryInterface as SyliusRepository
 
 /**
  * @extends ServiceEntityRepository<DocumentCategory>
+ *
  * @implements SyliusRepositoryInterface<DocumentCategory>
  */
 class DocumentCategoryRepository extends ServiceEntityRepository implements SyliusRepositoryInterface

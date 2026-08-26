@@ -12,9 +12,9 @@
         "api-platform/doctrine-orm": "^4.3",
         "api-platform/symfony": "^4.3",
         "doctrine/doctrine-bundle": "^3.3",
-        "doctrine/doctrine-migrations-bundle": "^4.0",
+        "doctrine/doctrine-migrations-bundle": "^4.0.1",
         "doctrine/orm": "^3.6.8",
-        "nelmio/api-doc-bundle": "^5.11",
+        "nelmio/api-doc-bundle": "^5.11.1",
         "nelmio/cors-bundle": "^2.6",
         "netresearch/composer-agent-skill-plugin": "^2.1",
         "pagerfanta/doctrine-orm-adapter": "^4.8",
@@ -136,7 +136,7 @@
         }
     },
     "require-dev": {
-        "friendsofphp/php-cs-fixer": "^3.95",
+        "friendsofphp/php-cs-fixer": "^3.95.22",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan": "^2.2",
         "phpstan/phpstan-deprecation-rules": "^2.0",

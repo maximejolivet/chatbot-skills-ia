@@ -10,6 +10,7 @@ use Sylius\Resource\Doctrine\Persistence\RepositoryInterface as SyliusRepository
 
 /**
  * @extends ServiceEntityRepository<Message>
+ *
  * @implements SyliusRepositoryInterface<Message>
  */
 class MessageRepository extends ServiceEntityRepository implements SyliusRepositoryInterface

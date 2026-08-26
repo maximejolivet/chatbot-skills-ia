@@ -12,6 +12,7 @@ use Sylius\Resource\Doctrine\Persistence\RepositoryInterface as SyliusRepository
 
 /**
  * @extends ServiceEntityRepository<WorkflowExecution>
+ *
  * @implements SyliusRepositoryInterface<WorkflowExecution>
  */
 class WorkflowExecutionRepository extends ServiceEntityRepository implements SyliusRepositoryInterface

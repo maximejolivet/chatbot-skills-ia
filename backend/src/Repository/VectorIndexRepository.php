@@ -10,6 +10,7 @@ use Sylius\Resource\Doctrine\Persistence\RepositoryInterface as SyliusRepository
 
 /**
  * @extends ServiceEntityRepository<VectorIndex>
+ *
  * @implements SyliusRepositoryInterface<VectorIndex>
  */
 class VectorIndexRepository extends ServiceEntityRepository implements SyliusRepositoryInterface

@@ -11,6 +11,7 @@ use Sylius\Resource\Doctrine\Persistence\RepositoryInterface as SyliusRepository
 
 /**
  * @extends ServiceEntityRepository<AiProviderConfig>
+ *
  * @implements SyliusRepositoryInterface<AiProviderConfig>
  */
 class AiProviderConfigRepository extends ServiceEntityRepository implements SyliusRepositoryInterface
