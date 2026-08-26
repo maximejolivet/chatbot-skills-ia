@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Maxime - Chatbot IA",
-    "description": "Un assistant conversationnel IA branché sur ton entreprise, disponible à tout moment."
+    "description": "Un assistant conversationnel IA branché sur Maxime, disponible à tout moment."
   },
   "home": {
     "badge": "Assistant IA sur-mesure",
@@ -9,7 +9,7 @@
     "subheading": "Réponses instantanées et fiables, branchées sur mes données, disponibles à toute heure."
   },
   "heroChatBar": {
-    "placeholder": "Pose ta question sur ton entreprise...",
+    "placeholder": "Pose ta question sur Maxime...",
     "send": "Envoyer"
   },
   "stickyBubble": {
