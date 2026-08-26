@@ -597,6 +597,13 @@
         </button>
       </Transition>
 
+      <!-- Astuce de découverte, bannière d'erreur et formulaire de saisie
+           groupés dans un seul conteneur ancré en bas : le formulaire seul
+           en `absolute bottom-0` (avant ce groupement) recouvrait ces deux
+           bannières, qui restaient en flux normal juste en dessous de la
+           zone de messages -- invisibles derrière lui plutôt qu'empilées
+           au-dessus, cf. bannière d'erreur signalée "cachée". -->
+      <div class="absolute inset-x-0 bottom-0 z-10 flex flex-col">
       <!-- Astuce de découverte (commandes slash, Cmd/Ctrl+K) -- une seule
            fois, voir maybeShowDiscoveryHint plus haut. -->
       <Transition
@@ -636,30 +643,43 @@
       </Transition>
 
       <!-- Erreur -->
-      <div
-        v-if="error"
-        :class="[
-          'px-4 py-2 sm:px-6',
-          variant !== 'page' ? 'border-t border-destructive/20 bg-destructive/10' : '',
-        ]"
+      <Transition
+        enter-active-class="transition duration-150 ease-out"
+        enter-from-class="opacity-0 -translate-y-1"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition duration-100 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 -translate-y-1"
       >
-        <div class="mx-auto flex max-w-3xl items-center justify-between gap-3">
-          <p class="text-xs text-destructive">{{ error }}</p>
-          <button
-            type="button"
-            class="shrink-0 whitespace-nowrap rounded-full border border-destructive/30 px-2.5 py-1 font-mono text-[11px] font-medium text-destructive transition-colors hover:bg-destructive/10"
-            @click="retryLastMessage"
-          >
-            {{ $t('chatbot.retry') }}
-          </button>
+        <div
+          v-if="error"
+          role="alert"
+          :class="[
+            'px-4 py-2 sm:px-6',
+            variant !== 'page' ? 'border-t border-destructive/20 bg-destructive/10' : '',
+          ]"
+        >
+          <div class="mx-auto flex max-w-3xl items-center justify-between gap-3">
+            <p class="flex items-center gap-1.5 text-xs text-destructive">
+              <span class="shrink-0" aria-hidden="true">⚠️</span>
+              {{ error }}
+            </p>
+            <button
+              type="button"
+              class="shrink-0 whitespace-nowrap rounded-full border border-destructive/30 px-2.5 py-1 font-mono text-[11px] font-medium text-destructive transition-colors hover:bg-destructive/10"
+              @click="retryLastMessage"
+            >
+              {{ $t('chatbot.retry') }}
+            </button>
+          </div>
         </div>
-      </div>
+      </Transition>
 
       <!-- Saisie -->
       <form
         @submit="onSubmit"
         :class="[
-          'absolute inset-x-0 bottom-0 z-10 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6',
+          'px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6',
           variant !== 'page' ? 'border-t border-border bg-card' : '',
         ]"
       >
@@ -958,6 +978,7 @@
           </p>
         </div>
       </form>
+      </div>
     </div>
   </div>
 </template>
