@@ -9,6 +9,9 @@ parameters:
     excludePaths:
         - src/Kernel.php
 
+    doctrine:
+        objectManagerLoader: tests/object-manager.php
+
     reportUnmatchedIgnoredErrors: true
 
     # PHPUnit\Framework\TestCase::createStub()/createMock() are genuinely

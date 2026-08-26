@@ -29,7 +29,7 @@ final readonly class RagContextService
         // or the agent has no dedicated collection, fall back to the real
         // common collection instead of VectorSearchService's hardcoded
         // default name, which no ingestion path ever writes to.
-        $collectionName = $agent ? $this->collectionService->getQdrantCollectionNameForAgent($agent->getId()) : null;
+        $collectionName = $agent ? $this->collectionService->getQdrantCollectionNameForAgent($agent->getId() ?? throw new \LogicException('AiAgent must be persisted.')) : null;
         $collectionName ??= $this->collectionService->ensureCommonCollection()->getCollectionNameForQdrant();
 
         try {

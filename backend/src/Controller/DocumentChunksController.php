@@ -5,7 +5,7 @@ namespace App\Controller;
 use App\Entity\Document;
 use App\Entity\DocumentChunk;
 use App\Repository\DocumentChunkRepository;
-use Symfony\Bundle\FrameworkBundle\Controller\AsController;
+use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -20,7 +20,8 @@ final readonly class DocumentChunksController
     #[IsGranted('ROLE_ADMIN')]
     public function __invoke(Document $data): JsonResponse
     {
-        $chunks = $this->chunkRepository->findForDocument($data->getId());
+        $documentId = $data->getId() ?? throw new \LogicException('Document must be persisted.');
+        $chunks = $this->chunkRepository->findForDocument($documentId);
 
         return new JsonResponse(array_map($this->serialize(...), $chunks));
     }

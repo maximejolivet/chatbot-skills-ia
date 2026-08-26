@@ -10,6 +10,7 @@ use Sylius\Resource\Doctrine\Persistence\RepositoryInterface as SyliusRepository
 
 /**
  * @extends ServiceEntityRepository<AiAgent>
+ * @implements SyliusRepositoryInterface<AiAgent>
  */
 class AiAgentRepository extends ServiceEntityRepository implements SyliusRepositoryInterface
 {

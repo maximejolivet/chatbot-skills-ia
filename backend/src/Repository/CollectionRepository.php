@@ -10,6 +10,7 @@ use Sylius\Resource\Doctrine\Persistence\RepositoryInterface as SyliusRepository
 
 /**
  * @extends ServiceEntityRepository<Collection>
+ * @implements SyliusRepositoryInterface<Collection>
  */
 class CollectionRepository extends ServiceEntityRepository implements SyliusRepositoryInterface
 {

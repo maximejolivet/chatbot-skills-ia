@@ -153,8 +153,11 @@ final class ChatOrchestrationServiceTest extends TestCase
         ?callable $onDelta = null,
         ?callable $onToolCall = null,
     ): ChatReplyResult {
-        return (new \ReflectionMethod($service, 'orchestrate'))
+        $result = (new \ReflectionMethod($service, 'orchestrate'))
             ->invoke($service, $llmClient, $userMessage, $history, $agent, null, $onDelta, $onToolCall);
+        self::assertInstanceOf(ChatReplyResult::class, $result);
+
+        return $result;
     }
 
     public function testNoAgentAndOnDeltaStreamsIncrementally(): void

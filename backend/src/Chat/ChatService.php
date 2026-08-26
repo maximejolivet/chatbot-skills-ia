@@ -50,8 +50,10 @@ final readonly class ChatService
             $this->notifyNewConversation($conversation, $userMessage);
         }
 
+        $conversationId = $conversation->getId() ?? throw new \LogicException('Conversation must be persisted.');
+
         $agent = $agentId ? $this->agentRepository->getActive($agentId) : null;
-        $history = $this->historyAsChatMessages($conversation->getId());
+        $history = $this->historyAsChatMessages($conversationId);
 
         $result = $this->orchestrator->generateReply($userMessage, $history, $agent, $conversation, $onDelta, $onToolCall);
 
@@ -63,7 +65,7 @@ final readonly class ChatService
         $this->entityManager->persist($assistantMsg);
         $this->entityManager->flush();
 
-        $this->historyCache->invalidate($conversation->getId());
+        $this->historyCache->invalidate($conversationId);
 
         return $assistantMsg;
     }

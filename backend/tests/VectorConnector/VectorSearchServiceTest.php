@@ -150,6 +150,7 @@ final class VectorSearchServiceTest extends TestCase
 
         $result = $this->invokePrivate($this->service(), 'fuseResults', [$vector, $lexical, 10]);
 
+        self::assertIsArray($result);
         self::assertCount(1, $result);
         self::assertSame(0.42, $result[0]['score']);
     }
@@ -158,6 +159,7 @@ final class VectorSearchServiceTest extends TestCase
     {
         $result = $this->invokePrivate($this->service(), 'fuseResults', [[], [$this->lexicalHit(5, 2, 7.5, 'only in lexical')], 10]);
 
+        self::assertIsArray($result);
         self::assertCount(1, $result);
         self::assertSame(7.5, $result[0]['score']);
         self::assertSame('only in lexical', $result[0]['content']);
@@ -180,6 +182,7 @@ final class VectorSearchServiceTest extends TestCase
 
         $result = $this->invokePrivate($this->service(), 'fuseResults', [$vector, [], 2]);
 
+        self::assertIsArray($result);
         self::assertCount(2, $result);
     }
 

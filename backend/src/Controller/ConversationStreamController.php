@@ -5,7 +5,7 @@ namespace App\Controller;
 use App\Chat\ChatService;
 use App\Chat\MessageSerializer;
 use App\Entity\Conversation;
-use Symfony\Bundle\FrameworkBundle\Controller\AsController;
+use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;

@@ -4,7 +4,7 @@ namespace App\Controller;
 
 use App\ApiResource\VectorSearchRequest;
 use App\VectorConnector\VectorSearchService;
-use Symfony\Bundle\FrameworkBundle\Controller\AsController;
+use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Http\Attribute\IsGranted;

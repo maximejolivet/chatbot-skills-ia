@@ -85,7 +85,8 @@ class VectorSearchService
             fn(): array => $this->embeddingService->generateEmbedding($query),
         );
         $vectorResults = $this->qdrantClient->search($collectionName, $queryEmbedding, $overfetch, $filterConditions);
-        $lexicalResults = $this->lexicalSearch($query, $overfetch, $filterConditions['category_id'] ?? null);
+        $categoryId = $filterConditions['category_id'] ?? null;
+        $lexicalResults = $this->lexicalSearch($query, $overfetch, \is_int($categoryId) ? $categoryId : null);
 
         $results = $this->fuseResults($vectorResults, $lexicalResults, $limit);
 
@@ -133,7 +134,15 @@ class VectorSearchService
         $sql .= ' ORDER BY score DESC LIMIT ' . max(1, $limit);
 
         try {
-            return $this->entityManager->getConnection()->executeQuery($sql, $params)->fetchAllAssociative();
+            $rows = $this->entityManager->getConnection()->executeQuery($sql, $params)->fetchAllAssociative();
+
+            return array_map(static fn(array $row): array => [
+                'document_id' => self::toInt($row['document_id'] ?? null),
+                'chunk_index' => self::toInt($row['chunk_index'] ?? null),
+                'content' => self::toStringValue($row['content'] ?? null),
+                'document_title' => self::toStringValue($row['document_title'] ?? null),
+                'score' => self::toFloat($row['score'] ?? null),
+            ], $rows);
         } catch (\Throwable $e) {
             $this->logger->warning('Lexical search failed, continuing with vector results only: {error}', ['error' => $e->getMessage()]);
 
@@ -167,7 +176,7 @@ class VectorSearchService
             $payload = $r['payload'] ?: [];
             $documentId = $payload['document_id'] ?? null;
             $chunkIndex = $payload['chunk_index'] ?? null;
-            if (null === $documentId || null === $chunkIndex) {
+            if (!\is_scalar($documentId) || !\is_scalar($chunkIndex)) {
                 continue; // no stable fusion key without both
             }
 
@@ -333,5 +342,20 @@ class VectorSearchService
         } catch (\Throwable $e) {
             $this->logger->error('Error logging search query: {error}', ['error' => $e->getMessage()]);
         }
+    }
+
+    private static function toInt(mixed $value): int
+    {
+        return \is_numeric($value) ? (int) $value : 0;
+    }
+
+    private static function toFloat(mixed $value): float
+    {
+        return \is_numeric($value) ? (float) $value : 0.0;
+    }
+
+    private static function toStringValue(mixed $value): string
+    {
+        return \is_scalar($value) ? (string) $value : '';
     }
 }

@@ -52,6 +52,7 @@ final class AdminExtension extends AbstractExtension
             WorkflowStepType::Condition => 'Condition',
             WorkflowStepType::Delay => 'Délai',
             WorkflowStepType::Webhook => 'Webhook',
+            WorkflowStepType::SetConversation => 'Enregistrer sur la conversation',
         };
     }
 
@@ -64,38 +65,55 @@ final class AdminExtension extends AbstractExtension
     public function stepSummary(WorkflowStep $step): string
     {
         $c = $step->getConfiguration();
+        $condition = \is_array($c['condition'] ?? null) ? $c['condition'] : [];
+        $transformations = \is_array($c['transformations'] ?? null) ? $c['transformations'] : [];
+        $delaySeconds = $c['delay_seconds'] ?? null;
+        $fields = \is_array($c['fields'] ?? null) ? $c['fields'] : [];
 
         return match ($step->getStepType()) {
             WorkflowStepType::Email => \sprintf(
                 'Envoie un email à %s — sujet : « %s »',
-                $c['to_email'] ?? '?',
-                $c['subject'] ?? '?',
+                self::displayString($c['to_email'] ?? null),
+                self::displayString($c['subject'] ?? null),
             ),
             WorkflowStepType::ApiCall => \sprintf(
                 '%s %s',
-                mb_strtoupper($c['method'] ?? 'GET'),
-                $c['url'] ?? '?',
+                mb_strtoupper(self::displayString($c['method'] ?? 'GET', 'GET')),
+                self::displayString($c['url'] ?? null),
             ),
             WorkflowStepType::Webhook => \sprintf(
                 '%s vers %s, avec les données reçues en entrée',
-                mb_strtoupper($c['method'] ?? 'POST'),
-                $c['url'] ?? '?',
+                mb_strtoupper(self::displayString($c['method'] ?? 'POST', 'POST')),
+                self::displayString($c['url'] ?? null),
             ),
             WorkflowStepType::Notification => isset($c['webhook_url'])
-                ? \sprintf('Envoie « %s » au webhook %s (canal : %s)', $c['message'] ?? '?', $c['webhook_url'], $c['channel'] ?? 'general')
-                : \sprintf('Log uniquement (canal : %s) — aucun envoi réel, faute de webhook_url configuré', $c['channel'] ?? 'general'),
+                ? \sprintf('Envoie « %s » au webhook %s (canal : %s)', self::displayString($c['message'] ?? null), self::displayString($c['webhook_url']), self::displayString($c['channel'] ?? 'general', 'general'))
+                : \sprintf('Log uniquement (canal : %s) — aucun envoi réel, faute de webhook_url configuré', self::displayString($c['channel'] ?? 'general', 'general')),
             WorkflowStepType::DataTransform => \sprintf(
                 'Modifie les données : %s',
                 implode(', ', array_map(
-                    static fn(array $t): string => \sprintf('%s(%s)', $t['operation'] ?? '?', $t['field'] ?? '?'),
-                    $c['transformations'] ?? [],
+                    static fn(mixed $t): string => \is_array($t) ? \sprintf('%s(%s)', self::displayString($t['operation'] ?? null), self::displayString($t['field'] ?? null)) : '?',
+                    $transformations,
                 )) ?: 'aucune transformation configurée',
             ),
             WorkflowStepType::Condition => isset($c['condition'])
-                ? \sprintf('Si %s %s %s, exécute une action, sinon une autre', $c['condition']['field'] ?? '?', $c['condition']['operator'] ?? '?', $c['condition']['value'] ?? '?')
+                ? \sprintf('Si %s %s %s, exécute une action, sinon une autre', self::displayString($condition['field'] ?? null), self::displayString($condition['operator'] ?? null), self::displayString($condition['value'] ?? null))
                 : 'Aucune condition configurée — laisse passer les données telles quelles',
-            WorkflowStepType::Delay => \sprintf('Attend %d secondes avant l\'étape suivante', (int) ($c['delay_seconds'] ?? 0)),
+            WorkflowStepType::Delay => \sprintf('Attend %d secondes avant l\'étape suivante', \is_numeric($delaySeconds) ? (int) $delaySeconds : 0),
+            WorkflowStepType::SetConversation => \sprintf(
+                'Enregistre sur la conversation : %s',
+                implode(', ', array_map(
+                    static fn(mixed $conversationField, mixed $inputKey): string => \sprintf('%s ← %s', self::displayString($conversationField), self::displayString($inputKey)),
+                    array_keys($fields),
+                    $fields,
+                )) ?: 'aucun champ configuré',
+            ),
         };
+    }
+
+    private static function displayString(mixed $value, string $default = '?'): string
+    {
+        return \is_scalar($value) ? (string) $value : $default;
     }
 
     /**

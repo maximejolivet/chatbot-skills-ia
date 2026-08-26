@@ -115,7 +115,14 @@ final readonly class DocumentAnalysisService
             return self::DEFAULT_DOCUMENT_METADATA;
         }
 
-        return $this->validateMetadata($decoded);
+        $metadata = [];
+        foreach ($decoded as $key => $value) {
+            if (\is_string($key)) {
+                $metadata[$key] = $value;
+            }
+        }
+
+        return $this->validateMetadata($metadata);
     }
 
     /**
@@ -125,7 +132,7 @@ final readonly class DocumentAnalysisService
      */
     private function validateMetadata(array $metadata): array
     {
-        $clampScore = static fn(mixed $value): int => min(max((int) ($value ?? 5), 1), 10);
+        $clampScore = static fn(mixed $value): int => min(max(\is_numeric($value) ? (int) $value : 5, 1), 10);
 
         $keywords = \is_array($metadata['keywords'] ?? null) ? array_slice($metadata['keywords'], 0, 10) : [];
         $topics = \is_array($metadata['topics'] ?? null) ? array_slice($metadata['topics'], 0, 5) : [];

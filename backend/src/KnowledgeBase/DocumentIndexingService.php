@@ -65,10 +65,12 @@ final readonly class DocumentIndexingService
      */
     public function vectorize(Document $document): bool
     {
+        $documentId = $document->getId() ?? throw new \LogicException('Document must be persisted.');
+
         $collectionName = $this->collectionService->getQdrantCollectionNameForDocument($document);
-        $chunks = $this->chunkRepository->findForDocument($document->getId());
+        $chunks = $this->chunkRepository->findForDocument($documentId);
         if (!$chunks) {
-            $this->logger->warning('No chunks found for document {id}; nothing to vectorize.', ['id' => $document->getId()]);
+            $this->logger->warning('No chunks found for document {id}; nothing to vectorize.', ['id' => $documentId]);
 
             return false;
         }
@@ -82,7 +84,7 @@ final readonly class DocumentIndexingService
         ], $chunks);
 
         $result = $this->vectorSearchService->addDocumentChunks(
-            documentId: $document->getId(),
+            documentId: $documentId,
             collectionName: $collectionName,
             chunks: $chunkData,
             documentContent: $documentContent,
@@ -101,7 +103,9 @@ final readonly class DocumentIndexingService
             $chunksByIndex[$chunk->getChunkIndex()] = $chunk;
         }
         foreach ($result->chunkPointIds as $chunkIndex => $vectorId) {
-            $chunksByIndex[$chunkIndex]?->setVectorId($vectorId);
+            if (isset($chunksByIndex[$chunkIndex])) {
+                $chunksByIndex[$chunkIndex]->setVectorId($vectorId);
+            }
         }
 
         if ($result->embeddingUsage) {
@@ -120,11 +124,13 @@ final readonly class DocumentIndexingService
      */
     public function deleteVectorsAndChunks(Document $document): void
     {
+        $documentId = $document->getId() ?? throw new \LogicException('Document must be persisted.');
+
         $collectionName = $this->collectionService->getQdrantCollectionNameForDocument($document);
-        $chunks = $this->chunkRepository->findForDocument($document->getId());
+        $chunks = $this->chunkRepository->findForDocument($documentId);
 
         $pointIds = array_map(
-            static fn(DocumentChunk $c): string => $c->getVectorId() ?: VectorSearchService::generatePointId($document->getId(), $c->getChunkIndex()),
+            static fn(DocumentChunk $c): string => $c->getVectorId() ?: VectorSearchService::generatePointId($documentId, $c->getChunkIndex()),
             $chunks,
         );
 
@@ -132,7 +138,7 @@ final readonly class DocumentIndexingService
             $this->vectorSearchService->deleteDocumentChunks($collectionName, $pointIds);
         }
 
-        $this->chunkRepository->deleteForDocument($document->getId());
+        $this->chunkRepository->deleteForDocument($documentId);
     }
 
     public function absoluteFilePath(Document $document): ?string

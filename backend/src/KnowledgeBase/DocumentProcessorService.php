@@ -50,7 +50,12 @@ final class DocumentProcessorService
 
     private function extractTxtText(string $filePath): string
     {
-        return file_get_contents($filePath);
+        $content = file_get_contents($filePath);
+        if (false === $content) {
+            throw new \RuntimeException("Error reading text file: {$filePath}");
+        }
+
+        return $content;
     }
 
     private function extractDocxText(string $filePath): string
@@ -76,23 +81,33 @@ final class DocumentProcessorService
 
     private function extractHtmlText(string $filePath): string
     {
-        return strip_tags(file_get_contents($filePath));
+        $content = file_get_contents($filePath);
+        if (false === $content) {
+            throw new \RuntimeException("Error reading HTML file: {$filePath}");
+        }
+
+        return strip_tags($content);
     }
 
     private function extractJsonText(string $filePath): string
     {
-        $decoded = json_decode(file_get_contents($filePath), true);
+        $content = file_get_contents($filePath);
+        if (false === $content) {
+            throw new \RuntimeException("Error reading JSON file: {$filePath}");
+        }
+
+        $decoded = json_decode($content, true);
         if (\JSON_ERROR_NONE !== json_last_error()) {
             throw new \RuntimeException('Error extracting JSON text: ' . json_last_error_msg());
         }
 
-        return json_encode($decoded, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES);
+        return json_encode($decoded, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES) ?: '';
     }
 
     private function cleanText(string $text): string
     {
-        $text = preg_replace('/(*UTF8)(*UCP)\s+/u', ' ', $text);
-        $text = preg_replace('/(*UTF8)(*UCP)[^\w\s.,!?;:\-()]/u', '', $text);
+        $text = preg_replace('/(*UTF8)(*UCP)\s+/u', ' ', $text) ?? $text;
+        $text = preg_replace('/(*UTF8)(*UCP)[^\w\s.,!?;:\-()]/u', '', $text) ?? $text;
 
         return trim($text);
     }

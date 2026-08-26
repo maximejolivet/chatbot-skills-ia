@@ -170,6 +170,7 @@ final class WorkflowExecutionServiceTest extends TestCase
 
         $result = $this->invokePrivate($this->service(), 'handleCondition', [$step, ['flagged' => true, 'draft' => 'wip']]);
 
+        self::assertIsArray($result);
         self::assertArrayNotHasKey('draft', $result);
     }
 
@@ -202,6 +203,7 @@ final class WorkflowExecutionServiceTest extends TestCase
             ['name' => 'Kilian', 'count' => 4, 'secret' => 'shh'],
         ]);
 
+        self::assertIsArray($result);
         self::assertSame('Hello Kilian', $result['greeting']);
         self::assertSame(5, $result['count']);
         self::assertArrayNotHasKey('secret', $result);

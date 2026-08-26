@@ -7,7 +7,7 @@ use App\Entity\DocumentCategory;
 use App\Enum\DocumentFileType;
 use App\Message\IndexDocumentMessage;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AsController;
+use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -85,7 +85,8 @@ final readonly class DocumentUploadController
         $document->setFilePath($relativePath)->setFileSize($fileSize);
         $this->entityManager->flush();
 
-        $this->messageBus->dispatch(new IndexDocumentMessage($document->getId()));
+        $documentId = $document->getId() ?? throw new \LogicException('Document must be persisted.');
+        $this->messageBus->dispatch(new IndexDocumentMessage($documentId));
 
         return new JsonResponse([
             'id' => $document->getId(),

@@ -50,7 +50,7 @@ final class UserType extends AbstractType
             $user = $event->getData();
             $plainPassword = $event->getForm()->get('plainPassword')->getData();
 
-            if (!$plainPassword) {
+            if (!\is_string($plainPassword) || '' === $plainPassword) {
                 if ('' === $user->getPassword()) {
                     $event->getForm()->get('plainPassword')->addError(new FormError('Mot de passe requis pour un nouveau compte.'));
                 }

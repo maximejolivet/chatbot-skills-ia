@@ -114,7 +114,9 @@ final readonly class ChatOrchestrationService
             $messages[] = $result->message;
 
             if (!$result->message->toolCalls) {
-                $onDelta?->__invoke($result->message->content);
+                if (null !== $onDelta) {
+                    $onDelta($result->message->content);
+                }
 
                 return new ChatReplyResult($result->message->content, $result->usage, $toolTrace, $sources);
             }
@@ -128,7 +130,8 @@ final readonly class ChatOrchestrationService
                     if (null !== $onToolCall) {
                         $onToolCall($call->name);
                     }
-                    $execution = $this->workflowExecutionService->execute($workflow->getId(), $call->arguments, $conversation);
+                    $workflowId = $workflow->getId() ?? throw new \LogicException('Workflow must be persisted.');
+                    $execution = $this->workflowExecutionService->execute($workflowId, $call->arguments, $conversation);
                     $output = 'completed' === $execution->getStatus()->value
                         ? $execution->getOutputData()
                         : ['error' => $execution->getErrorMessage()];
@@ -143,7 +146,7 @@ final readonly class ChatOrchestrationService
                 ];
                 $messages[] = new ChatMessage(
                     role: 'tool',
-                    content: json_encode($output, \JSON_PARTIAL_OUTPUT_ON_ERROR),
+                    content: json_encode($output, \JSON_PARTIAL_OUTPUT_ON_ERROR) ?: '{}',
                     toolCallId: $call->id,
                     name: $call->name,
                 );
@@ -152,7 +155,9 @@ final readonly class ChatOrchestrationService
 
         // Iteration budget exhausted -- force a final answer without further tool access.
         $final = $llmClient->complete($messages);
-        $onDelta?->__invoke($final->message->content);
+        if (null !== $onDelta) {
+            $onDelta($final->message->content);
+        }
 
         return new ChatReplyResult($final->message->content, $final->usage, $toolTrace, $sources);
     }
@@ -209,7 +214,7 @@ final readonly class ChatOrchestrationService
     {
         $sources = [];
         foreach ($ragResults as $doc) {
-            $id = $doc['document_id'] ?? null;
+            $id = isset($doc['document_id']) ? (int) $doc['document_id'] : null;
             if (null === $id || isset($sources[$id])) {
                 continue;
             }
@@ -330,6 +335,6 @@ final readonly class ChatOrchestrationService
      */
     private static function toolName(string $workflowName): string
     {
-        return mb_substr(preg_replace('/[^a-zA-Z0-9_-]/', '_', $workflowName), 0, 64);
+        return mb_substr(preg_replace('/[^a-zA-Z0-9_-]/', '_', $workflowName) ?? $workflowName, 0, 64);
     }
 }

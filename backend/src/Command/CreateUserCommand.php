@@ -37,11 +37,11 @@ final class CreateUserCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $email = $input->getArgument('email');
-        $password = $input->getArgument('password');
-        $role = $input->getOption('role');
+        $email = self::requireString($input->getArgument('email'), 'email');
+        $password = self::requireString($input->getArgument('password'), 'password');
+        $role = self::requireString($input->getOption('role'), 'role');
 
-        if ($this->userRepository->findOneBy(['email' => $email])) {
+        if (null !== $this->userRepository->findOneBy(['email' => $email])) {
             $io->error(sprintf('A user with email "%s" already exists.', $email));
 
             return Command::FAILURE;
@@ -56,5 +56,14 @@ final class CreateUserCommand extends Command
         $io->success(sprintf('Created user "%s" with role %s.', $email, $role));
 
         return Command::SUCCESS;
+    }
+
+    private static function requireString(mixed $value, string $name): string
+    {
+        if (!\is_string($value)) {
+            throw new \InvalidArgumentException(sprintf('Expected "%s" to be a string.', $name));
+        }
+
+        return $value;
     }
 }

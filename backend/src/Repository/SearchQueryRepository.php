@@ -10,6 +10,7 @@ use Sylius\Resource\Doctrine\Persistence\RepositoryInterface as SyliusRepository
 
 /**
  * @extends ServiceEntityRepository<SearchQuery>
+ * @implements SyliusRepositoryInterface<SearchQuery>
  */
 class SearchQueryRepository extends ServiceEntityRepository implements SyliusRepositoryInterface
 {

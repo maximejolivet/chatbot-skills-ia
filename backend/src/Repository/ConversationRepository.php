@@ -12,6 +12,7 @@ use Sylius\Resource\Doctrine\Persistence\RepositoryInterface as SyliusRepository
 
 /**
  * @extends ServiceEntityRepository<Conversation>
+ * @implements SyliusRepositoryInterface<Conversation>
  */
 class ConversationRepository extends ServiceEntityRepository implements SyliusRepositoryInterface
 {

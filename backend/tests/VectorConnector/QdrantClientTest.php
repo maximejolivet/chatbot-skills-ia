@@ -37,7 +37,8 @@ final class QdrantClientTest extends TestCase
         $result = $this->client($http)->ping();
 
         self::assertSame('error', $result['status']);
-        self::assertStringContainsString('connection refused', $result['message']);
+        self::assertArrayHasKey('message', $result);
+        self::assertStringContainsString('connection refused', $result['message'] ?? '');
     }
 
     public function testSearchParsesPointsFromResponse(): void
@@ -47,7 +48,7 @@ final class QdrantClientTest extends TestCase
             'result' => ['points' => [
                 ['id' => 'abc', 'score' => 0.91, 'payload' => ['content' => 'hello']],
             ]],
-        ]), ['http_code' => 200]);
+        ]) ?: '{}', ['http_code' => 200]);
         $http = new MockHttpClient([$collectionExists, $searchResponse]);
 
         $results = $this->client($http)->search('my_collection', [0.1, 0.2], 5);

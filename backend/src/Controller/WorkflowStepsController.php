@@ -7,7 +7,7 @@ use App\Entity\WorkflowStep;
 use App\Enum\WorkflowStepType;
 use App\Repository\WorkflowStepRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AsController;
+use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -33,19 +33,24 @@ final readonly class WorkflowStepsController
             return $this->create($data, $request);
         }
 
-        return new JsonResponse(array_map($this->serialize(...), $this->workflowStepRepository->findActiveOrdered($data->getId())));
+        $workflowId = $data->getId() ?? throw new \LogicException('Workflow must be persisted.');
+
+        return new JsonResponse(array_map($this->serialize(...), $this->workflowStepRepository->findActiveOrdered($workflowId)));
     }
 
     private function create(Workflow $workflow, Request $request): JsonResponse
     {
         $body = json_decode($request->getContent(), true) ?? [];
+        if (!is_array($body)) {
+            throw new BadRequestHttpException('Invalid JSON body.');
+        }
 
         $name = trim((string) ($body['name'] ?? ''));
         if ('' === $name) {
             throw new BadRequestHttpException('Missing name.');
         }
 
-        $stepType = WorkflowStepType::tryFrom($body['step_type'] ?? '');
+        $stepType = WorkflowStepType::tryFrom((string) ($body['step_type'] ?? ''));
         if (!$stepType) {
             throw new BadRequestHttpException(sprintf('Invalid step_type. Allowed: %s', implode(', ', array_map(static fn(WorkflowStepType $t) => $t->value, WorkflowStepType::cases()))));
         }
@@ -59,7 +64,7 @@ final readonly class WorkflowStepsController
             ->setStepType($stepType)
             ->setOrder((int) $body['order'])
             ->setConfiguration(is_array($body['configuration'] ?? null) ? $body['configuration'] : [])
-            ->setIsActive($body['is_active'] ?? true);
+            ->setIsActive((bool) ($body['is_active'] ?? true));
         $workflow->addStep($step);
 
         $this->entityManager->persist($step);

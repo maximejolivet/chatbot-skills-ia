@@ -13,6 +13,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
  * @extends ServiceEntityRepository<Document>
+ * @implements SyliusRepositoryInterface<Document>
  */
 class DocumentRepository extends ServiceEntityRepository implements SyliusRepositoryInterface
 {

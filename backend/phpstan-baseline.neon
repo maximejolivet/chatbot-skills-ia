@@ -163,99 +163,9 @@ parameters:
 			path: src/Chat/AgentService.php
 
 		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
+			message: '#^Casting to int something that''s already int\<0, max\>\.$#'
+			identifier: cast.useless
 			count: 3
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Cannot access offset ''avg_results'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Cannot access offset ''avg_time'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Cannot access offset ''c'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 3
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Cannot access offset ''feedback'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Cannot access offset ''metadata'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Cannot access offset ''role'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Cannot access offset ''token_usage'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Cannot access offset ''total'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Cannot access offset ''total_tokens'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Cannot access property \$value on mixed\.$#'
-			identifier: property.nonObject
-			count: 2
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Cannot cast mixed to float\.$#'
-			identifier: cast.double
-			count: 2
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Cannot cast mixed to int\.$#'
-			identifier: cast.int
-			count: 5
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Method App\\Chat\\AnalyticsService\:\:feedbackStats\(\) should return array\{positive\: int, negative\: int, none\: int\} but returns non\-empty\-array\<int\>\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Method App\\Chat\\AnalyticsService\:\:searchQueryStats\(\) should return array\{total\: int, avg_execution_time\: float, avg_results_count\: float, recent\: array\<App\\Entity\\SearchQuery\>\} but returns array\{total\: int, avg_execution_time\: float, avg_results_count\: float, recent\: mixed\}\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Chat/AnalyticsService.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
 			path: src/Chat/AnalyticsService.php
 
 		-
@@ -265,9 +175,9 @@ parameters:
 			path: src/Chat/ChatOrchestrationService.php
 
 		-
-			message: '#^Cannot call method __invoke\(\) on callable\.$#'
-			identifier: method.nonObject
-			count: 2
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
 			path: src/Chat/ChatOrchestrationService.php
 
 		-
@@ -325,33 +235,9 @@ parameters:
 			path: src/Chat/ChatOrchestrationService.php
 
 		-
-			message: '#^Parameter \#1 \$string of function mb_substr expects string, string\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Chat/ChatOrchestrationService.php
-
-		-
-			message: '#^Parameter \#1 \$workflowId of method App\\Workflow\\WorkflowExecutionService\:\:execute\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Chat/ChatOrchestrationService.php
-
-		-
-			message: '#^Parameter \$content of class App\\AiProvider\\Client\\ChatMessage constructor expects string, string\|false given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Chat/ChatOrchestrationService.php
-
-		-
-			message: '#^Possibly invalid array key type mixed\.$#'
-			identifier: offsetAccess.invalidOffset
-			count: 2
-			path: src/Chat/ChatOrchestrationService.php
-
-		-
 			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
 			identifier: ternary.shortNotAllowed
-			count: 4
+			count: 5
 			path: src/Chat/ChatOrchestrationService.php
 
 		-
@@ -361,82 +247,16 @@ parameters:
 			path: src/Chat/ChatService.php
 
 		-
-			message: '#^Parameter \#1 \$conversationId of method App\\Chat\\ChatService\:\:historyAsChatMessages\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Chat/ChatService.php
-
-		-
-			message: '#^Parameter \#1 \$conversationId of method App\\Chat\\ConversationHistoryCache\:\:invalidate\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Chat/ChatService.php
-
-		-
-			message: '#^Parameter \$role of class App\\AiProvider\\Client\\ChatMessage constructor expects ''assistant''\|''system''\|''tool''\|''user'', string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Chat/ConversationHistoryCache.php
-
-		-
 			message: '#^Only booleans are allowed in a ternary operator condition, App\\Entity\\AiAgent\|null given\.$#'
 			identifier: ternary.condNotBoolean
 			count: 1
 			path: src/Chat/RagContextService.php
 
 		-
-			message: '#^Parameter \#1 \$agentId of method App\\KnowledgeBase\\CollectionService\:\:getQdrantCollectionNameForAgent\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Chat/RagContextService.php
-
-		-
-			message: '#^Only booleans are allowed in an if condition, App\\Entity\\User\|null given\.$#'
-			identifier: if.condNotBoolean
-			count: 1
-			path: src/Command/CreateUserCommand.php
-
-		-
-			message: '#^Parameter \#1 \$email of method App\\Entity\\User\:\:setEmail\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Command/CreateUserCommand.php
-
-		-
-			message: '#^Parameter \#1 \$roles of method App\\Entity\\User\:\:setRoles\(\) expects array\<int, string\>, array\<int, mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Command/CreateUserCommand.php
-
-		-
-			message: '#^Parameter \#2 \$plainPassword of method Symfony\\Component\\PasswordHasher\\Hasher\\UserPasswordHasherInterface\:\:hashPassword\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Command/CreateUserCommand.php
-
-		-
-			message: '#^Parameter \#2 \.\.\.\$values of function sprintf expects bool\|float\|int\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/Command/CreateUserCommand.php
-
-		-
-			message: '#^Parameter \#3 \.\.\.\$values of function sprintf expects bool\|float\|int\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Command/CreateUserCommand.php
-
-		-
 			message: '#^Casting to int something that''s already int\<0, max\>\.$#'
 			identifier: cast.useless
 			count: 1
 			path: src/Controller/Admin/AuditLogController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/ConversationMessagesController.php
 
 		-
 			message: '#^Cannot access offset ''agent_id'' on mixed\.$#'
@@ -461,12 +281,6 @@ parameters:
 			identifier: cast.string
 			count: 1
 			path: src/Controller/ConversationMessagesController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/ConversationSourcesController.php
 
 		-
 			message: '#^Cannot access offset ''document_id'' on mixed\.$#'
@@ -493,12 +307,6 @@ parameters:
 			path: src/Controller/ConversationSourcesController.php
 
 		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/ConversationStreamController.php
-
-		-
 			message: '#^Cannot access offset ''agent_id'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
@@ -523,52 +331,10 @@ parameters:
 			path: src/Controller/ConversationStreamController.php
 
 		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/DocumentChunksController.php
-
-		-
-			message: '#^Parameter \#1 \$documentId of method App\\Repository\\DocumentChunkRepository\:\:findForDocument\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Controller/DocumentChunksController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/DocumentDeleteController.php
-
-		-
 			message: '#^Only booleans are allowed in an if condition, string\|null given\.$#'
 			identifier: if.condNotBoolean
 			count: 1
 			path: src/Controller/DocumentDeleteController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/DocumentProcessController.php
-
-		-
-			message: '#^Parameter \#1 \$documentId of class App\\Message\\IndexDocumentMessage constructor expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Controller/DocumentProcessController.php
-
-		-
-			message: '#^Parameter \#1 \$documentId of method App\\Repository\\DocumentChunkRepository\:\:deleteForDocument\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Controller/DocumentProcessController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/DocumentUploadController.php
 
 		-
 			message: '#^Only booleans are allowed in a ternary operator condition, bool\|float\|int\|string\|null given\.$#'
@@ -577,28 +343,10 @@ parameters:
 			path: src/Controller/DocumentUploadController.php
 
 		-
-			message: '#^Parameter \#1 \$documentId of class App\\Message\\IndexDocumentMessage constructor expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Controller/DocumentUploadController.php
-
-		-
 			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
 			identifier: ternary.shortNotAllowed
 			count: 1
 			path: src/Controller/DocumentUploadController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/EmbeddingStatusController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/FollowUpQuestionsController.php
 
 		-
 			message: '#^Cannot access offset ''answer'' on mixed\.$#'
@@ -619,36 +367,6 @@ parameters:
 			path: src/Controller/FollowUpQuestionsController.php
 
 		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/HealthController.php
-
-		-
-			message: '#^Call to method ping\(\) on an unknown class Predis\\ClientInterface\.$#'
-			identifier: class.notFound
-			count: 1
-			path: src/Controller/HealthController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/LlmStatusController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/MessageFeedbackController.php
-
-		-
-			message: '#^Cannot cast mixed to int\.$#'
-			identifier: cast.int
-			count: 1
-			path: src/Controller/MessageFeedbackController.php
-
-		-
 			message: '#^Only booleans are allowed in a negated boolean, App\\Entity\\Message\|null given\.$#'
 			identifier: booleanNot.exprNotBoolean
 			count: 1
@@ -659,18 +377,6 @@ parameters:
 			identifier: booleanNot.exprNotBoolean
 			count: 1
 			path: src/Controller/MessageFeedbackController.php
-
-		-
-			message: '#^Parameter \#2 \$array of function array_key_exists expects array, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Controller/MessageFeedbackController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/QuickSendController.php
 
 		-
 			message: '#^Cannot access offset ''agent_id'' on mixed\.$#'
@@ -697,18 +403,6 @@ parameters:
 			path: src/Controller/QuickSendController.php
 
 		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/TestAiProviderConfigController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/VectorSearchController.php
-
-		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
 			count: 2
@@ -727,57 +421,9 @@ parameters:
 			path: src/Controller/VectorSearchController.php
 
 		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/VectorStatsController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/WorkflowSoftDeleteController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/WorkflowStepsController.php
-
-		-
-			message: '#^Cannot access offset ''configuration'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Controller/WorkflowStepsController.php
-
-		-
-			message: '#^Cannot access offset ''is_active'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Controller/WorkflowStepsController.php
-
-		-
-			message: '#^Cannot access offset ''name'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Controller/WorkflowStepsController.php
-
-		-
-			message: '#^Cannot access offset ''order'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Controller/WorkflowStepsController.php
-
-		-
-			message: '#^Cannot access offset ''step_type'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Controller/WorkflowStepsController.php
-
-		-
 			message: '#^Cannot cast mixed to string\.$#'
 			identifier: cast.string
-			count: 1
+			count: 2
 			path: src/Controller/WorkflowStepsController.php
 
 		-
@@ -787,94 +433,10 @@ parameters:
 			path: src/Controller/WorkflowStepsController.php
 
 		-
-			message: '#^Parameter \#1 \$isActive of method App\\Entity\\WorkflowStep\:\:setIsActive\(\) expects bool, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Controller/WorkflowStepsController.php
-
-		-
-			message: '#^Parameter \#1 \$value of static method App\\Enum\\WorkflowStepType\:\:tryFrom\(\) expects int\|string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Controller/WorkflowStepsController.php
-
-		-
-			message: '#^Parameter \#1 \$workflowId of method App\\Repository\\WorkflowStepRepository\:\:findActiveOrdered\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Controller/WorkflowStepsController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/WorkflowTestController.php
-
-		-
-			message: '#^Cannot access offset ''input_data'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Controller/WorkflowTestController.php
-
-		-
-			message: '#^Parameter \#1 \$workflowExecutionId of class App\\Message\\ExecuteWorkflowMessage constructor expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Controller/WorkflowTestController.php
-
-		-
-			message: '#^Parameter \#1 \$workflowId of method App\\Workflow\\WorkflowExecutionService\:\:createPendingExecution\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Controller/WorkflowTestController.php
-
-		-
-			message: '#^Attribute class Symfony\\Bundle\\FrameworkBundle\\Controller\\AsController does not exist\.$#'
-			identifier: attribute.notFound
-			count: 1
-			path: src/Controller/WorkflowTriggerController.php
-
-		-
-			message: '#^Cannot access offset ''input_data'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Controller/WorkflowTriggerController.php
-
-		-
-			message: '#^Parameter \#1 \$workflowExecutionId of class App\\Message\\ExecuteWorkflowMessage constructor expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Controller/WorkflowTriggerController.php
-
-		-
-			message: '#^Parameter \#1 \$workflowId of method App\\Workflow\\WorkflowExecutionService\:\:createPendingExecution\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Controller/WorkflowTriggerController.php
-
-		-
 			message: '#^Only booleans are allowed in an if condition, App\\Entity\\VectorIndex\|null given\.$#'
 			identifier: if.condNotBoolean
 			count: 1
 			path: src/Entity/Collection.php
-
-		-
-			message: '#^Method App\\Entity\\User\:\:getUserIdentifier\(\) should return non\-empty\-string but returns string\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Entity/User.php
-
-		-
-			message: '#^Cannot cast mixed to string\.$#'
-			identifier: cast.string
-			count: 1
-			path: src/EventListener/AuditLogListener.php
-
-		-
-			message: '#^Parameter \$action of class App\\Entity\\AuditLog constructor expects string, string\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/EventListener/AuditLogListener.php
 
 		-
 			message: '#^Variable method call on object\.$#'
@@ -961,18 +523,6 @@ parameters:
 			path: src/Form/UserType.php
 
 		-
-			message: '#^Only booleans are allowed in a negated boolean, mixed given\.$#'
-			identifier: booleanNot.exprNotBoolean
-			count: 1
-			path: src/Form/UserType.php
-
-		-
-			message: '#^Parameter \#2 \$plainPassword of method Symfony\\Component\\PasswordHasher\\Hasher\\UserPasswordHasherInterface\:\:hashPassword\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Form/UserType.php
-
-		-
 			message: '#^Class App\\Form\\VectorIndexType extends generic class Symfony\\Component\\Form\\AbstractType but does not specify its types\: TData$#'
 			identifier: missingType.generics
 			count: 1
@@ -1021,52 +571,10 @@ parameters:
 			path: src/KnowledgeBase/DocumentIndexingService.php
 
 		-
-			message: '#^Parameter \#1 \$documentId of method App\\Repository\\DocumentChunkRepository\:\:deleteForDocument\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/KnowledgeBase/DocumentIndexingService.php
-
-		-
-			message: '#^Parameter \#1 \$documentId of method App\\Repository\\DocumentChunkRepository\:\:findForDocument\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/KnowledgeBase/DocumentIndexingService.php
-
-		-
-			message: '#^Parameter \#1 \$documentId of static method App\\VectorConnector\\VectorSearchService\:\:generatePointId\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/KnowledgeBase/DocumentIndexingService.php
-
-		-
-			message: '#^Parameter \$documentId of method App\\VectorConnector\\VectorSearchService\:\:addDocumentChunks\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/KnowledgeBase/DocumentIndexingService.php
-
-		-
 			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
 			identifier: ternary.shortNotAllowed
 			count: 1
 			path: src/KnowledgeBase/DocumentIndexingService.php
-
-		-
-			message: '#^Using nullsafe method call on non\-nullable type App\\Entity\\DocumentChunk\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: src/KnowledgeBase/DocumentIndexingService.php
-
-		-
-			message: '#^Method App\\KnowledgeBase\\DocumentProcessorService\:\:extractJsonText\(\) should return string but returns string\|false\.$#'
-			identifier: return.type
-			count: 1
-			path: src/KnowledgeBase/DocumentProcessorService.php
-
-		-
-			message: '#^Method App\\KnowledgeBase\\DocumentProcessorService\:\:extractTxtText\(\) should return string but returns string\|false\.$#'
-			identifier: return.type
-			count: 1
-			path: src/KnowledgeBase/DocumentProcessorService.php
 
 		-
 			message: '#^Only booleans are allowed in &&, string\|null given on the left side\.$#'
@@ -1075,166 +583,10 @@ parameters:
 			path: src/KnowledgeBase/DocumentProcessorService.php
 
 		-
-			message: '#^Parameter \#1 \$json of function json_decode expects string, string\|false given\.$#'
-			identifier: argument.type
+			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
+			identifier: ternary.shortNotAllowed
 			count: 1
 			path: src/KnowledgeBase/DocumentProcessorService.php
-
-		-
-			message: '#^Parameter \#1 \$string of function strip_tags expects string, string\|false given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/KnowledgeBase/DocumentProcessorService.php
-
-		-
-			message: '#^Parameter \#1 \$string of function trim expects string, string\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/KnowledgeBase/DocumentProcessorService.php
-
-		-
-			message: '#^Parameter \#3 \$subject of function preg_replace expects array\<float\|int\|string\>\|string, string\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/KnowledgeBase/DocumentProcessorService.php
-
-		-
-			message: '#^Class App\\Repository\\AiAgentRepository implements generic interface Sylius\\Resource\\Doctrine\\Persistence\\RepositoryInterface but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Repository/AiAgentRepository.php
-
-		-
-			message: '#^Class Doctrine\\Bundle\\DoctrineBundle\\Repository\\ServiceEntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\AiAgent but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 1
-			path: src/Repository/AiAgentRepository.php
-
-		-
-			message: '#^Class Doctrine\\ORM\\EntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\AiAgent but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 2
-			path: src/Repository/AiAgentRepository.php
-
-		-
-			message: '#^Method App\\Repository\\AiAgentRepository\:\:findActive\(\) should return array\<App\\Entity\\AiAgent\> but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Repository/AiAgentRepository.php
-
-		-
-			message: '#^Class App\\Repository\\AiProviderConfigRepository implements generic interface Sylius\\Resource\\Doctrine\\Persistence\\RepositoryInterface but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Repository/AiProviderConfigRepository.php
-
-		-
-			message: '#^Class Doctrine\\Bundle\\DoctrineBundle\\Repository\\ServiceEntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\AiProviderConfig but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 1
-			path: src/Repository/AiProviderConfigRepository.php
-
-		-
-			message: '#^Class Doctrine\\ORM\\EntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\AiProviderConfig but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 2
-			path: src/Repository/AiProviderConfigRepository.php
-
-		-
-			message: '#^Method App\\Repository\\AiProviderConfigRepository\:\:getActiveForUsage\(\) should return App\\Entity\\AiProviderConfig\|null but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Repository/AiProviderConfigRepository.php
-
-		-
-			message: '#^Method App\\Repository\\AiProviderConfigRepository\:\:getAllActiveForUsage\(\) should return array\<App\\Entity\\AiProviderConfig\> but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Repository/AiProviderConfigRepository.php
-
-		-
-			message: '#^Class App\\Repository\\CollectionRepository implements generic interface Sylius\\Resource\\Doctrine\\Persistence\\RepositoryInterface but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Repository/CollectionRepository.php
-
-		-
-			message: '#^Class Doctrine\\Bundle\\DoctrineBundle\\Repository\\ServiceEntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\Collection but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 1
-			path: src/Repository/CollectionRepository.php
-
-		-
-			message: '#^Class Doctrine\\ORM\\EntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\Collection but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 2
-			path: src/Repository/CollectionRepository.php
-
-		-
-			message: '#^Class App\\Repository\\ConversationRepository implements generic interface Sylius\\Resource\\Doctrine\\Persistence\\RepositoryInterface but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Repository/ConversationRepository.php
-
-		-
-			message: '#^Class Doctrine\\Bundle\\DoctrineBundle\\Repository\\ServiceEntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\Conversation but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 1
-			path: src/Repository/ConversationRepository.php
-
-		-
-			message: '#^Class Doctrine\\ORM\\EntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\Conversation but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 2
-			path: src/Repository/ConversationRepository.php
-
-		-
-			message: '#^Class App\\Repository\\DocumentCategoryRepository implements generic interface Sylius\\Resource\\Doctrine\\Persistence\\RepositoryInterface but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Repository/DocumentCategoryRepository.php
-
-		-
-			message: '#^Class Doctrine\\Bundle\\DoctrineBundle\\Repository\\ServiceEntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\DocumentCategory but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 1
-			path: src/Repository/DocumentCategoryRepository.php
-
-		-
-			message: '#^Class Doctrine\\ORM\\EntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\DocumentCategory but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 2
-			path: src/Repository/DocumentCategoryRepository.php
-
-		-
-			message: '#^Method App\\Repository\\DocumentChunkRepository\:\:findForDocument\(\) should return array\<App\\Entity\\DocumentChunk\> but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Repository/DocumentChunkRepository.php
-
-		-
-			message: '#^Class App\\Repository\\DocumentRepository implements generic interface Sylius\\Resource\\Doctrine\\Persistence\\RepositoryInterface but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Repository/DocumentRepository.php
-
-		-
-			message: '#^Class Doctrine\\Bundle\\DoctrineBundle\\Repository\\ServiceEntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\Document but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 1
-			path: src/Repository/DocumentRepository.php
-
-		-
-			message: '#^Class Doctrine\\ORM\\EntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\Document but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 2
-			path: src/Repository/DocumentRepository.php
-
-		-
-			message: '#^Method App\\Repository\\DocumentRepository\:\:search\(\) should return array\<App\\Entity\\Document\> but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Repository/DocumentRepository.php
 
 		-
 			message: '#^Only booleans are allowed in an if condition, int\|null given\.$#'
@@ -1249,156 +601,6 @@ parameters:
 			path: src/Repository/DocumentRepository.php
 
 		-
-			message: '#^Class App\\Repository\\FaqRepository implements generic interface Sylius\\Resource\\Doctrine\\Persistence\\RepositoryInterface but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Repository/FaqRepository.php
-
-		-
-			message: '#^Class Doctrine\\Bundle\\DoctrineBundle\\Repository\\ServiceEntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\Faq but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 1
-			path: src/Repository/FaqRepository.php
-
-		-
-			message: '#^Class Doctrine\\ORM\\EntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\Faq but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 2
-			path: src/Repository/FaqRepository.php
-
-		-
-			message: '#^Class App\\Repository\\MessageRepository implements generic interface Sylius\\Resource\\Doctrine\\Persistence\\RepositoryInterface but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Repository/MessageRepository.php
-
-		-
-			message: '#^Class Doctrine\\Bundle\\DoctrineBundle\\Repository\\ServiceEntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\Message but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 1
-			path: src/Repository/MessageRepository.php
-
-		-
-			message: '#^Class Doctrine\\ORM\\EntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\Message but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 2
-			path: src/Repository/MessageRepository.php
-
-		-
-			message: '#^Method App\\Repository\\MessageRepository\:\:recentHistory\(\) should return array\<App\\Entity\\Message\> but returns array\<mixed, mixed\>\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Repository/MessageRepository.php
-
-		-
-			message: '#^Parameter \#1 \$array of function array_reverse expects array, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Repository/MessageRepository.php
-
-		-
-			message: '#^Class App\\Repository\\SearchQueryRepository implements generic interface Sylius\\Resource\\Doctrine\\Persistence\\RepositoryInterface but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Repository/SearchQueryRepository.php
-
-		-
-			message: '#^Class Doctrine\\Bundle\\DoctrineBundle\\Repository\\ServiceEntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\SearchQuery but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 1
-			path: src/Repository/SearchQueryRepository.php
-
-		-
-			message: '#^Class Doctrine\\ORM\\EntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\SearchQuery but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 2
-			path: src/Repository/SearchQueryRepository.php
-
-		-
-			message: '#^Method App\\Repository\\SearchQueryRepository\:\:findRecent\(\) should return array\<App\\Entity\\SearchQuery\> but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Repository/SearchQueryRepository.php
-
-		-
-			message: '#^Class App\\Repository\\UserRepository implements generic interface Sylius\\Resource\\Doctrine\\Persistence\\RepositoryInterface but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Repository/UserRepository.php
-
-		-
-			message: '#^Class Doctrine\\Bundle\\DoctrineBundle\\Repository\\ServiceEntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\User but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 1
-			path: src/Repository/UserRepository.php
-
-		-
-			message: '#^Class Doctrine\\ORM\\EntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\User but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 2
-			path: src/Repository/UserRepository.php
-
-		-
-			message: '#^Class App\\Repository\\VectorIndexRepository implements generic interface Sylius\\Resource\\Doctrine\\Persistence\\RepositoryInterface but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Repository/VectorIndexRepository.php
-
-		-
-			message: '#^Class Doctrine\\Bundle\\DoctrineBundle\\Repository\\ServiceEntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\VectorIndex but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 1
-			path: src/Repository/VectorIndexRepository.php
-
-		-
-			message: '#^Class Doctrine\\ORM\\EntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\VectorIndex but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 2
-			path: src/Repository/VectorIndexRepository.php
-
-		-
-			message: '#^Class App\\Repository\\WorkflowExecutionRepository implements generic interface Sylius\\Resource\\Doctrine\\Persistence\\RepositoryInterface but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Repository/WorkflowExecutionRepository.php
-
-		-
-			message: '#^Class Doctrine\\Bundle\\DoctrineBundle\\Repository\\ServiceEntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\WorkflowExecution but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 1
-			path: src/Repository/WorkflowExecutionRepository.php
-
-		-
-			message: '#^Class Doctrine\\ORM\\EntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\WorkflowExecution but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 2
-			path: src/Repository/WorkflowExecutionRepository.php
-
-		-
-			message: '#^Class App\\Repository\\WorkflowRepository implements generic interface Sylius\\Resource\\Doctrine\\Persistence\\RepositoryInterface but does not specify its types\: T$#'
-			identifier: missingType.generics
-			count: 1
-			path: src/Repository/WorkflowRepository.php
-
-		-
-			message: '#^Class Doctrine\\Bundle\\DoctrineBundle\\Repository\\ServiceEntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\Workflow but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 1
-			path: src/Repository/WorkflowRepository.php
-
-		-
-			message: '#^Class Doctrine\\ORM\\EntityRepository specifies template type T of interface Doctrine\\Persistence\\ObjectRepository as App\\Entity\\Workflow but it''s already specified as Sylius\\Resource\\Model\\ResourceInterface\.$#'
-			identifier: generics.interfaceConflict
-			count: 2
-			path: src/Repository/WorkflowRepository.php
-
-		-
-			message: '#^Method App\\Repository\\WorkflowStepRepository\:\:findActiveOrdered\(\) should return array\<App\\Entity\\WorkflowStep\> but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: src/Repository/WorkflowStepRepository.php
-
-		-
 			message: '#^Class App\\Security\\Voter\\OwnershipVoter extends generic class Symfony\\Component\\Security\\Core\\Authorization\\Voter\\Voter but does not specify its types\: TAttribute, TSubject$#'
 			identifier: missingType.generics
 			count: 1
@@ -1411,81 +613,15 @@ parameters:
 			path: src/Twig/AdminExtension.php
 
 		-
-			message: '#^Cannot access offset ''field'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Twig/AdminExtension.php
-
-		-
-			message: '#^Cannot access offset ''operator'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Twig/AdminExtension.php
-
-		-
-			message: '#^Cannot access offset ''value'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Twig/AdminExtension.php
-
-		-
-			message: '#^Cannot cast mixed to int\.$#'
-			identifier: cast.int
-			count: 1
-			path: src/Twig/AdminExtension.php
-
-		-
 			message: '#^Cannot cast mixed to string\.$#'
 			identifier: cast.string
 			count: 1
 			path: src/Twig/AdminExtension.php
 
 		-
-			message: '#^Match expression does not handle remaining value\: App\\Enum\\WorkflowStepType\:\:SetConversation$#'
-			identifier: match.unhandled
-			count: 2
-			path: src/Twig/AdminExtension.php
-
-		-
-			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(mixed\)\: mixed\)\|null, Closure\(array\)\: non\-falsy\-string given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Twig/AdminExtension.php
-
-		-
-			message: '#^Parameter \#1 \$string of function mb_strtoupper expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/Twig/AdminExtension.php
-
-		-
-			message: '#^Parameter \#2 \$array of function array_map expects array, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Twig/AdminExtension.php
-
-		-
-			message: '#^Parameter \#2 \.\.\.\$values of function sprintf expects bool\|float\|int\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 4
-			path: src/Twig/AdminExtension.php
-
-		-
-			message: '#^Parameter \#3 \.\.\.\$values of function sprintf expects bool\|float\|int\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 5
-			path: src/Twig/AdminExtension.php
-
-		-
-			message: '#^Parameter \#4 \.\.\.\$values of function sprintf expects bool\|float\|int\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/Twig/AdminExtension.php
-
-		-
 			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
 			identifier: ternary.shortNotAllowed
-			count: 1
+			count: 2
 			path: src/Twig/AdminExtension.php
 
 		-
@@ -1493,18 +629,6 @@ parameters:
 			identifier: method.dynamicName
 			count: 1
 			path: src/Twig/AdminExtension.php
-
-		-
-			message: '#^Cannot cast mixed to int\.$#'
-			identifier: cast.int
-			count: 1
-			path: src/VectorConnector/DocumentAnalysisService.php
-
-		-
-			message: '#^Parameter \#1 \$metadata of method App\\VectorConnector\\DocumentAnalysisService\:\:validateMetadata\(\) expects array\<string, mixed\>, array\<mixed, mixed\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/VectorConnector/DocumentAnalysisService.php
 
 		-
 			message: '#^Only booleans are allowed in an if condition, array\<string, mixed\>\|null given\.$#'
@@ -1525,12 +649,6 @@ parameters:
 			path: src/VectorConnector/VectorSearchService.php
 
 		-
-			message: '#^Method App\\VectorConnector\\VectorSearchService\:\:lexicalSearch\(\) should return array\<int, array\{document_id\: int, chunk_index\: int, content\: string, document_title\: string, score\: float\}\> but returns list\<array\<string, mixed\>\>\.$#'
-			identifier: return.type
-			count: 1
-			path: src/VectorConnector/VectorSearchService.php
-
-		-
 			message: '#^Only booleans are allowed in a negated boolean, App\\Entity\\VectorIndex\|null given\.$#'
 			identifier: booleanNot.exprNotBoolean
 			count: 1
@@ -1543,70 +661,10 @@ parameters:
 			path: src/VectorConnector/VectorSearchService.php
 
 		-
-			message: '#^Parameter \#3 \$categoryId of method App\\VectorConnector\\VectorSearchService\:\:lexicalSearch\(\) expects int\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/VectorConnector/VectorSearchService.php
-
-		-
-			message: '#^Part \$chunkIndex \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: src/VectorConnector/VectorSearchService.php
-
-		-
-			message: '#^Part \$documentId \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: src/VectorConnector/VectorSearchService.php
-
-		-
 			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
 			identifier: ternary.shortNotAllowed
 			count: 1
 			path: src/VectorConnector/VectorSearchService.php
-
-		-
-			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 2
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Binary operation "\+" between mixed and mixed results in an error\.$#'
-			identifier: binaryOp.invalid
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Cannot access offset ''field'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Cannot access offset ''operation'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Cannot access offset ''operator'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Cannot access offset ''value'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 2
-			path: src/Workflow/WorkflowExecutionService.php
 
 		-
 			message: '#^Cannot cast mixed to float\.$#'
@@ -1615,15 +673,9 @@ parameters:
 			path: src/Workflow/WorkflowExecutionService.php
 
 		-
-			message: '#^Cannot cast mixed to int\.$#'
-			identifier: cast.int
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
 			message: '#^Cannot cast mixed to string\.$#'
 			identifier: cast.string
-			count: 5
+			count: 3
 			path: src/Workflow/WorkflowExecutionService.php
 
 		-
@@ -1635,18 +687,6 @@ parameters:
 		-
 			message: '#^Loose comparison via "\=\=" is not allowed\.$#'
 			identifier: equal.notAllowed
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Method App\\Workflow\\WorkflowExecutionService\:\:handleDelay\(\) has parameter \$inputData with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Only booleans are allowed in &&, int\|false given on the right side\.$#'
-			identifier: booleanAnd.rightNotBoolean
 			count: 1
 			path: src/Workflow/WorkflowExecutionService.php
 
@@ -1671,7 +711,7 @@ parameters:
 		-
 			message: '#^Only booleans are allowed in a negated boolean, mixed given\.$#'
 			identifier: booleanNot.exprNotBoolean
-			count: 8
+			count: 5
 			path: src/Workflow/WorkflowExecutionService.php
 
 		-
@@ -1681,13 +721,7 @@ parameters:
 			path: src/Workflow/WorkflowExecutionService.php
 
 		-
-			message: '#^Only booleans are allowed in a ternary operator condition, array\<string, mixed\> given\.$#'
-			identifier: ternary.condNotBoolean
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Only booleans are allowed in a ternary operator condition, mixed given\.$#'
+			message: '#^Only booleans are allowed in a ternary operator condition, array\<string, bool\|float\|int\|string\> given\.$#'
 			identifier: ternary.condNotBoolean
 			count: 1
 			path: src/Workflow/WorkflowExecutionService.php
@@ -1699,112 +733,10 @@ parameters:
 			path: src/Workflow/WorkflowExecutionService.php
 
 		-
-			message: '#^Only booleans are allowed in an if condition, array\<string, mixed\> given\.$#'
+			message: '#^Only booleans are allowed in an if condition, array\<string, bool\|float\|int\|string\> given\.$#'
 			identifier: if.condNotBoolean
 			count: 1
 			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Parameter \#1 \$action of method App\\Workflow\\WorkflowExecutionService\:\:executeAction\(\) expects array\<string, mixed\>, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Parameter \#1 \$body of method Symfony\\Component\\Mime\\Email\:\:text\(\) expects resource\|string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Parameter \#1 \$errorMessage of method App\\Entity\\WorkflowExecution\:\:setErrorMessage\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Parameter \#1 \$headers of method App\\Workflow\\WorkflowExecutionService\:\:resolveEnvHeaders\(\) expects array\<string, string\>, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Parameter \#1 \$string of function mb_strtoupper expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Parameter \#1 \$subject of method Symfony\\Component\\Mime\\Email\:\:subject\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Parameter \#1 \$workflowId of method App\\Repository\\WorkflowStepRepository\:\:findActiveOrdered\(\) expects int, int\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Parameter \#1 \.\.\.\$addresses of method Symfony\\Component\\Mime\\Email\:\:to\(\) expects string\|Symfony\\Component\\Mime\\Address, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Parameter \#2 \$operation of method App\\Workflow\\WorkflowExecutionService\:\:applyFieldOperation\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Parameter \#2 \$url of method Symfony\\Contracts\\HttpClient\\HttpClientInterface\:\:request\(\) expects string, mixed given\.$#'
-			identifier: argument.type
-			count: 3
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Parameter \#3 \$field of method App\\Workflow\\WorkflowExecutionService\:\:applyFieldOperation\(\) expects string\|null, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Part \$toEmail \(mixed\) of encapsed string cannot be cast to string\.$#'
-			identifier: encapsedStringPart.nonString
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Possibly invalid array key type mixed\.$#'
-			identifier: offsetAccess.invalidOffset
-			count: 5
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
-			identifier: ternary.shortNotAllowed
-			count: 1
-			path: src/Workflow/WorkflowExecutionService.php
-
-		-
-			message: '#^Method App\\Tests\\Chat\\ChatOrchestrationServiceTest\:\:orchestrate\(\) should return App\\Chat\\ChatReplyResult but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Chat/ChatOrchestrationServiceTest.php
-
-		-
-			message: '#^Method App\\Tests\\Chat\\FollowUpQuestionsServiceTest\:\:parseQuestions\(\) return type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: tests/Chat/FollowUpQuestionsServiceTest.php
-
-		-
-			message: '#^Method App\\Tests\\Chat\\FollowUpQuestionsServiceTest\:\:parseQuestions\(\) should return array but returns mixed\.$#'
-			identifier: return.type
-			count: 1
-			path: tests/Chat/FollowUpQuestionsServiceTest.php
 
 		-
 			message: '#^Cannot access offset ''sources'' on mixed\.$#'
@@ -1819,14 +751,8 @@ parameters:
 			path: tests/Chat/MessageSerializerTest.php
 
 		-
-			message: '#^Offset ''message'' might not exist on array\{status\: ''error'', message\?\: string\}\.$#'
-			identifier: offsetAccess.notFound
-			count: 1
-			path: tests/VectorConnector/QdrantClientTest.php
-
-		-
-			message: '#^Parameter \#1 \$body of class Symfony\\Component\\HttpClient\\Response\\MockResponse constructor expects iterable\<string\|Throwable\>\|string, string\|false given\.$#'
-			identifier: argument.type
+			message: '#^Short ternary operator is not allowed\. Use null coalesce operator if applicable or consider using long ternary\.$#'
+			identifier: ternary.shortNotAllowed
 			count: 1
 			path: tests/VectorConnector/QdrantClientTest.php
 
@@ -1863,7 +789,7 @@ parameters:
 		-
 			message: '#^Cannot access offset 0 on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
-			count: 6
+			count: 1
 			path: tests/VectorConnector/VectorSearchServiceTest.php
 
 		-
@@ -1891,19 +817,7 @@ parameters:
 			path: tests/VectorConnector/VectorSearchServiceTest.php
 
 		-
-			message: '#^Parameter \#2 \$haystack of static method PHPUnit\\Framework\\Assert\:\:assertCount\(\) expects Countable\|iterable, mixed given\.$#'
-			identifier: argument.type
-			count: 3
-			path: tests/VectorConnector/VectorSearchServiceTest.php
-
-		-
 			message: '#^Cannot access offset ''bonus'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
-			path: tests/Workflow/WorkflowExecutionServiceTest.php
-
-		-
-			message: '#^Cannot access offset ''count'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 1
 			path: tests/Workflow/WorkflowExecutionServiceTest.php
@@ -1912,12 +826,6 @@ parameters:
 			message: '#^Cannot access offset ''fields'' on mixed\.$#'
 			identifier: offsetAccess.nonOffsetAccessible
 			count: 2
-			path: tests/Workflow/WorkflowExecutionServiceTest.php
-
-		-
-			message: '#^Cannot access offset ''greeting'' on mixed\.$#'
-			identifier: offsetAccess.nonOffsetAccessible
-			count: 1
 			path: tests/Workflow/WorkflowExecutionServiceTest.php
 
 		-
@@ -1945,12 +853,6 @@ parameters:
 			path: tests/Workflow/WorkflowExecutionServiceTest.php
 
 		-
-			message: '#^Parameter \#2 \$array of static method PHPUnit\\Framework\\Assert\:\:assertArrayNotHasKey\(\) expects array\<mixed\>\|ArrayAccess\<\(int\|string\), covariant mixed\>, mixed given\.$#'
-			identifier: argument.type
-			count: 2
-			path: tests/Workflow/WorkflowExecutionServiceTest.php
-
-		-
 			message: '#^Call to function method_exists\(\) with ''Symfony\\\\Component\\\\Dotenv\\\\Dotenv'' and ''bootEnv'' will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
@@ -1961,3 +863,9 @@ parameters:
 			identifier: if.condNotBoolean
 			count: 1
 			path: tests/bootstrap.php
+
+		-
+			message: '#^Call to function method_exists\(\) with ''Symfony\\\\Component\\\\Dotenv\\\\Dotenv'' and ''bootEnv'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: tests/object-manager.php

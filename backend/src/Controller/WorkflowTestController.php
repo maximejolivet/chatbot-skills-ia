@@ -6,7 +6,7 @@ use App\Entity\Workflow;
 use App\Message\ExecuteWorkflowMessage;
 use App\Workflow\WorkflowExecutionSerializer;
 use App\Workflow\WorkflowExecutionService;
-use Symfony\Bundle\FrameworkBundle\Controller\AsController;
+use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -29,11 +29,14 @@ final readonly class WorkflowTestController
     #[IsGranted('ROLE_ADMIN')]
     public function __invoke(Workflow $data, Request $request): JsonResponse
     {
-        $body = json_decode($request->getContent(), true) ?? [];
-        $inputData = is_array($body['input_data'] ?? null) ? $body['input_data'] : [];
+        $workflowId = $data->getId() ?? throw new \LogicException('Workflow must be persisted.');
 
-        $execution = $this->workflowExecutionService->createPendingExecution($data->getId(), $inputData);
-        $this->messageBus->dispatch(new ExecuteWorkflowMessage($execution->getId()));
+        $body = json_decode($request->getContent(), true) ?? [];
+        $inputData = is_array($body) && is_array($body['input_data'] ?? null) ? $body['input_data'] : [];
+
+        $execution = $this->workflowExecutionService->createPendingExecution($workflowId, $inputData);
+        $executionId = $execution->getId() ?? throw new \LogicException('WorkflowExecution must be persisted.');
+        $this->messageBus->dispatch(new ExecuteWorkflowMessage($executionId));
 
         return new JsonResponse(WorkflowExecutionSerializer::serialize($execution), 202);
     }

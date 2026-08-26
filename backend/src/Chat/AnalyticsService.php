@@ -7,6 +7,7 @@ namespace App\Chat;
 use App\Entity\Conversation;
 use App\Entity\Message;
 use App\Entity\SearchQuery;
+use App\Enum\MessageFeedback;
 use App\Enum\MessageRole;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -102,7 +103,11 @@ final readonly class AnalyticsService
 
         $stats = ['positive' => 0, 'negative' => 0, 'none' => 0];
         foreach ($rows as $row) {
-            $key = $row['feedback']?->value ?? 'none';
+            // PHPStan's Doctrine scalar-select type inference doesn't reflect
+            // that m.feedback is nullable here -- MessageFeedback::feedback
+            // really can be null (see its docblock), so this stays an
+            // explicit instanceof check rather than trusting that inference.
+            $key = $row['feedback'] instanceof MessageFeedback ? $row['feedback']->value : 'none';
             $stats[$key] = (int) $row['c'];
         }
 
@@ -152,6 +157,9 @@ final readonly class AnalyticsService
             ->from(SearchQuery::class, 's')
             ->getQuery()
             ->getSingleResult();
+        if (!\is_array($aggregate)) {
+            throw new \LogicException('Expected an aggregate result row.');
+        }
 
         $recent = $this->entityManager->createQueryBuilder()
             ->select('s')
@@ -162,9 +170,9 @@ final readonly class AnalyticsService
             ->getResult();
 
         return [
-            'total' => (int) $aggregate['total'],
-            'avg_execution_time' => (float) ($aggregate['avg_time'] ?? 0),
-            'avg_results_count' => (float) ($aggregate['avg_results'] ?? 0),
+            'total' => \is_numeric($aggregate['total'] ?? null) ? (int) $aggregate['total'] : 0,
+            'avg_execution_time' => \is_numeric($aggregate['avg_time'] ?? null) ? (float) $aggregate['avg_time'] : 0.0,
+            'avg_results_count' => \is_numeric($aggregate['avg_results'] ?? null) ? (float) $aggregate['avg_results'] : 0.0,
             'recent' => $recent,
         ];
     }

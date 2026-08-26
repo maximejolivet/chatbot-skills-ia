@@ -82,7 +82,7 @@ class User implements ResourceInterface, UserInterface, PasswordAuthenticatedUse
 
     public function getUserIdentifier(): string
     {
-        return $this->email;
+        return '' !== $this->email ? $this->email : throw new \LogicException('User has no email set.');
     }
 
     /**

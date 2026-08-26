@@ -4,7 +4,7 @@ namespace App\Controller;
 
 use App\AiProvider\ProviderSelectionService;
 use Psr\Log\LoggerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AsController;
+use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 #[AsController]

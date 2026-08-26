@@ -77,7 +77,7 @@ final readonly class AuditLogListener implements EventSubscriberInterface
     {
         // "app.<resource_type>.post_<action>" or "app.<resource_type>.pre_delete"
         [, $resourceType, $rawAction] = explode('.', $eventName, 3);
-        $action = preg_replace('/^(post_|pre_)/', '', $rawAction);
+        $action = preg_replace('/^(post_|pre_)/', '', $rawAction) ?? $rawAction;
 
         $subject = $event->getSubject();
         if (!\is_object($subject)) {
@@ -104,7 +104,7 @@ final readonly class AuditLogListener implements EventSubscriberInterface
 
         $id = $this->propertyAccessor->getValue($subject, 'id');
 
-        return null !== $id ? (string) $id : null;
+        return \is_scalar($id) ? (string) $id : null;
     }
 
     private function readLabel(object $subject): ?string

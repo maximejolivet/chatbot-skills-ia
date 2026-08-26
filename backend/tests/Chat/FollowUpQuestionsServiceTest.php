@@ -37,11 +37,20 @@ final class FollowUpQuestionsServiceTest extends TestCase
         return new FollowUpQuestionsService($providerSelection, $this->createStub(LoggerInterface::class));
     }
 
+    /**
+     * @return array<int, string>
+     */
     private function parseQuestions(string $text): array
     {
         $service = $this->service();
 
-        return new \ReflectionMethod($service, 'parseQuestions')->invoke($service, $text);
+        $result = new \ReflectionMethod($service, 'parseQuestions')->invoke($service, $text);
+        self::assertIsArray($result);
+
+        $questions = array_values(array_filter($result, 'is_string'));
+        self::assertSame($result, $questions, 'parseQuestions() must return a list of strings.');
+
+        return $questions;
     }
 
     public function testGenerateReturnsEmptyArrayForBlankUserMessage(): void

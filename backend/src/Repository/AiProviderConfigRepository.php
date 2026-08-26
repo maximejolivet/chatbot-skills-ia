@@ -11,6 +11,7 @@ use Sylius\Resource\Doctrine\Persistence\RepositoryInterface as SyliusRepository
 
 /**
  * @extends ServiceEntityRepository<AiProviderConfig>
+ * @implements SyliusRepositoryInterface<AiProviderConfig>
  */
 class AiProviderConfigRepository extends ServiceEntityRepository implements SyliusRepositoryInterface
 {
@@ -26,7 +27,7 @@ class AiProviderConfigRepository extends ServiceEntityRepository implements Syli
      */
     public function getActiveForUsage(AiProviderUsage $usage): ?AiProviderConfig
     {
-        return $this->createQueryBuilder('c')
+        $result = $this->createQueryBuilder('c')
             ->andWhere('c.usage = :usage')
             ->andWhere('c.isActive = true')
             ->setParameter('usage', $usage)
@@ -35,6 +36,8 @@ class AiProviderConfigRepository extends ServiceEntityRepository implements Syli
             ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
+
+        return $result instanceof AiProviderConfig ? $result : null;
     }
 
     /**

@@ -11,6 +11,7 @@ use Sylius\Resource\Model\ResourceInterface;
 
 /**
  * @extends ServiceEntityRepository<Workflow>
+ * @implements SyliusRepositoryInterface<Workflow>
  */
 class WorkflowRepository extends ServiceEntityRepository implements SyliusRepositoryInterface
 {

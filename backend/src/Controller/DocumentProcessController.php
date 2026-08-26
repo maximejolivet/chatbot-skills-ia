@@ -7,7 +7,7 @@ use App\Enum\DocumentStatus;
 use App\Message\IndexDocumentMessage;
 use App\Repository\DocumentChunkRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\AsController;
+use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -32,11 +32,13 @@ final readonly class DocumentProcessController
     #[IsGranted('ROLE_ADMIN')]
     public function __invoke(Document $data): JsonResponse
     {
-        $this->chunkRepository->deleteForDocument($data->getId());
+        $documentId = $data->getId() ?? throw new \LogicException('Document must be persisted.');
+
+        $this->chunkRepository->deleteForDocument($documentId);
         $data->setStatus(DocumentStatus::Pending);
         $this->entityManager->flush();
 
-        $this->messageBus->dispatch(new IndexDocumentMessage($data->getId()));
+        $this->messageBus->dispatch(new IndexDocumentMessage($documentId));
 
         return new JsonResponse(['status' => $data->getStatus()->value], 202);
     }

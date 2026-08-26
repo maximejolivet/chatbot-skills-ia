@@ -108,13 +108,15 @@ final class WorkflowExecutionService
         $status = WorkflowExecutionStatus::Completed;
         $errorMessage = '';
 
+        $workflowId = $execution->getWorkflow()->getId() ?? throw new \LogicException('Workflow must be persisted.');
+
         try {
-            foreach ($this->workflowStepRepository->findActiveOrdered($execution->getWorkflow()->getId()) as $step) {
+            foreach ($this->workflowStepRepository->findActiveOrdered($workflowId) as $step) {
                 $stepResult = $this->executeStep($step, $currentData, $execution->getConversation());
                 $results[] = $stepResult;
                 if ('failed' === $stepResult['status']) {
                     $status = WorkflowExecutionStatus::Failed;
-                    $errorMessage = $stepResult['error_message'] ?? '';
+                    $errorMessage = \is_string($stepResult['error_message'] ?? null) ? $stepResult['error_message'] : '';
                     break;
                 }
                 if (isset($stepResult['output_data']) && is_array($stepResult['output_data'])) {
@@ -188,11 +190,11 @@ final class WorkflowExecutionService
         if (!$url) {
             throw new \RuntimeException('API URL not configured');
         }
-        $method = mb_strtoupper($config['method'] ?? 'GET');
+        $method = mb_strtoupper(self::expectConfigString($config['method'] ?? 'GET', 'api_call.method'));
         $data = $this->replacePlaceholders($config['data'] ?? [], $inputData);
-        $url = $this->replacePlaceholders($url, $inputData);
+        $url = self::expectConfigString($this->replacePlaceholders($url, $inputData), 'api_call.url');
 
-        $options = ['headers' => $this->resolveEnvHeaders($config['headers'] ?? [])];
+        $options = ['headers' => $this->resolveEnvHeaders(self::expectConfigStringMap($config['headers'] ?? []))];
         if (in_array($method, ['POST', 'PUT', 'PATCH'], true)) {
             $options['json'] = $data;
         }
@@ -219,9 +221,14 @@ final class WorkflowExecutionService
     private function resolveEnvHeaders(array $headers): array
     {
         return array_map(
-            static fn(string $value): string => is_string($value) && preg_match('/^%env\((\w+)\)%$/', $value, $m)
-                ? (string) ($_ENV[$m[1]] ?? getenv($m[1]) ?: '')
-                : $value,
+            static function (string $value): string {
+                if (1 !== preg_match('/^%env\((\w+)\)%$/', $value, $m)) {
+                    return $value;
+                }
+                $envValue = $_ENV[$m[1]] ?? getenv($m[1]);
+
+                return \is_string($envValue) ? $envValue : '';
+            },
             $headers,
         );
     }
@@ -238,8 +245,9 @@ final class WorkflowExecutionService
         if (!$toEmail) {
             throw new \RuntimeException('Email recipient not configured');
         }
-        $subject = $this->replacePlaceholders($config['subject'] ?? '', $inputData);
-        $body = $this->replacePlaceholders($config['body'] ?? '', $inputData);
+        $toEmail = self::expectConfigString($toEmail, 'email.to_email');
+        $subject = self::expectConfigString($this->replacePlaceholders($config['subject'] ?? '', $inputData), 'email.subject');
+        $body = self::expectConfigString($this->replacePlaceholders($config['body'] ?? '', $inputData), 'email.body');
 
         $email = new Email()
             ->from($this->mailerFromAddress)
@@ -280,7 +288,7 @@ final class WorkflowExecutionService
             return ['channel' => $channel, 'message' => $message, 'status' => 'logged'];
         }
 
-        $webhookUrl = $this->replacePlaceholders($webhookUrl, $inputData);
+        $webhookUrl = self::expectConfigString($this->replacePlaceholders($webhookUrl, $inputData), 'notification.webhook_url');
         $this->httpClient->request('POST', $webhookUrl, [
             'json' => ['text' => $message, 'channel' => $channel],
             'timeout' => 30,
@@ -297,12 +305,17 @@ final class WorkflowExecutionService
     private function handleDataTransform(WorkflowStep $step, array $inputData): array
     {
         $resultData = $inputData;
-        foreach ($step->getConfiguration()['transformations'] ?? [] as $transformation) {
-            $operation = $transformation['operation'] ?? null;
-            if (!$operation) {
+        $transformations = $step->getConfiguration()['transformations'] ?? [];
+        foreach (\is_array($transformations) ? $transformations : [] as $transformation) {
+            if (!\is_array($transformation)) {
                 continue;
             }
-            $resultData = $this->applyFieldOperation($resultData, $operation, $transformation['field'] ?? null, $transformation['value'] ?? null);
+            $operation = $transformation['operation'] ?? null;
+            if (!\is_string($operation) || '' === $operation) {
+                continue;
+            }
+            $field = $transformation['field'] ?? null;
+            $resultData = $this->applyFieldOperation($resultData, $operation, \is_string($field) ? $field : null, $transformation['value'] ?? null);
         }
 
         return $resultData;
@@ -329,7 +342,7 @@ final class WorkflowExecutionService
             'set' => [...$data, $field => $this->replacePlaceholders($value, $data)],
             'remove' => array_diff_key($data, [$field => true]),
             'add' => [...$data, $field => array_key_exists($field, $data)
-                ? $data[$field] + $this->replacePlaceholders($value, $data)
+                ? self::numericValue($data[$field]) + self::numericValue($this->replacePlaceholders($value, $data))
                 : $this->replacePlaceholders($value, $data)],
             default => $data,
         };
@@ -348,10 +361,10 @@ final class WorkflowExecutionService
             return $inputData;
         }
 
-        $field = $condition['field'] ?? null;
-        $operator = $condition['operator'] ?? null;
-        $value = $condition['value'] ?? null;
-        if (!$field || !$operator) {
+        $field = \is_array($condition) ? ($condition['field'] ?? null) : null;
+        $operator = \is_array($condition) ? ($condition['operator'] ?? null) : null;
+        $value = \is_array($condition) ? ($condition['value'] ?? null) : null;
+        if (!\is_string($field) || !\is_string($operator)) {
             return $inputData;
         }
 
@@ -367,15 +380,18 @@ final class WorkflowExecutionService
 
         $action = $config[$conditionMet ? 'true_action' : 'false_action'] ?? null;
 
-        return $action ? $this->executeAction($action, $inputData) : $inputData;
+        return $this->executeAction(self::expectConfigArray($action), $inputData);
     }
 
     /**
+     * @param array<string, mixed> $inputData
+     *
      * @return array{delay_seconds: int, status: string}
      */
     private function handleDelay(WorkflowStep $step, array $inputData): array
     {
-        $delaySeconds = (int) ($step->getConfiguration()['delay_seconds'] ?? 0);
+        $rawDelay = $step->getConfiguration()['delay_seconds'] ?? 0;
+        $delaySeconds = \is_numeric($rawDelay) ? (int) $rawDelay : 0;
         if ($delaySeconds > 0) {
             sleep($delaySeconds);
         }
@@ -395,11 +411,11 @@ final class WorkflowExecutionService
         if (!$url) {
             throw new \RuntimeException('Webhook URL not configured');
         }
-        $url = $this->replacePlaceholders($url, $inputData);
-        $method = mb_strtoupper($config['method'] ?? 'POST');
+        $url = self::expectConfigString($this->replacePlaceholders($url, $inputData), 'webhook.url');
+        $method = mb_strtoupper(self::expectConfigString($config['method'] ?? 'POST', 'webhook.method'));
 
         $response = $this->httpClient->request($method, $url, [
-            'headers' => $this->resolveEnvHeaders($config['headers'] ?? []),
+            'headers' => $this->resolveEnvHeaders(self::expectConfigStringMap($config['headers'] ?? [])),
             'json' => $inputData,
             'timeout' => 30,
         ]);
@@ -436,13 +452,18 @@ final class WorkflowExecutionService
             'visitor_last_name' => $conversation->setVisitorLastName(...),
         ];
 
+        $fields = $step->getConfiguration()['fields'] ?? [];
         $updated = [];
-        foreach ($step->getConfiguration()['fields'] ?? [] as $conversationField => $inputKey) {
-            if (!isset($setters[$conversationField]) || !isset($inputData[$inputKey])) {
+        foreach (\is_array($fields) ? $fields : [] as $conversationField => $inputKey) {
+            if (!\is_string($conversationField) || !\is_string($inputKey) || !isset($setters[$conversationField])) {
                 continue;
             }
-            $setters[$conversationField]((string) $inputData[$inputKey]);
-            $updated[$conversationField] = $inputData[$inputKey];
+            $value = $inputData[$inputKey] ?? null;
+            if (!\is_scalar($value)) {
+                continue;
+            }
+            $setters[$conversationField]((string) $value);
+            $updated[$conversationField] = $value;
         }
 
         if ($updated) {
@@ -491,8 +512,62 @@ final class WorkflowExecutionService
             default => null,
         };
 
+        $field = $action['field'] ?? null;
+
         return $operation
-            ? $this->applyFieldOperation($inputData, $operation, $action['field'] ?? null, $action['value'] ?? null)
+            ? $this->applyFieldOperation($inputData, $operation, \is_string($field) ? $field : null, $action['value'] ?? null)
             : $inputData;
+    }
+
+    private static function numericValue(mixed $value): int|float
+    {
+        return \is_numeric($value) ? $value + 0 : 0;
+    }
+
+    private static function expectConfigString(mixed $value, string $context): string
+    {
+        if (!\is_string($value)) {
+            throw new \RuntimeException("Workflow step configuration \"{$context}\" must be a string.");
+        }
+
+        return $value;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private static function expectConfigStringMap(mixed $value): array
+    {
+        if (!\is_array($value)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($value as $key => $item) {
+            if (\is_string($key) && \is_string($item)) {
+                $result[$key] = $item;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function expectConfigArray(mixed $value): array
+    {
+        if (!\is_array($value)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($value as $key => $item) {
+            if (\is_string($key)) {
+                $result[$key] = $item;
+            }
+        }
+
+        return $result;
     }
 }

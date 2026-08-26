@@ -2,7 +2,7 @@
     "version": 1,
     "plugin-version": "v2.1.1",
     "content-hash": "02e80265b0c363f58fe046f395818bb75232bf2b292d845cfb1ac9f6bbf8c347",
-    "generated-at": "2026-08-26T14:32:26+00:00",
+    "generated-at": "2026-08-26T15:15:11+00:00",
     "packages": [
         {
             "name": "php-modernization",

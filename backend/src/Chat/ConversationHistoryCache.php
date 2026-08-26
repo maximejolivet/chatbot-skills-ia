@@ -39,7 +39,7 @@ final readonly class ConversationHistoryCache
         );
 
         return array_map(
-            static fn(array $row): LlmChatMessage => new LlmChatMessage(role: $row['role'], content: $row['content']),
+            static fn(array $row): LlmChatMessage => new LlmChatMessage(role: self::normalizeRole($row['role']), content: $row['content']),
             $rows,
         );
     }
@@ -47,6 +47,17 @@ final readonly class ConversationHistoryCache
     public function invalidate(int $conversationId): void
     {
         $this->cache->delete($this->key($conversationId));
+    }
+
+    /**
+     * @return 'assistant'|'system'|'tool'|'user'
+     */
+    private static function normalizeRole(string $role): string
+    {
+        return match ($role) {
+            'system', 'user', 'assistant', 'tool' => $role,
+            default => throw new \LogicException("Invalid cached chat role: {$role}"),
+        };
     }
 
     private function key(int $conversationId): string

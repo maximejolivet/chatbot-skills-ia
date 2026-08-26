@@ -4,7 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Conversation;
 use App\Enum\MessageRole;
-use Symfony\Bundle\FrameworkBundle\Controller\AsController;
+use Symfony\Component\HttpKernel\Attribute\AsController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
