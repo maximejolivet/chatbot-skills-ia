@@ -1,6 +1,6 @@
 # Documentation — Chatbot IA
 
-![docs](https://img.shields.io/badge/docs-8%20pages-informational)
+![docs](https://img.shields.io/badge/docs-9%20pages-informational)
 ![format](https://img.shields.io/badge/format-Markdown-000000?logo=markdown&logoColor=white)
 
 Index de tous les fichiers Markdown du dépôt.
@@ -8,6 +8,7 @@ Index de tous les fichiers Markdown du dépôt.
 ## Racine
 
 - [README.md](../README.md) — présentation générale du projet full-stack
+- [docs/ONBOARDING.md](ONBOARDING.md) — guide d'onboarding : stack, architecture, commandes, conventions, points d'attention
 - [DEPLOYMENT.md](../DEPLOYMENT.md) — procédure de déploiement (backend Symfony)
 - [SECURITY.md](../SECURITY.md) — politique de sécurité et signalement de vulnérabilités
 
