@@ -6,6 +6,19 @@ doctrine:
         # either here or in the DATABASE_URL env var (see .env file)
         #server_version: '11.4.12'
 
+        # Explicit, not MariaDB 11's new default (utf8mb4_uca1400_ai_ci):
+        # that collation is missing from
+        # information_schema.COLLATION_CHARACTER_SET_APPLICABILITY on this
+        # MariaDB version, and DBAL's table-options introspection INNER
+        # JOINs against that view -- any table left on the server default
+        # silently returns zero rows there, which crashes
+        # doctrine:migrations:migrate (and :list/:status) with
+        # "assert($options !== null)" the moment it needs to re-introspect
+        # its own tracking table (i.e. every run after the first).
+        default_table_options:
+            charset: utf8mb4
+            collate: utf8mb4_unicode_ci
+
         profiling_collect_backtrace: '%kernel.debug%'
     orm:
         validate_xml_mapping: true
