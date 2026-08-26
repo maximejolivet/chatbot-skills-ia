@@ -1,5 +1,11 @@
 MAKEFLAGS += --no-print-directory
-.PHONY: help start stop purge rebuild logs services-url format audit actionlint check-ollama
+.PHONY: help start stop purge rebuild logs services-url format audit actionlint check-ollama db-install
+
+# Doit matcher backend/compose.yaml (mêmes defaults) -- surchargeable via
+# l'environnement si jamais ces identifiants changent localement.
+MYSQL_USER ?= app
+MYSQL_PASSWORD ?= !ChangeMe!
+MYSQL_DATABASE ?= app
 
 help:
 	@echo "Projet          : $$(grep -m1 '"name"' package.json | sed -E 's/.*: *"([^"]+)".*/\1/')"
@@ -20,6 +26,7 @@ help:
 	@echo "   audit                      : Audit des dépendances (composer audit + npm outdated/audit)"
 	@echo "   actionlint                 : Lint des workflows GitHub Actions (.github/workflows/)"
 	@echo "   check-ollama               : Vérifie qu'Ollama tourne et expose les modèles requis"
+	@echo "   db-install                 : (Ré)installe la base de données depuis zéro (drop + create + migrate)"
 
 start: check-ollama
 	@docker network inspect chatbot-proxy >/dev/null 2>&1 || docker network create chatbot-proxy
@@ -85,3 +92,18 @@ actionlint:
 
 check-ollama:
 	@bash .github/scripts/check-ollama.sh
+
+# `doctrine:database:create` seul ne suffit pas ici : il applique la
+# collation par défaut du serveur MariaDB (utf8mb4_uca1400_ai_ci sur
+# MariaDB 11), absente de information_schema.COLLATION_CHARACTER_SET_
+# APPLICABILITY sur cette version -- ça fait planter
+# doctrine:migrations:migrate (assert($options !== null)) dès le second
+# run, une fois que la table de suivi des migrations existe. D'où le
+# CREATE DATABASE manuel avec collation explicite entre les deux.
+db-install:
+	@echo "🗄️  (Ré)installation de la base de données..."
+	@docker exec chatbot-symfony php bin/console doctrine:database:drop --force --if-exists
+	@docker exec backend_symfony-database-1 mariadb -u $(MYSQL_USER) -p'$(MYSQL_PASSWORD)' \
+		-e "CREATE DATABASE $(MYSQL_DATABASE) DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;"
+	@docker exec chatbot-symfony php bin/console doctrine:migrations:migrate --no-interaction
+	@echo "✅ Base de données réinstallée !"
