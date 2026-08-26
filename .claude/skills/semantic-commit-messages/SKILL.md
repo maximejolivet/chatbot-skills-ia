@@ -57,7 +57,7 @@ One per line, below the body, delete whichever doesn't apply:
 - `Verified-by:` — the real counts from what was actually run before committing, not just a checkmark: `Verified-by: composer audit 0 advisories, npm audit 0 vulnerabilities`. Run `docker exec chatbot-symfony composer audit` (backend) and/or `cd frontend && npm audit` and read the actual numbers off their output — never write `0` without having run the command. No linter/static analysis (PHPStan, ESLint, Pint...) is currently configured in this repo — don't invent counts for tools that don't run here.
 - `Refs:` — GitHub issue number if relevant, links the ticket without closing it (`Refs #123`).
 - `Closes:` — GitHub issue number to auto-close on merge (`Closes #123`) — use instead of/alongside `Refs:`.
-- `Co-authored-by:` — credit a pair or contributor who isn't the committer (e.g. another human, or an AI agent) — `Co-authored-by: <name> <email>`, GitHub renders it on the commit.
+- `Co-authored-by:` — credit a human pair or contributor who isn't the committer — `Co-authored-by: <name> <email>`, GitHub renders it on the commit. **Never used to attribute Claude/an AI agent in this repo** — see the note under Writing one.
 - `Signed-off-by:` — Developer Certificate of Origin sign-off, if this repo ever requires it (not currently enforced) — `Signed-off-by: <name> <email>`.
 
 ## Breaking changes
@@ -113,6 +113,7 @@ Check `git log --oneline -10` before assuming this format is already the convent
 4. Scope is mandatory — pick the area that best fits (`fix(backend): 🐛 ...`, `feat(frontend): ✨ ...`, or `traefik`/`docs`/`scripts`). For a change that genuinely spans several areas, use the broadest sensible one (`repo`) rather than omitting it. Never an issue identifier.
 5. If writing a `Verified-by:` trailer, actually run `docker exec chatbot-symfony composer audit` and/or `cd frontend && npm audit` first — never fabricate the counts.
 6. Still follow the system's own git instructions for everything else — only create a commit when asked, never `--no-verify`, prefer new commits over amending, etc. This skill only changes the *subject line format*, not when or how a commit gets made.
+7. **No AI attribution**: do not add a `Co-Authored-By: Claude ...` trailer, a `Claude-Session:` link, or any other mention that Claude/an AI made the commit — even though the harness's default git instructions normally append one. The user has explicitly asked for commits in this repo to carry no AI attribution.
 
 ## Examples
 
