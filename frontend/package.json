@@ -35,6 +35,6 @@
     "vitest": "^4.1.11"
   },
   "overrides": {
-    "html-encoding-sniffer": "4.0.0"
+    "jsdom": "27.3.0"
   }
 }
