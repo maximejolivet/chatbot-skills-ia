@@ -1,5 +1,5 @@
 MAKEFLAGS += --no-print-directory
-.PHONY: help install start stop purge rebuild logs services-url format audit actionlint check-ollama db-install
+.PHONY: help install install-backend install-frontend start stop purge rebuild logs services-url format audit actionlint check-ollama db-install
 
 # Doit matcher backend/compose.yaml (mêmes defaults) -- surchargeable via
 # l'environnement si jamais ces identifiants changent localement.
@@ -16,7 +16,9 @@ help:
 	@echo "Dernier commit  : $$(git log -1 --pretty=format:'%h %s')"
 	@echo ""
 	@echo "\033[4mCommandes disponibles\033[0m:"
-	@echo "   install                    : Installation complète depuis un clone frais (env, stack, deps, base)"
+	@echo "   install                    : Installation complète depuis un clone frais (backend + frontend)"
+	@echo "   install-backend            : Installation backend seul (env, stack, composer, base)"
+	@echo "   install-frontend           : Installation frontend seul (env check, npm install)"
 	@echo "   start                      : Démarrer Traefik + la stack Symfony"
 	@echo "   stop                       : Arrêter Traefik + la stack Symfony"
 	@echo "   purge                      : Purge complète (arrête, supprime conteneurs, volumes et réseaux)"
@@ -29,31 +31,43 @@ help:
 	@echo "   check-ollama               : Vérifie qu'Ollama tourne et expose les modèles requis"
 	@echo "   db-install                 : (Ré)installe la base de données depuis zéro (drop + create + migrate)"
 
-# Pour un clone frais : crée backend/.env si absent, démarre la stack,
-# installe les dépendances PHP dans le conteneur (le bind-mount .:/app
-# écrase le vendor/ construit à l'image Docker par un vendor/ vide côté
-# hôte tant que composer install n'a pas tourné une fois via le
-# conteneur), installe les hooks git (husky/commitlint, racine) et
-# initialise la base de données. Le frontend n'a pas besoin d'étape ici :
-# le conteneur nuxt fait `npm ci` à chaque démarrage (voir compose.yaml),
-# mais frontend/.env (API_URL, ADMIN_USERNAME, ADMIN_PASSWORD) n'a pas
-# d'exemple versionné -- à créer à la main si absent.
-install:
-	@echo "📦 Installation du projet..."
+# Backend + frontend + les hooks git racine (husky/commitlint, ni l'un
+# ni l'autre en propre -- concernent les deux).
+install: install-backend install-frontend
+	@echo "🪝 Hooks git (husky/commitlint, racine)..."
+	@npm install
+	@echo "✅ Projet installé, prêt à l'emploi !"
+
+# Crée backend/.env si absent, démarre la stack, installe les dépendances
+# PHP dans le conteneur (le bind-mount .:/app écrase le vendor/ construit
+# à l'image Docker par un vendor/ vide côté hôte tant que composer
+# install n'a pas tourné une fois via le conteneur), puis initialise la
+# base de données.
+install-backend:
+	@echo "📦 Installation du backend..."
 	@if [ ! -f backend/.env ]; then \
 		cp backend/.env.example backend/.env; \
 		echo "   → backend/.env créé depuis .env.example"; \
 	fi
-	@if [ ! -f frontend/.env ]; then \
-		echo "⚠️  frontend/.env manquant -- à créer (API_URL, ADMIN_USERNAME, ADMIN_PASSWORD)"; \
-	fi
 	$(MAKE) start
 	@echo "📦 Dépendances backend (composer install)..."
 	@docker exec chatbot-symfony composer install --no-interaction
-	@echo "🪝 Hooks git (husky/commitlint, racine)..."
-	@npm install
 	$(MAKE) db-install
-	@echo "✅ Projet installé, prêt à l'emploi !"
+	@echo "✅ Backend installé !"
+
+# frontend/.env (API_URL, ADMIN_USERNAME, ADMIN_PASSWORD) n'a pas
+# d'exemple versionné -- à créer à la main si absent, rien à générer
+# automatiquement. `npm install` ici est pour l'outillage local
+# (IDE, `make format`/lint hors Docker) -- le conteneur nuxt fait son
+# propre `npm ci` à chaque démarrage (voir compose.yaml), donc ce n'est
+# pas requis pour que l'appli tourne.
+install-frontend:
+	@echo "📦 Installation du frontend..."
+	@if [ ! -f frontend/.env ]; then \
+		echo "⚠️  frontend/.env manquant -- à créer (API_URL, ADMIN_USERNAME, ADMIN_PASSWORD)"; \
+	fi
+	@cd frontend && npm install
+	@echo "✅ Frontend installé !"
 
 start: check-ollama
 	@docker network inspect chatbot-proxy >/dev/null 2>&1 || docker network create chatbot-proxy
