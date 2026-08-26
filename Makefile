@@ -1,5 +1,5 @@
 MAKEFLAGS += --no-print-directory
-.PHONY: help install install-backend install-frontend start stop purge rebuild logs services-url format audit actionlint check-ollama db-install
+.PHONY: help install install-backend install-frontend start stop purge rebuild logs services-url format audit actionlint check-ollama db-install-backend frontend-install
 
 # Doit matcher backend/compose.yaml (mêmes defaults) -- surchargeable via
 # l'environnement si jamais ces identifiants changent localement.
@@ -29,7 +29,8 @@ help:
 	@echo "   audit                      : Audit des dépendances (composer audit + npm outdated/audit)"
 	@echo "   actionlint                 : Lint des workflows GitHub Actions (.github/workflows/)"
 	@echo "   check-ollama               : Vérifie qu'Ollama tourne et expose les modèles requis"
-	@echo "   db-install                 : (Ré)installe la base de données depuis zéro (drop + create + migrate)"
+	@echo "   db-install-backend         : (Ré)installe la base de données depuis zéro (drop + create + migrate)"
+	@echo "   frontend-install           : Reset propre des dépendances frontend (rm node_modules/.nuxt/.output + npm install)"
 
 # Backend + frontend + les hooks git racine (husky/commitlint, ni l'un
 # ni l'autre en propre -- concernent les deux).
@@ -52,21 +53,21 @@ install-backend:
 	$(MAKE) start
 	@echo "📦 Dépendances backend (composer install)..."
 	@docker exec chatbot-symfony composer install --no-interaction
-	$(MAKE) db-install
+	$(MAKE) db-install-backend
 	@echo "✅ Backend installé !"
 
 # frontend/.env (API_URL, ADMIN_USERNAME, ADMIN_PASSWORD) n'a pas
 # d'exemple versionné -- à créer à la main si absent, rien à générer
-# automatiquement. `npm install` ici est pour l'outillage local
-# (IDE, `make format`/lint hors Docker) -- le conteneur nuxt fait son
-# propre `npm ci` à chaque démarrage (voir compose.yaml), donc ce n'est
-# pas requis pour que l'appli tourne.
+# automatiquement. Le conteneur nuxt fait son propre `npm ci` à chaque
+# démarrage (voir compose.yaml) -- frontend-install (ci-dessous) sert à
+# l'outillage local (IDE, `make format`/lint hors Docker), pas requis
+# pour que l'appli tourne.
 install-frontend:
 	@echo "📦 Installation du frontend..."
 	@if [ ! -f frontend/.env ]; then \
 		echo "⚠️  frontend/.env manquant -- à créer (API_URL, ADMIN_USERNAME, ADMIN_PASSWORD)"; \
 	fi
-	@cd frontend && npm install
+	$(MAKE) frontend-install
 	@echo "✅ Frontend installé !"
 
 start: check-ollama
@@ -141,10 +142,22 @@ check-ollama:
 # doctrine:migrations:migrate (assert($options !== null)) dès le second
 # run, une fois que la table de suivi des migrations existe. D'où le
 # CREATE DATABASE manuel avec collation explicite entre les deux.
-db-install:
+db-install-backend:
 	@echo "🗄️  (Ré)installation de la base de données..."
 	@docker exec chatbot-symfony php bin/console doctrine:database:drop --force --if-exists
 	@docker exec backend_symfony-database-1 mariadb -u $(MYSQL_USER) -p'$(MYSQL_PASSWORD)' \
 		-e "CREATE DATABASE $(MYSQL_DATABASE) DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;"
 	@docker exec chatbot-symfony php bin/console doctrine:migrations:migrate --no-interaction
 	@echo "✅ Base de données réinstallée !"
+
+# Reset propre : supprime node_modules/.nuxt/.output puis réinstalle à
+# neuf -- même esprit que db-install-backend (drop + recreate) côté base
+# de données, ici côté dépendances frontend. `npm install` seul ne
+# repartirait pas d'un état propre (ne supprime pas node_modules
+# existant, ni le cache Nuxt qui peut référencer des chemins de deps
+# supprimées/renommées).
+frontend-install:
+	@echo "🧹 Reset des dépendances frontend..."
+	@rm -rf frontend/node_modules frontend/.nuxt frontend/.output
+	@cd frontend && npm install
+	@echo "✅ Frontend réinstallé !"
