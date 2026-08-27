@@ -21,6 +21,7 @@ Index de tous les fichiers Markdown du dépôt.
 ## Chantier
 
 - [docs/BACKLOG.md](BACKLOG.md) — backlog de pistes d'amélioration backend/frontend
+- [docs/PROMPTS_SYMFONY.md](PROMPTS_SYMFONY.md) — prompts Claude Code pour équipes Symfony (revue, tests, migrations, sécurité...)
 
 ## Outillage
 
