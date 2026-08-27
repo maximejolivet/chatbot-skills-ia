@@ -190,6 +190,16 @@ jobs:
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
             "cat > ${{ secrets.DEPLOY_PROJECT_PATH }}/.env" <<< "$ENV_FILE"
 
+      # Printed ahead of the actual migrate so a squashed/rebuilt baseline
+      # (schema already present but not recorded as executed) shows up in
+      # the Actions log before the run fails on CREATE TABLE, instead of
+      # only being visible via SSH after the fact.
+      - name: Check migration status
+        if: ${{ !inputs.dry_run }}
+        run: |
+          ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console doctrine:migrations:status --env=prod"
+
       # --env=prod explicit, not left to DEPLOY_ENV_FILE containing
       # APP_ENV=prod correctly -- an empty/misconfigured .env would
       # otherwise silently fall back to dev, which references dev-only
