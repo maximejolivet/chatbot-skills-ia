@@ -99,7 +99,7 @@ services:
   # Persistent Messenger consumer for the `async` transport (document
   # indexing, API-triggered workflow runs -- see config/packages/messenger.yaml).
   # Same image/env as `app`, different command. Not viable as-is in production
-  # (no persistent-process support there, see DEPLOYMENT.md) -- production
+  # (no persistent-process support there, see docs/DEPLOYMENT.md) -- production
   # needs a cron-invoked `messenger:consume --limit=N --time-limit=X` instead.
   worker:
     build: .

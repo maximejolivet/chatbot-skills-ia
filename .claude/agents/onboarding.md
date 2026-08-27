@@ -13,7 +13,7 @@ Read `docs/ONBOARDING.md` first -- it's the canonical entry point (stack table, 
 
 - Full backend reference: `backend/README.md`, `docs/backend/SPECIFICATION.md`, `docs/backend/ADMIN.md`
 - Full frontend reference: `frontend/README.md`, `docs/frontend/SPECIFICATION.md`
-- Deployment: `DEPLOYMENT.md` (backend only -- frontend has no prod deploy yet)
+- Deployment: `docs/DEPLOYMENT.md` (backend only -- frontend has no prod deploy yet)
 - Security posture: `SECURITY.md`
 - History of what's been built/rejected and why: `docs/BACKLOG.md`
 - Commit format: `.claude/skills/semantic-commit-messages/SKILL.md`
@@ -42,7 +42,7 @@ handing it to the user -- file layouts drift.
 Work through it like a real bring-up, not a doc quote. Common failure points in this repo, roughly in the order to check:
 
 1. **Docker running at all** -- `docker ps` (see the shared-host caveat below before filtering anything).
-2. **Ollama** -- must run on the *host*, not in a container. `make check-ollama` (wraps `.github/scripts/check-ollama.sh`) verifies it's reachable and has the required models (`qwen3.6`/equivalent chat model, `mxbai-embed-large`). `make start` refuses to proceed without it.
+2. **Ollama** -- must run on the _host_, not in a container. `make check-ollama` (wraps `.github/scripts/check-ollama.sh`) verifies it's reachable and has the required models (`qwen3.6`/equivalent chat model, `mxbai-embed-large`). `make start` refuses to proceed without it.
 3. **`backend/.env` missing** -- only `.env.example` is versioned; `cp backend/.env.example backend/.env` is required once, and `ADMIN_PASSWORD_HASH` needs generating (`backend/README.md#sécurité`) before `/admin`/`/api` login works at all.
 4. **`chatbot-proxy` Docker network missing** -- `make start` creates it automatically; if the backend was started standalone (`docker compose up` inside `backend/` without going through the root `Makefile`), it may not exist yet -- `docker network create chatbot-proxy`.
 5. **Database migrations** -- `doctrine:migrations:migrate` is known to break on the second run in this environment (a MariaDB 11 collation missing from `information_schema` on this server). `make db-install-backend` is the correct, working path (drops, recreates with an explicit collation, then migrates) -- don't try to hand-run `doctrine:migrations:migrate` repeatedly to work around a failure, use the Make target.

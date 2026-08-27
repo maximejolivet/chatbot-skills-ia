@@ -116,5 +116,5 @@ Voir [`SECURITY.md`](SECURITY.md) — politique de signalement et état des audi
 - [`docs/backend/ADMIN.md`](docs/backend/ADMIN.md) — guide des pages du backoffice `/admin`
 - [`docs/frontend/SPECIFICATION.md`](docs/frontend/SPECIFICATION.md) — cahier des charges frontend
 - [`docs/BACKLOG.md`](docs/BACKLOG.md) — historique et pistes d'amélioration
-- [`DEPLOYMENT.md`](DEPLOYMENT.md) — déploiement du backend (CI/CD, secrets, prérequis serveur)
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — déploiement du backend (CI/CD, secrets, prérequis serveur)
 - [`docs/README.md`](docs/README.md) — index complet de toute la documentation du dépôt

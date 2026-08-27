@@ -221,5 +221,5 @@ bin/console messenger:consume async`) consomme en continu.
 > Non transposable tel quel en production (pas de process persistant) : il
 > faudra soit une tâche cron invoquant `messenger:consume --limit=N
 > --time-limit=X` périodiquement, soit un Redis externe managé — voir
-> [`DEPLOYMENT.md`](../DEPLOYMENT.md) pour le détail de l'hébergement,
+> [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md) pour le détail de l'hébergement,
 > même logique que Qdrant Cloud pour la base vectorielle.

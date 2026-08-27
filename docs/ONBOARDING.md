@@ -1,24 +1,24 @@
 # Guide d'onboarding
 
-Point d'entrée rapide pour un nouveau contributeur. Pour le détail exhaustif, voir [`README.md`](../README.md) (vue d'ensemble), [`backend/README.md`](../backend/README.md) + [`docs/backend/SPECIFICATION.md`](backend/SPECIFICATION.md) (backend), [`docs/frontend/SPECIFICATION.md`](frontend/SPECIFICATION.md) (frontend), [`DEPLOYMENT.md`](../DEPLOYMENT.md) (déploiement), [`docs/BACKLOG.md`](BACKLOG.md) (historique des chantiers).
+Point d'entrée rapide pour un nouveau contributeur. Pour le détail exhaustif, voir [`README.md`](../README.md) (vue d'ensemble), [`backend/README.md`](../backend/README.md) + [`docs/backend/SPECIFICATION.md`](backend/SPECIFICATION.md) (backend), [`docs/frontend/SPECIFICATION.md`](frontend/SPECIFICATION.md) (frontend), [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md) (déploiement), [`docs/BACKLOG.md`](BACKLOG.md) (historique des chantiers).
 
 ## 1. Stack technique et versions
 
-| Composant                | Techno                                          | Version                       |
-| ------------------------- | ------------------------------------------------ | ------------------------------ |
-| Backend                  | Symfony + API Platform                           | Symfony 8.1, API Platform 4.3, PHP 8.4 |
-| ORM                       | Doctrine ORM + Migrations                        | 3.6.8                          |
-| Backoffice `/admin`       | Sylius Resource Bundle + Sylius Grid Bundle       | ^1.14 / ^1.16                  |
-| Assets admin              | AssetMapper + Stimulus + Tailwind (bundle local)  | —                               |
-| Frontend                 | Nuxt / Vue                                        | Nuxt 4.5, Vue 3.5, TypeScript 7.0, Node.js 24 |
-| Style frontend            | `@nuxtjs/tailwindcss`                             | 6.14                           |
-| Base relationnelle       | MariaDB                                           | 11.4                           |
-| Base vectorielle         | Qdrant                                            | v1.19.0                        |
-| File d'attente async      | Symfony Messenger + Redis                         | 7-alpine                       |
-| Modèles IA (local)        | Ollama — non conteneurisé, tourne sur l'hôte      | `qwen3.6`, `mxbai-embed-large` |
-| Reverse proxy             | Traefik                                           | v3.5                           |
-| Qualité PHP               | PHPStan (niveau 9), PHP-CS-Fixer, Rector, PHPUnit | 2.2 / 3.95 / 2.6 / 13.3        |
-| Qualité frontend          | Prettier, Vitest, `@nuxt/test-utils`              | 3.9 / 4.1                      |
+| Composant            | Techno                                            | Version                                       |
+| -------------------- | ------------------------------------------------- | --------------------------------------------- |
+| Backend              | Symfony + API Platform                            | Symfony 8.1, API Platform 4.3, PHP 8.4        |
+| ORM                  | Doctrine ORM + Migrations                         | 3.6.8                                         |
+| Backoffice `/admin`  | Sylius Resource Bundle + Sylius Grid Bundle       | ^1.14 / ^1.16                                 |
+| Assets admin         | AssetMapper + Stimulus + Tailwind (bundle local)  | —                                             |
+| Frontend             | Nuxt / Vue                                        | Nuxt 4.5, Vue 3.5, TypeScript 7.0, Node.js 24 |
+| Style frontend       | `@nuxtjs/tailwindcss`                             | 6.14                                          |
+| Base relationnelle   | MariaDB                                           | 11.4                                          |
+| Base vectorielle     | Qdrant                                            | v1.19.0                                       |
+| File d'attente async | Symfony Messenger + Redis                         | 7-alpine                                      |
+| Modèles IA (local)   | Ollama — non conteneurisé, tourne sur l'hôte      | `qwen3.6`, `mxbai-embed-large`                |
+| Reverse proxy        | Traefik                                           | v3.5                                          |
+| Qualité PHP          | PHPStan (niveau 9), PHP-CS-Fixer, Rector, PHPUnit | 2.2 / 3.95 / 2.6 / 13.3                       |
+| Qualité frontend     | Prettier, Vitest, `@nuxt/test-utils`              | 3.9 / 4.1                                     |
 
 Tout tourne en Docker Compose, routé par domaine via Traefik (`*.chatbot.localhost`). Ollama est la seule dépendance non conteneurisée — doit tourner sur l'hôte.
 
@@ -37,13 +37,13 @@ chatbot-skills-ia/
 
 `backend/src/` est structuré en **5 domaines** (dossiers dédiés), plus des dossiers transverses classiques Symfony :
 
-| Domaine (dossier)  | Rôle                                                                     |
-| ------------------- | -------------------------------------------------------------------------- |
-| `AiProvider/`       | Abstraction des providers LLM/embedding, sélection du provider actif      |
-| `VectorConnector/`  | Wrapper Qdrant, embeddings, recherche vectorielle — app feuille (aucune dépendance sur les autres domaines) |
-| `KnowledgeBase/`    | Documents, chunking, collections, catégories, FAQ                         |
-| `Workflow/`         | Moteur d'exécution de workflows, utilisés comme outils par les agents     |
-| `Chat/`             | Orchestration de la conversation : agents IA, RAG, tool-calling           |
+| Domaine (dossier)  | Rôle                                                                                                        |
+| ------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `AiProvider/`      | Abstraction des providers LLM/embedding, sélection du provider actif                                        |
+| `VectorConnector/` | Wrapper Qdrant, embeddings, recherche vectorielle — app feuille (aucune dépendance sur les autres domaines) |
+| `KnowledgeBase/`   | Documents, chunking, collections, catégories, FAQ                                                           |
+| `Workflow/`        | Moteur d'exécution de workflows, utilisés comme outils par les agents                                       |
+| `Chat/`            | Orchestration de la conversation : agents IA, RAG, tool-calling                                             |
 
 `Workflow/` et `Chat/` se référencent mutuellement (tool-calling) ; tous les autres domaines dépendent en cascade de `VectorConnector/` (feuille), jamais l'inverse.
 
@@ -165,7 +165,7 @@ make rebuild SERVICE=<name>    # rebuild un seul service Docker (app, nuxt, data
 
 **Baseline PHPStan (871 lignes)** : ne contient plus de bugs de type/nullable/paramètre (nettoyé — voir `.claude/skills/phpstan/SKILL.md`), uniquement des préférences de style `phpstan-strict-rules` (casts, ternaires, comparaisons booléennes strictes). Ne pas y ajouter d'erreur nouvelle sans investiguer d'abord.
 
-**Frontend** : aucun ESLint configuré (Prettier seul) ; tests unitaires composables uniquement, aucun test de composant `.vue` ni e2e navigateur ; **pas de déploiement en production** pour l'instant (seul le backend a un pipeline de déploiement, voir `DEPLOYMENT.md`) — le durcissement CSP existant ne protège donc encore personne en pratique.
+**Frontend** : aucun ESLint configuré (Prettier seul) ; tests unitaires composables uniquement, aucun test de composant `.vue` ni e2e navigateur ; **pas de déploiement en production** pour l'instant (seul le backend a un pipeline de déploiement, voir `docs/DEPLOYMENT.md`) — le durcissement CSP existant ne protège donc encore personne en pratique.
 
 **Rector configuré mais pas branché en CI** — `composer rector:check` est un outil manuel, jamais exécuté automatiquement ; les modernisations qu'il proposerait ne sont pas garanties appliquées.
 

@@ -1,7 +1,7 @@
 # Quality gate for the backend: lint, tests, static analysis, coding
 # style, dependency audit. Runs on every push and PR touching backend/**
 # -- no secrets, no SSH, fast feedback. Split out of deploy-backend.yml
-# (see DEPLOYMENT.md) so a push to master can't reach the SSH/whitelist
+# (see docs/DEPLOYMENT.md) so a push to master can't reach the SSH/whitelist
 # steps there without this passing first (deploy-backend.yml triggers via
 # workflow_run on this workflow's success).
 

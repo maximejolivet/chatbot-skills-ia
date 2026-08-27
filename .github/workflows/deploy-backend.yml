@@ -1,5 +1,5 @@
 # Full rationale, server layout, required secrets, and dry-run instructions:
-# see ../../DEPLOYMENT.md. Deploys to o2switch over SSH (shared cPanel
+# see ../../docs/DEPLOYMENT.md. Deploys to o2switch over SSH (shared cPanel
 # hosting) -- no logic here should change without reading that doc first.
 #
 # Triggered by ci-backend.yml succeeding on master (not by push directly):
