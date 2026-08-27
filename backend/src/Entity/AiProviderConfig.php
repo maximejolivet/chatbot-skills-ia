@@ -9,6 +9,10 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\OpenApi\Model\MediaType;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use ApiPlatform\OpenApi\Model\Parameter as OpenApiParameter;
+use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use App\Controller\TestAiProviderConfigController;
 use App\Enum\AiProvider;
 use App\Enum\AiProviderTestStatus;
@@ -32,6 +36,22 @@ use Sylius\Resource\Model\ResourceInterface;
         read: true,
         deserialize: false,
         name: 'test_ai_provider_config',
+        openapi: new OpenApiOperation(
+            tags: ['AI Providers'],
+            summary: 'Live-test an AI provider configuration',
+            description: 'Sends a minimal real request to the configured provider (a chat completion or an embedding, depending on `usage`) and persists the result (last_test_status, last_tested_at) on the row. Errors are reported in the 200 response body, not as an HTTP error status.',
+            parameters: [
+                new OpenApiParameter(name: 'id', in: 'path', description: 'AiProviderConfig id', required: true, schema: ['type' => 'integer']),
+            ],
+            responses: [
+                '200' => new OpenApiResponse(description: 'Test result (success/status/message/response_preview/error), always 200 even on provider failure.', content: new \ArrayObject([
+                    'application/json' => new MediaType(schema: new \ArrayObject(['type' => 'object'])),
+                ])),
+                '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                '403' => new OpenApiResponse(description: 'Authenticated but not ROLE_ADMIN.'),
+                '404' => new OpenApiResponse(description: 'AiProviderConfig not found.'),
+            ],
+        ),
     ),
 ], security: "is_granted('ROLE_ADMIN')")]
 class AiProviderConfig implements ResourceInterface

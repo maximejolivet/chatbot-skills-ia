@@ -8,6 +8,11 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\OpenApi\Model\MediaType;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use ApiPlatform\OpenApi\Model\Parameter as OpenApiParameter;
+use ApiPlatform\OpenApi\Model\RequestBody;
+use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use App\Controller\WorkflowSoftDeleteController;
 use App\Controller\WorkflowStepsController;
 use App\Controller\WorkflowTestController;
@@ -40,6 +45,20 @@ use Sylius\Resource\Model\ResourceInterface;
         output: false,
         read: true,
         name: 'workflow_soft_delete',
+        openapi: new OpenApiOperation(
+            tags: ['Workflows'],
+            summary: 'Soft-delete a workflow',
+            description: 'Sets is_active=false rather than removing the row.',
+            parameters: [
+                new OpenApiParameter(name: 'id', in: 'path', description: 'Workflow id', required: true, schema: ['type' => 'integer']),
+            ],
+            responses: [
+                '204' => new OpenApiResponse(description: 'Workflow deactivated.'),
+                '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                '403' => new OpenApiResponse(description: 'Authenticated but not ROLE_ADMIN.'),
+                '404' => new OpenApiResponse(description: 'Workflow not found.'),
+            ],
+        ),
     ),
     new Post(
         uriTemplate: '/workflows/{id}/trigger',
@@ -47,6 +66,31 @@ use Sylius\Resource\Model\ResourceInterface;
         output: false,
         read: true,
         name: 'workflow_trigger',
+        openapi: new OpenApiOperation(
+            tags: ['Workflows'],
+            summary: 'Trigger a workflow execution',
+            description: 'Creates a pending WorkflowExecution and dispatches it to the async transport -- returns as soon as it is queued, not once it is done; poll GET /workflow_executions/{id} for the final status. Requires the workflow to be active.',
+            parameters: [
+                new OpenApiParameter(name: 'id', in: 'path', description: 'Workflow id', required: true, schema: ['type' => 'integer']),
+            ],
+            requestBody: new RequestBody(
+                content: new \ArrayObject([
+                    'application/json' => new MediaType(schema: new \ArrayObject([
+                        'type' => 'object',
+                        'properties' => ['input_data' => ['type' => 'object', 'description' => 'Arbitrary input passed to the first workflow step.']],
+                    ])),
+                ]),
+            ),
+            responses: [
+                '202' => new OpenApiResponse(description: 'The pending WorkflowExecution.', content: new \ArrayObject([
+                    'application/json' => new MediaType(schema: new \ArrayObject(['type' => 'object'])),
+                ])),
+                '400' => new OpenApiResponse(description: 'Workflow is not active.'),
+                '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                '403' => new OpenApiResponse(description: 'Authenticated but not ROLE_ADMIN.'),
+                '404' => new OpenApiResponse(description: 'Workflow not found.'),
+            ],
+        ),
     ),
     new Post(
         uriTemplate: '/workflows/{id}/test',
@@ -54,6 +98,30 @@ use Sylius\Resource\Model\ResourceInterface;
         output: false,
         read: true,
         name: 'workflow_test',
+        openapi: new OpenApiOperation(
+            tags: ['Workflows'],
+            summary: 'Test-run a workflow execution',
+            description: 'Same async pattern as /trigger, but with no is-active check -- lets an inactive/draft workflow be exercised.',
+            parameters: [
+                new OpenApiParameter(name: 'id', in: 'path', description: 'Workflow id', required: true, schema: ['type' => 'integer']),
+            ],
+            requestBody: new RequestBody(
+                content: new \ArrayObject([
+                    'application/json' => new MediaType(schema: new \ArrayObject([
+                        'type' => 'object',
+                        'properties' => ['input_data' => ['type' => 'object', 'description' => 'Arbitrary input passed to the first workflow step.']],
+                    ])),
+                ]),
+            ),
+            responses: [
+                '202' => new OpenApiResponse(description: 'The pending WorkflowExecution.', content: new \ArrayObject([
+                    'application/json' => new MediaType(schema: new \ArrayObject(['type' => 'object'])),
+                ])),
+                '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                '403' => new OpenApiResponse(description: 'Authenticated but not ROLE_ADMIN.'),
+                '404' => new OpenApiResponse(description: 'Workflow not found.'),
+            ],
+        ),
     ),
     new Get(
         uriTemplate: '/workflows/{id}/steps',
@@ -61,6 +129,22 @@ use Sylius\Resource\Model\ResourceInterface;
         output: false,
         read: true,
         name: 'workflow_steps',
+        openapi: new OpenApiOperation(
+            tags: ['Workflows'],
+            summary: 'List the active steps of a workflow',
+            description: 'Returns the workflow steps, ordered.',
+            parameters: [
+                new OpenApiParameter(name: 'id', in: 'path', description: 'Workflow id', required: true, schema: ['type' => 'integer']),
+            ],
+            responses: [
+                '200' => new OpenApiResponse(description: 'Steps of the workflow.', content: new \ArrayObject([
+                    'application/json' => new MediaType(schema: new \ArrayObject(['type' => 'array', 'items' => ['type' => 'object']])),
+                ])),
+                '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                '403' => new OpenApiResponse(description: 'Authenticated but not ROLE_ADMIN.'),
+                '404' => new OpenApiResponse(description: 'Workflow not found.'),
+            ],
+        ),
     ),
     new Post(
         uriTemplate: '/workflows/{id}/steps',
@@ -69,6 +153,39 @@ use Sylius\Resource\Model\ResourceInterface;
         read: true,
         deserialize: false,
         name: 'workflow_steps_create',
+        openapi: new OpenApiOperation(
+            tags: ['Workflows'],
+            summary: 'Add a step to a workflow',
+            description: 'Creates and appends a new WorkflowStep.',
+            parameters: [
+                new OpenApiParameter(name: 'id', in: 'path', description: 'Workflow id', required: true, schema: ['type' => 'integer']),
+            ],
+            requestBody: new RequestBody(
+                required: true,
+                content: new \ArrayObject([
+                    'application/json' => new MediaType(schema: new \ArrayObject([
+                        'type' => 'object',
+                        'properties' => [
+                            'name' => ['type' => 'string'],
+                            'step_type' => ['type' => 'string', 'description' => 'One of WorkflowStepType\'s cases.'],
+                            'order' => ['type' => 'integer'],
+                            'configuration' => ['type' => 'object'],
+                            'is_active' => ['type' => 'boolean', 'default' => true],
+                        ],
+                        'required' => ['name', 'step_type', 'order'],
+                    ])),
+                ]),
+            ),
+            responses: [
+                '201' => new OpenApiResponse(description: 'The created step.', content: new \ArrayObject([
+                    'application/json' => new MediaType(schema: new \ArrayObject(['type' => 'object'])),
+                ])),
+                '400' => new OpenApiResponse(description: 'Invalid JSON body, or missing/invalid name, step_type, or order.'),
+                '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                '403' => new OpenApiResponse(description: 'Authenticated but not ROLE_ADMIN.'),
+                '404' => new OpenApiResponse(description: 'Workflow not found.'),
+            ],
+        ),
     ),
 ], security: "is_granted('ROLE_ADMIN')")]
 class Workflow implements ResourceInterface

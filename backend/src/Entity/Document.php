@@ -8,6 +8,11 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\OpenApi\Model\MediaType;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use ApiPlatform\OpenApi\Model\Parameter as OpenApiParameter;
+use ApiPlatform\OpenApi\Model\RequestBody;
+use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use App\Controller\DocumentChunksController;
 use App\Controller\DocumentDeleteController;
 use App\Controller\DocumentProcessController;
@@ -38,12 +43,54 @@ use Sylius\Resource\Model\ResourceInterface;
         output: false,
         deserialize: false,
         name: 'document_upload',
+        openapi: new OpenApiOperation(
+            tags: ['Documents'],
+            summary: 'Upload a document into the knowledge base',
+            description: 'Multipart upload. Persists the document (status "pending") and dispatches it to the async transport for chunking/vectorization -- poll GET /documents/{id} for the final status.',
+            requestBody: new RequestBody(
+                required: true,
+                content: new \ArrayObject([
+                    'multipart/form-data' => new MediaType(schema: new \ArrayObject([
+                        'type' => 'object',
+                        'properties' => [
+                            'file' => ['type' => 'string', 'format' => 'binary', 'description' => 'Allowed: pdf, txt, docx, md, html, json. Max 10MB.'],
+                            'title' => ['type' => 'string'],
+                            'description' => ['type' => 'string'],
+                            'category_id' => ['type' => 'integer', 'nullable' => true],
+                        ],
+                        'required' => ['file', 'title'],
+                    ])),
+                ]),
+            ),
+            responses: [
+                '202' => new OpenApiResponse(description: 'Document persisted and queued for processing.', content: new \ArrayObject([
+                    'application/json' => new MediaType(schema: new \ArrayObject(['type' => 'object'])),
+                ])),
+                '400' => new OpenApiResponse(description: 'Missing file/title, unsupported file type, or file too large (max 10MB).'),
+                '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                '403' => new OpenApiResponse(description: 'Authenticated but not ROLE_ADMIN.'),
+            ],
+        ),
     ),
     new Delete(
         controller: DocumentDeleteController::class,
         output: false,
         read: true,
         name: 'document_delete',
+        openapi: new OpenApiOperation(
+            tags: ['Documents'],
+            summary: 'Delete a document',
+            description: 'Removes the Qdrant vectors and chunks, deletes the uploaded file, then removes the row.',
+            parameters: [
+                new OpenApiParameter(name: 'id', in: 'path', description: 'Document id', required: true, schema: ['type' => 'integer']),
+            ],
+            responses: [
+                '204' => new OpenApiResponse(description: 'Document deleted.'),
+                '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                '403' => new OpenApiResponse(description: 'Authenticated but not ROLE_ADMIN.'),
+                '404' => new OpenApiResponse(description: 'Document not found.'),
+            ],
+        ),
     ),
     new Post(
         uriTemplate: '/documents/{id}/process',
@@ -52,6 +99,22 @@ use Sylius\Resource\Model\ResourceInterface;
         read: true,
         deserialize: false,
         name: 'document_process',
+        openapi: new OpenApiOperation(
+            tags: ['Documents'],
+            summary: '(Re)process a document',
+            description: 'Deletes existing chunks, resets status to "pending" and re-dispatches chunking/vectorization to the async transport -- poll GET /documents/{id} for the final status.',
+            parameters: [
+                new OpenApiParameter(name: 'id', in: 'path', description: 'Document id', required: true, schema: ['type' => 'integer']),
+            ],
+            responses: [
+                '202' => new OpenApiResponse(description: 'Document queued for (re)processing.', content: new \ArrayObject([
+                    'application/json' => new MediaType(schema: new \ArrayObject(['type' => 'object', 'properties' => ['status' => ['type' => 'string']]])),
+                ])),
+                '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                '403' => new OpenApiResponse(description: 'Authenticated but not ROLE_ADMIN.'),
+                '404' => new OpenApiResponse(description: 'Document not found.'),
+            ],
+        ),
     ),
     new Get(
         uriTemplate: '/documents/{id}/chunks',
@@ -59,6 +122,22 @@ use Sylius\Resource\Model\ResourceInterface;
         output: false,
         read: true,
         name: 'document_chunks',
+        openapi: new OpenApiOperation(
+            tags: ['Documents'],
+            summary: 'List the chunks of a document',
+            description: 'Returns the raw RAG chunks (content, position, vectorization status) generated for the document.',
+            parameters: [
+                new OpenApiParameter(name: 'id', in: 'path', description: 'Document id', required: true, schema: ['type' => 'integer']),
+            ],
+            responses: [
+                '200' => new OpenApiResponse(description: 'Chunks of the document.', content: new \ArrayObject([
+                    'application/json' => new MediaType(schema: new \ArrayObject(['type' => 'array', 'items' => ['type' => 'object']])),
+                ])),
+                '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                '403' => new OpenApiResponse(description: 'Authenticated but not ROLE_ADMIN.'),
+                '404' => new OpenApiResponse(description: 'Document not found.'),
+            ],
+        ),
     ),
 ], security: "is_granted('ROLE_ADMIN')")]
 class Document implements ResourceInterface

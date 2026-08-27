@@ -9,6 +9,11 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\OpenApi\Model\MediaType;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use ApiPlatform\OpenApi\Model\Parameter as OpenApiParameter;
+use ApiPlatform\OpenApi\Model\RequestBody;
+use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use App\Controller\ConversationMessagesController;
 use App\Controller\ConversationSourcesController;
 use App\Controller\ConversationStreamController;
@@ -51,6 +56,22 @@ use Sylius\Resource\Model\ResourceInterface;
             output: false,
             read: true,
             name: 'conversation_messages_list',
+            openapi: new OpenApiOperation(
+                tags: ['Conversations'],
+                summary: 'List the messages of a conversation',
+                description: 'Returns every message of the conversation, ordered by creation date.',
+                parameters: [
+                    new OpenApiParameter(name: 'id', in: 'path', description: 'Conversation id', required: true, schema: ['type' => 'integer']),
+                ],
+                responses: [
+                    '200' => new OpenApiResponse(description: 'Messages of the conversation.', content: new \ArrayObject([
+                        'application/json' => new MediaType(schema: new \ArrayObject(['type' => 'array', 'items' => ['type' => 'object']])),
+                    ])),
+                    '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                    '403' => new OpenApiResponse(description: 'Authenticated but not the owner of this conversation.'),
+                    '404' => new OpenApiResponse(description: 'Conversation not found.'),
+                ],
+            ),
         ),
         new Post(
             uriTemplate: '/conversations/{id}/messages',
@@ -59,6 +80,38 @@ use Sylius\Resource\Model\ResourceInterface;
             read: true,
             deserialize: false,
             name: 'conversation_messages_send',
+            openapi: new OpenApiOperation(
+                tags: ['Conversations'],
+                summary: 'Send a user message and get the assistant reply',
+                description: 'Persists the user message, runs the chat pipeline (RAG + tool-calling as configured on the agent) and persists+returns the assistant reply. Rate-limited per client IP.',
+                parameters: [
+                    new OpenApiParameter(name: 'id', in: 'path', description: 'Conversation id', required: true, schema: ['type' => 'integer']),
+                ],
+                requestBody: new RequestBody(
+                    description: 'The user message to send.',
+                    required: true,
+                    content: new \ArrayObject([
+                        'application/json' => new MediaType(schema: new \ArrayObject([
+                            'type' => 'object',
+                            'properties' => [
+                                'message' => ['type' => 'string', 'description' => 'The user message text.'],
+                                'agent_id' => ['type' => 'integer', 'nullable' => true, 'description' => 'AI agent to use; defaults to the active agent when omitted.'],
+                            ],
+                            'required' => ['message'],
+                        ])),
+                    ]),
+                ),
+                responses: [
+                    '201' => new OpenApiResponse(description: 'The persisted assistant message.', content: new \ArrayObject([
+                        'application/json' => new MediaType(schema: new \ArrayObject(['type' => 'object'])),
+                    ])),
+                    '400' => new OpenApiResponse(description: 'Missing message.'),
+                    '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                    '403' => new OpenApiResponse(description: 'Authenticated but not the owner of this conversation.'),
+                    '404' => new OpenApiResponse(description: 'Conversation not found.'),
+                    '429' => new OpenApiResponse(description: 'Too many messages sent too quickly; slow down.'),
+                ],
+            ),
         ),
         new Post(
             uriTemplate: '/conversations/{id}/stream',
@@ -67,6 +120,38 @@ use Sylius\Resource\Model\ResourceInterface;
             read: true,
             deserialize: false,
             name: 'conversation_stream',
+            openapi: new OpenApiOperation(
+                tags: ['Conversations'],
+                summary: 'Send a user message and stream the assistant reply',
+                description: 'Same as conversation_messages_send, but streams the reply as Server-Sent Events (event types: user_message, delta, tool_call, ai_complete, error, done) instead of waiting for the full completion.',
+                parameters: [
+                    new OpenApiParameter(name: 'id', in: 'path', description: 'Conversation id', required: true, schema: ['type' => 'integer']),
+                ],
+                requestBody: new RequestBody(
+                    description: 'The user message to send.',
+                    required: true,
+                    content: new \ArrayObject([
+                        'application/json' => new MediaType(schema: new \ArrayObject([
+                            'type' => 'object',
+                            'properties' => [
+                                'message' => ['type' => 'string', 'description' => 'The user message text.'],
+                                'agent_id' => ['type' => 'integer', 'nullable' => true, 'description' => 'AI agent to use; defaults to the active agent when omitted.'],
+                            ],
+                            'required' => ['message'],
+                        ])),
+                    ]),
+                ),
+                responses: [
+                    '200' => new OpenApiResponse(description: 'A text/event-stream of SSE frames.', content: new \ArrayObject([
+                        'text/event-stream' => new MediaType(schema: new \ArrayObject(['type' => 'string'])),
+                    ])),
+                    '400' => new OpenApiResponse(description: 'Missing message.'),
+                    '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                    '403' => new OpenApiResponse(description: 'Authenticated but not the owner of this conversation.'),
+                    '404' => new OpenApiResponse(description: 'Conversation not found.'),
+                    '429' => new OpenApiResponse(description: 'Too many messages sent too quickly; slow down.'),
+                ],
+            ),
         ),
         new Get(
             uriTemplate: '/conversations/{id}/sources',
@@ -74,6 +159,22 @@ use Sylius\Resource\Model\ResourceInterface;
             output: false,
             read: true,
             name: 'conversation_sources',
+            openapi: new OpenApiOperation(
+                tags: ['Conversations'],
+                summary: 'List the RAG sources cited across a conversation',
+                description: 'Extracts the `sources` metadata recorded on every assistant message of the conversation (document id/title, relevance score).',
+                parameters: [
+                    new OpenApiParameter(name: 'id', in: 'path', description: 'Conversation id', required: true, schema: ['type' => 'integer']),
+                ],
+                responses: [
+                    '200' => new OpenApiResponse(description: 'Aggregated sources for the conversation.', content: new \ArrayObject([
+                        'application/json' => new MediaType(schema: new \ArrayObject(['type' => 'object'])),
+                    ])),
+                    '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                    '403' => new OpenApiResponse(description: 'Authenticated but not the owner of this conversation.'),
+                    '404' => new OpenApiResponse(description: 'Conversation not found.'),
+                ],
+            ),
         ),
         new Patch(
             uriTemplate: '/conversations/{id}/messages/{messageId}/feedback',
@@ -82,6 +183,36 @@ use Sylius\Resource\Model\ResourceInterface;
             read: true,
             deserialize: false,
             name: 'conversation_message_feedback',
+            openapi: new OpenApiOperation(
+                tags: ['Conversations'],
+                summary: 'Set or clear the thumbs up/down feedback on a message',
+                description: 'Sets feedback to "positive", "negative", or clears it with null. The message must belong to the given conversation.',
+                parameters: [
+                    new OpenApiParameter(name: 'id', in: 'path', description: 'Conversation id', required: true, schema: ['type' => 'integer']),
+                    new OpenApiParameter(name: 'messageId', in: 'path', description: 'Message id', required: true, schema: ['type' => 'integer']),
+                ],
+                requestBody: new RequestBody(
+                    required: true,
+                    content: new \ArrayObject([
+                        'application/json' => new MediaType(schema: new \ArrayObject([
+                            'type' => 'object',
+                            'properties' => [
+                                'feedback' => ['type' => 'string', 'enum' => ['positive', 'negative', null], 'nullable' => true],
+                            ],
+                            'required' => ['feedback'],
+                        ])),
+                    ]),
+                ),
+                responses: [
+                    '200' => new OpenApiResponse(description: 'The updated message.', content: new \ArrayObject([
+                        'application/json' => new MediaType(schema: new \ArrayObject(['type' => 'object'])),
+                    ])),
+                    '400' => new OpenApiResponse(description: 'Missing feedback, or invalid feedback value.'),
+                    '401' => new OpenApiResponse(description: 'Not authenticated.'),
+                    '403' => new OpenApiResponse(description: 'Authenticated but not the owner of this conversation.'),
+                    '404' => new OpenApiResponse(description: 'Conversation, or message not found in this conversation.'),
+                ],
+            ),
         ),
     ],
 )]
