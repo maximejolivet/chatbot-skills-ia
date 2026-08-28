@@ -1,0 +1,27 @@
+meta {
+  name: Get New Agent Form
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/admin/ai-agents/new
+  body: none
+  auth: none
+}
+
+script:post-response {
+  const html = res.getBody();
+  const match = typeof html === "string" ? html.match(/name="ai_agent\[_token\]"[^>]*value="([^"]+)"/) : null;
+  if (match) {
+    bru.setVar("agent_form_token", match[1]);
+  }
+}
+
+docs {
+  Requires an active admin session (run "Login" from Hors menu/Connexion
+  first). Same pattern as "Get New User Form": Symfony's Form component
+  issues a fresh CSRF token per page load, scraped here from the hidden
+  ai_agent[_token] input into {{agent_form_token}}, consumed by "Create
+  Agent" right after.
+}

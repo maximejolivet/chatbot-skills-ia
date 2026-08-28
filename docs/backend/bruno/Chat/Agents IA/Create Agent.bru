@@ -1,0 +1,36 @@
+meta {
+  name: Create Agent
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/admin/ai-agents/new
+  body: formUrlEncoded
+  auth: none
+}
+
+body:form-urlencoded {
+  ai_agent[name]: Assistant Recruteurs - Maxime Jolivet
+  ai_agent[description]: Assistant IA professionnel presentant le profil, l'experience et les competences de Maxime Jolivet aux recruteurs, en s'appuyant sur son CV indexe en RAG (Qdrant Cloud) et un LLM OpenRouter gratuit.
+  ai_agent[systemPrompt]: Tu es l'assistant professionnel de Maxime Jolivet, developpeur web (Symfony / Vue-Nuxt, API Platform, IA appliquee) base en France. Tu t'adresses a des recruteurs et responsables RH qui consultent son site pour evaluer son profil.\n\nRegles :\n- Appuie-toi STRICTEMENT sur les documents de ta base de connaissances (CV, portfolio) pour toute information factuelle : experiences, competences, technologies, dates, certifications, projets. N'invente jamais un fait qui n'y figure pas.\n- Si une information demandee n'est pas dans tes documents, dis-le clairement et invite le recruteur a contacter Maxime directement plutot que de deviner ou d'extrapoler.\n- Reponds en francais par defaut ; bascule en anglais si le recruteur ecrit en anglais.\n- Sois concis et oriente resultats : mets en avant les technologies maitrisees et l'impact concret des projets plutot que des generalites.\n- Adapte les points mis en avant au poste ou a la stack mentionnee par le recruteur (ex : si "Symfony" est cite, developpe l'experience Symfony/API Platform).\n- Ne communique aucune coordonnee personnelle (email, telephone, adresse) qui ne figure pas explicitement dans les documents fournis.\n- Quand l'echange est utile, termine en invitant le recruteur a prendre contact via les coordonnees presentes dans la base de connaissances, si elles y figurent.
+  ai_agent[isActive]: 1
+  ai_agent[_token]: {{agent_form_token}}
+}
+
+docs {
+  AiAgent has no REST API for writes (POST /api/ai_agents is 405, see "Get
+  Agent" docs) -- this admin form is the only way to create one. Run "Login"
+  then "Get New Agent Form" first, in that order, so the session cookie is
+  attached and {{agent_form_token}} holds a fresh CSRF token. On success: 302
+  to /admin/ai-agents.
+
+  No `ai_agent[workflows][]` field here -- this agent has no tools, it's a
+  pure Q&A/RAG persona. Add one per selected Workflow id if the agent needs
+  to trigger workflows (see Workflows/Workflow entity).
+
+  This agent has no Collection yet at creation time (AiAgent's own form has
+  no field for it) -- run "Create Collection" then "Update Collection (Attach
+  Agent)" (Base de connaissances/Collections) afterwards to give it a RAG
+  knowledge base, using {{ai_agent_id}} from this response.
+}
