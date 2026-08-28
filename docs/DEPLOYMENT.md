@@ -1,7 +1,7 @@
 # Déploiement
 
-[![CI (backend)](https://github.com/maximejolivet/symfony-ia-rag-chatbot/actions/workflows/ci-backend.yml/badge.svg)](https://github.com/maximejolivet/symfony-ia-rag-chatbot/actions/workflows/ci-backend.yml)
-[![Deploy chat-ia (backend)](https://github.com/maximejolivet/symfony-ia-rag-chatbot/actions/workflows/deploy-backend.yml/badge.svg)](https://github.com/maximejolivet/symfony-ia-rag-chatbot/actions/workflows/deploy-backend.yml)
+[![CI (backend)](https://github.com/maximejolivet/symfony-nuxt-ia-rag-chatbot/actions/workflows/ci-backend.yml/badge.svg)](https://github.com/maximejolivet/symfony-nuxt-ia-rag-chatbot/actions/workflows/ci-backend.yml)
+[![Deploy chat-ia (backend)](https://github.com/maximejolivet/symfony-nuxt-ia-rag-chatbot/actions/workflows/deploy-backend.yml/badge.svg)](https://github.com/maximejolivet/symfony-nuxt-ia-rag-chatbot/actions/workflows/deploy-backend.yml)
 ![Hosting](https://img.shields.io/badge/hosting-o2switch-FF6600)
 ![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)
 ![Frontend deploy](https://img.shields.io/badge/frontend%20deploy-not%20automated-lightgrey)
