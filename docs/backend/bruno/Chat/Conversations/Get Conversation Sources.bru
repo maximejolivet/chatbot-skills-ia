@@ -1,0 +1,31 @@
+meta {
+  name: Get Conversation Sources
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{base_url}}/api/conversations/{{conversation_id}}/sources
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+docs {
+  Aggregates the RAG sources (document_id, document_title, score) cited
+  across every assistant message of the conversation, read straight from
+  `Message.metadata.sources` -- no separate storage. Restricted to the
+  conversation's owner (or ROLE_ADMIN) via #[IsGranted('OWNER', ...)] on
+  ConversationSourcesController, same pattern as List Messages/Send Message
+  Feedback (API Platform's declarative `security:` is not reliably enforced
+  on custom-controller operations here).
+
+  Not called by the demo frontend widget today (it reads `metadata.sources`
+  directly off each message it already has) and not in the Nuxt proxy's
+  allowlist -- run Send Message or Stream Conversation first to get a
+  conversation with sourced replies to inspect here.
+}

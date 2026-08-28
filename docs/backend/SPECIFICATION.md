@@ -109,7 +109,7 @@ ai_providers  ──┐
 | `usage`                                     | enum `AiProviderUsage`      | `chat` \| `embedding`                                                                       |
 | `provider`                                  | enum `AiProvider`           | `ollama` \| `api_endpoint`                                                                  |
 | `apiEndpoint`, `apiKey`, `model`, `baseUrl` | string, nullable            | dépend du provider                                                                          |
-| `isActive`                                  | bool                        | une seule config active par usage est prise en compte                                       |
+| `isActive`                                  | bool                        | pour `embedding`, une seule config active est prise en compte (`getActiveForUsage()`, la plus prioritaire) ; pour `chat`, **toutes** les configs actives sont utilisées comme chaîne de repli ordonnée (voir §5.2, `FallbackLlmClient`) |
 | `isDefault`                                 | bool                        |                                                                                             |
 | `lastTestStatus`                            | enum `AiProviderTestStatus` | `unknown` \| `success` \| `error`, mis à jour par `POST /api/ai_provider_configs/{id}/test` |
 | `lastTestedAt`                              | datetime nullable           |                                                                                             |
@@ -141,7 +141,7 @@ ai_providers  ──┐
 
 **`DocumentCategory`** — `name` (unique), `description`. CRUD complet.
 
-**`Faq`** — `question` (500), `answer` (text), `category` (nullable), `isActive`, `tags` (array), `priority` (int, défaut `0`, ordre d'affichage croissant). Lecture seule via REST (`GetCollection(paginationEnabled: false)` + `Get` uniquement, `PUBLIC_ACCESS` — mêmes conditions que `AiAgent`), écriture réservée au backoffice. `App\Doctrine\FaqActiveCollectionExtension` exclut les FAQ `isActive = false` de la collection publique et trie le reste par `priority ASC` (la grille `/admin/faqs` les liste toutes, triées pareil par défaut, via une requête Sylius séparée qui ne passe pas par API Platform). Consommée côté frontend comme questions de conversation suggérées (`frontend/composables/useFaqs.ts`, sur la home et le panneau chat) — toujours pas référencée dans `src/Chat/`, `src/KnowledgeBase/` ou `src/VectorConnector/` : un agent ne voit jamais ces entrées en répondant. Aucun champ `created_by` (pas de scoping par utilisateur).
+**`Faq`** — `question` (500), `answer` (text), `category` (nullable), `isActive`, `tags` (array), `priority` (int, défaut `0`, ordre d'affichage croissant), `isHighlighted` (bool, défaut `false` — sérialisé `highlighted` en JSON-LD, API Platform retire le préfixe `is` des getters booléens, comme `isActive` → `active`). Lecture seule via REST (`GetCollection(paginationEnabled: false)` + `Get` uniquement, `PUBLIC_ACCESS` — mêmes conditions que `AiAgent`), écriture réservée au backoffice. `App\Doctrine\FaqActiveCollectionExtension` exclut les FAQ `isActive = false` de la collection publique et trie le reste par `priority ASC` (la grille `/admin/faqs` les liste toutes, triées pareil par défaut, via une requête Sylius séparée qui ne passe pas par API Platform). Consommée côté frontend comme questions de conversation suggérées (`frontend/composables/useFaqs.ts`, sur la home et le panneau chat) — l'API renvoie toutes les FAQ actives, mais ce consommateur ne retient que celles avec `highlighted: true` (curation éditoriale distincte de `isActive`) ; toujours pas référencée dans `src/Chat/`, `src/KnowledgeBase/` ou `src/VectorConnector/` : un agent ne voit jamais ces entrées en répondant. Aucun champ `created_by` (pas de scoping par utilisateur).
 
 **`Collection`** — un regroupement logique de documents, optionnellement lié à un agent et/ou un index vectoriel.
 | Champ                          | Type                                                                                        |
@@ -223,6 +223,7 @@ Cloisonné par propriétaire : un compte `ROLE_USER` ne voit/modifie que les ex�
 | ---------- | -------------------------------------------------------------------------- |
 | `title`    | string(200)                                                                |
 | `isActive` | bool                                                                       |
+| `visitorFirstName`, `visitorLastName` | string(100) nullable, `#[ApiProperty(writable: false)]` — jamais renseignés directement par un client API ; réglés en interne par l'étape de workflow `set_conversation` (voir §7.2) une fois l'agent en tool-calling capable d'extraire l'identité du visiteur (`enregistrer_identite`), et réinjectés dans le prompt système par `ChatOrchestrationService::buildMessages()` pour que le modèle ne redemande jamais le nom déjà connu (voir §5.3) |
 | `messages` | `OneToMany` vers `Message`, ordonné par `createdAt`, `orphanRemoval: true` |
 | `user`     | `ManyToOne` nullable vers `User`, `onDelete: SET NULL` — non lisible/écrivable via l'API (voir §4.6) |
 
@@ -271,7 +272,7 @@ Cloisonné par propriétaire : un compte `ROLE_USER` ne voit/modifie (y compris 
 | `MessageFeedback`         | `positive`, `negative`                                                                |
 | `WorkflowExecutionStatus` | `pending`, `running`, `completed`, `failed`, `cancelled`                               |
 | `WorkflowStatus`          | `draft`, `active`, `inactive`                                                          |
-| `WorkflowStepType`        | `api_call`, `email`, `notification`, `data_transform`, `condition`, `delay`, `webhook` |
+| `WorkflowStepType`        | `api_call`, `email`, `notification`, `data_transform`, `condition`, `delay`, `webhook`, `set_conversation` |
 | `WorkflowTriggerType`     | `manual`, `api`, `agent_tool`                                                          |
 
 ---
@@ -302,9 +303,11 @@ Détails d'implémentation notables :
 
 Règle de résolution, par usage (`chat` / `embedding`) :
 
-1. Recherche d'une **`AiProviderConfig`** active pour cet usage en base (gérée depuis le backoffice, `/admin/ai-provider-configs`) → priorité absolue.
+1. Recherche d'une ou plusieurs **`AiProviderConfig`** actives pour cet usage en base (gérées depuis le backoffice, `/admin/ai-provider-configs`) → priorité absolue.
 2. Sinon, repli sur les **variables d'environnement** `AI_PROVIDER` (`ollama` ou `api_endpoint`) + `AI_API_*` / `OLLAMA_*`.
 3. Si le provider `api_endpoint` choisi n'a pas de clé API valide, **repli silencieux sur Ollama** (avec un log `warning`).
+
+**Chaîne de repli pour `chat`** (`ProviderSelectionService::getLlmClient()`) : contrairement à `embedding` (une seule config active prise en compte, `getActiveForUsage()`), **toutes** les `AiProviderConfig` actives pour l'usage `chat` sont résolues (`getAllActiveForUsage()`, triées `isDefault DESC, updatedAt DESC`) et enveloppées dans un `FallbackLlmClient` si plus d'une est utilisable — chaque config dont la construction échoue (ex. `api_endpoint` sans clé API) est ignorée avec un log `warning`, sans interrompre la résolution des suivantes. `FallbackLlmClient::complete()`/`checkStatus()` essaient chaque client dans l'ordre jusqu'au premier qui réussit (`stream()` idem, mais ne rebascule sur le suivant que si l'échec survient *avant* le premier chunk émis, pour ne jamais dupliquer un flux déjà partiellement renvoyé au client). Avec zéro ou une seule config utilisable, le comportement est inchangé (délégation directe). Permet par ex. un provider `api_endpoint` cloud par défaut avec un Ollama local en secours si le premier est indisponible.
 
 Le provider est **re-résolu à chaque appel** (pas de cache d'instance) : un changement de config admin prend effet immédiatement, sans redémarrage.
 
@@ -449,6 +452,7 @@ Types d'étapes supportés (`WorkflowStepType`) :
 | `delay`          | `sleep()` bloquant pendant le nombre de secondes configuré                                                                                                                                              |
 | `email`          | Envoi réel via **Symfony Mailer** (`MAILER_DSN`), expéditeur `MAILER_FROM_ADDRESS`. En dev Docker, pointe vers un catcher **MailHog** local (`http://mailhog.chatbot.localhost`) -- rien ne part réellement tant que `MAILER_DSN` n'est pas configuré vers un vrai provider en prod                    |
 | `notification`   | POST vers `webhook_url` (payload `{"text": ..., "channel": ...}`, compatible Slack/Discord/Mattermost) si configuré dans le step ; sinon journalise seulement (`status: logged`)                        |
+| `set_conversation` | N'a d'effet que dans le chemin de tool-calling (`ChatOrchestrationService::execute()` passe la `Conversation` courante en contexte) — pas de conversation disponible sur un déclenchement manuel/API (`trigger`/`test`), auquel cas l'étape est un no-op (`status: skipped`). `configuration.fields` mappe un nom de champ `Conversation` (`visitor_first_name`, `visitor_last_name` — seuls champs supportés) vers une clé de `inputData` (les arguments extraits par le LLM lors de l'appel d'outil) ; persiste la ou les valeurs scalaires trouvées sur l'entité et flush. Utilisé par le workflow `enregistrer_identite` pour mémoriser l'identité du visiteur une fois que le LLM l'a extraite en tool-calling structuré (voir `docs/BACKLOG.md`) |
 
 ### 7.3 Synchronicité
 
@@ -525,10 +529,11 @@ Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les res
 | `POST`                        | `/api/conversations/{id}/messages` | Envoie un message utilisateur, le persiste + renvoie la réponse de l'assistant (body : `{message, agent_id?}`) |
 | `POST`                        | `/api/conversations/{id}/stream`   | Idem, réponse en **SSE** (`text/event-stream`)                                                                 |
 | `PATCH`                       | `/api/conversations/{id}/messages/{messageId}/feedback` | Thumbs up/down sur un message (body : `{feedback: "positive"\|"negative"\|null}`)             |
+| `GET`                         | `/api/conversations/{id}/sources`  | Agrège les sources RAG (`document_id`, `document_title`, `score`) citées par tous les messages assistant de la conversation, extraites de `Message.metadata.sources` (`ConversationSourcesController`) — non consommé par le widget frontend actuel (qui lit `metadata.sources` directement sur chaque message), pas dans l'allowlist du proxy Nuxt |
 | `GET`                         | `/api/ai_agents`                   | Liste des agents (lecture seule, pagination désactivée)                                                        |
 | `GET`                         | `/api/ai_agents/{id}`              | Détail d'un agent                                                                                              |
 | `POST`                        | `/api/chat/quick-send`             | Chat **anonyme, non persisté** (body : `{message, agent_id?}`) — utilisé par les frontends de démo             |
-| `GET`                         | `/api/chat/llm-status`             | Statut du provider LLM actif (`reachable`/`running`/`error`/`not_reachable`)                                   |
+| `GET`                         | `/api/chat/llm-status`             | Statut du provider LLM actif (`reachable`/`running`/`error`/`not_reachable`) — avec plusieurs `AiProviderConfig chat` actives (§5.2), reflète le premier client `reachable` de la chaîne de repli, avec `fallback_checked` (index atteint) en plus |
 | `GET`                         | `/api/chat/embedding-status`       | Statut du provider d'embedding actif                                                                           |
 | `POST`                        | `/api/chat/follow-up-questions`    | 2-3 questions de relance générées à partir d'un échange (body : `{message, answer}`, stateless — pas de lookup DB) |
 
@@ -553,6 +558,11 @@ Base URL : `http://symfony.chatbot.localhost` (dev, via Traefik). Toutes les res
 {"questions": ["Quels projets a-t-il menés ?", "Quelle est sa stack technique ?"]}
 ```
 `App\Chat\FollowUpQuestionsService::generate()` — appelle le client LLM d'analyse dédié (`ProviderSelectionService::getAnalysisLlmClient()`, celui de `DocumentAnalysisService`) sur le seul échange `{message, answer}` reçu, lui demande 2-3 questions de relance courtes en JSON. Best-effort : `[]` sur tout échec (parsing JSON, LLM indisponible), jamais d'exception propagée — pensé pour être appelé *après* qu'une vraie réponse a déjà été affichée (voir `frontend/composables/useChatbot.ts::fetchFollowUpQuestions`, jamais sur le chemin critique d'un tour de conversation). Consomme le même rate-limiter que `quick-send`/`messages`/`stream` (`limiter.chat_message`).
+
+**`GET /api/conversations/{id}/sources`** :
+```json
+{"conversation_id": 12, "sources": [{"document_id": 4, "document_title": "...", "score": 0.71, "message_id": 87, "message_created_at": "2026-08-26T10:00:00+00:00"}], "total": 1}
+```
 
 **`POST /api/vector/search`** — recherche hybride (§6.5), classée par fusion RRF ; `score` reste la similarité cosinus Qdrant pour un hit vectoriel, une relevance FULLTEXT (hors 0-1) pour un hit lexical seul :
 ```json
@@ -627,7 +637,7 @@ Pour ajouter une 14ᵉ ressource : une entité `implements ResourceInterface`, u
 - **Cloisonnement par propriétaire** (`Conversation.user`, `WorkflowExecution.triggeredBy`, tous deux auto-renseignés au `prePersist` par `App\EventListener\UserStampListener`) :
   - **Item** (`Get`/`Patch`/`Delete`) : `security: "is_granted('OWNER', object)"`, vérifié par `App\Security\Voter\OwnershipVoter` (`ROLE_ADMIN` bypass toujours ; propriétaire `null` = admin uniquement).
   - **Collection** (`GetCollection`) : `App\Doctrine\OwnershipCollectionExtension` filtre la requête DQL (pas d'`object` unique pour un Voter).
-  - **Opérations à contrôleur personnalisé** (messages/stream de `Conversation`) : le `security:` déclaratif d'API Platform ne s'y applique pas de façon fiable (vérifié empiriquement) — `#[IsGranted('OWNER', subject: 'data')]` directement sur `ConversationMessagesController`/`ConversationStreamController`.
+  - **Opérations à contrôleur personnalisé** (messages/stream/sources/feedback de `Conversation`) : le `security:` déclaratif d'API Platform ne s'y applique pas de façon fiable (vérifié empiriquement) — `#[IsGranted('OWNER', subject: 'data')]` directement sur `ConversationMessagesController`/`ConversationStreamController`/`ConversationSourcesController`/`MessageFeedbackController` (les deux derniers ajoutés après l'audit de sécurité initial, même mécanisme appliqué dès leur création).
   - **La plupart des autres ressources** (`Document`, `Workflow`, `AiProviderConfig`, `Collection`, `DocumentCategory`, `VectorIndex`) exigent explicitement `ROLE_ADMIN` sur leur propre `#[ApiResource(security: ...)]`, indépendamment de la règle `access_control` globale — un compte `ROLE_USER` ne peut ni les lire ni les modifier. **Exceptions** : `AiAgent` et `Faq` gardent `ROLE_ADMIN` par défaut au niveau ressource mais redéclarent `GetCollection`/`Get` en `PUBLIC_ACCESS` et n'exposent aucune autre opération via l'API — lecture ouverte à tout compte authentifié (y compris `ROLE_USER`), écriture uniquement via le backoffice (`/admin/ai-agents`, `/admin/faqs`).
 
 > [!CAUTION]

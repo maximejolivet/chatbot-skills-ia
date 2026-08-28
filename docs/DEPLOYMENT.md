@@ -10,10 +10,10 @@
 
 Deux pipelines distincts, le second déclenché par le premier :
 
-1. [`.github/workflows/ci-backend.yml`](.github/workflows/ci-backend.yml) —
+1. [`.github/workflows/ci-backend.yml`](../.github/workflows/ci-backend.yml) —
    lint, tests, PHPStan, PHP-CS-Fixer, `composer audit`. Déclenché sur tout
    push/PR touchant `backend/**`. Pas de secrets, pas de SSH.
-2. [`.github/workflows/deploy-backend.yml`](.github/workflows/deploy-backend.yml) —
+2. [`.github/workflows/deploy-backend.yml`](../.github/workflows/deploy-backend.yml) —
    build + déploiement SSH. Déclenché par `workflow_run` quand le pipeline CI
    **réussit sur `master`** (jamais directement sur push), ou manuellement
    (`workflow_dispatch`, avec une option `dry_run`).
@@ -39,7 +39,7 @@ Deux pipelines distincts, le second déclenché par le premier :
   Sécurité > Accès SSH). Les runners GitHub Actions changent d'IP à chaque
   run, donc le workflow whiteliste l'IP du runner via l'API cPanel avant de
   tenter le SSH (logique dans
-  [`.github/scripts/o2switch-whitelist.sh`](.github/scripts/o2switch-whitelist.sh)).
+  [`.github/scripts/o2switch-whitelist.sh`](../.github/scripts/o2switch-whitelist.sh)).
   Le quota de whitelist étant limité, le script retire les 2 IP les plus
   récemment ajoutées avant d'ajouter la nouvelle.
 
@@ -135,4 +135,4 @@ de ce qu'un déploiement changerait.
 ## Frontend (Nuxt)
 
 Pas de déploiement automatisé pour l'instant — le frontend tourne uniquement
-via `docker compose` en local (service `nuxt`, voir [`README.md`](README.md)).
+via `docker compose` en local (service `nuxt`, voir [`README.md`](../README.md)).

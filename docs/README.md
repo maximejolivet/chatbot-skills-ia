@@ -1,6 +1,6 @@
 # Documentation — Chatbot IA
 
-![docs](https://img.shields.io/badge/docs-9%20pages-informational)
+![docs](https://img.shields.io/badge/docs-10%20pages-informational)
 ![format](https://img.shields.io/badge/format-Markdown-000000?logo=markdown&logoColor=white)
 
 Index de tous les fichiers Markdown du dépôt.
@@ -17,6 +17,10 @@ Index de tous les fichiers Markdown du dépôt.
 - [backend/README.md](../backend/README.md) — stack, installation et organisation du backend Symfony
 - [docs/backend/SPECIFICATION.md](backend/SPECIFICATION.md) — cahier des charges du backend
 - [docs/backend/ADMIN.md](backend/ADMIN.md) — guide des pages du backoffice `/admin` (Menu et Pages hors menu)
+
+## Frontend
+
+- [docs/frontend/SPECIFICATION.md](frontend/SPECIFICATION.md) — cahier des charges du frontend Nuxt/Vue (widget de chat)
 
 ## Chantier
 

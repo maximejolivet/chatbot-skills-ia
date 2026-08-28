@@ -33,5 +33,12 @@ docs {
   Custom controller (WorkflowStepsController), not API Platform's serializer
   -- unlike the rest of the API this one is snake_case: step_type, order,
   is_active. step_type must be one of: api_call, email, notification,
-  data_transform, condition, delay, webhook.
+  data_transform, condition, delay, webhook, set_conversation.
+
+  set_conversation only has an effect on the tool-calling path (it needs a
+  Conversation in context, which manual/API triggers below don't have --
+  it's a no-op there). Its `configuration.fields` maps a Conversation field
+  name (visitor_first_name, visitor_last_name -- the only two supported) to
+  an inputData key, e.g. {"fields": {"visitor_first_name": "first_name"}}.
+  See docs/backend/SPECIFICATION.md §7.2.
 }

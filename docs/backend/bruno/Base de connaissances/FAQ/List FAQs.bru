@@ -28,5 +28,8 @@ docs {
   src/KnowledgeBase/ or src/VectorConnector/ -- an agent never sees these
   entries when answering. Consumed by the frontend as suggested
   conversation-starter questions instead (frontend/composables/useFaqs.ts,
-  shown on the landing page and the chat panel's empty state).
+  shown on the landing page and the chat panel's empty state) -- that
+  consumer further narrows the (already isActive-only) collection to FAQs
+  with `highlighted: true` (JSON-LD name of Faq::$isHighlighted, editorial
+  curation separate from isActive/priority).
 }

@@ -37,7 +37,10 @@ menu**.
 - **Providers IA** (`AiProviderConfig`) — connecteurs vers les LLM/embeddings (Ollama ou
   endpoint API générique). Champs clés : `name` (unique), `usage` (`chat`/`embedding`),
   `provider` (`ollama`/`api_endpoint`), `apiEndpoint`, `apiKey` (write-only), `model`, `baseUrl`,
-  `isActive`, `isDefault`, `lastTestStatus`/`lastTestedAt`. Action `POST
+  `isActive`, `isDefault`, `lastTestStatus`/`lastTestedAt`. Pour `usage = embedding`, une seule
+  config active est utilisée (la plus prioritaire) ; pour `usage = chat`, activer plusieurs
+  configs les enchaîne en repli automatique (`isDefault DESC`, puis `updatedAt DESC` — ex. un
+  provider cloud par défaut avec un Ollama local en secours). Action `POST
   /ai_provider_configs/{id}/test` envoie une requête réelle au provider pour vérifier la config.
   → **API** : `GET/POST /api/ai_provider_configs`, `GET/PATCH/DELETE
   /api/ai_provider_configs/{id}`, `POST /api/ai_provider_configs/{id}/test`.
@@ -83,15 +86,18 @@ du hit).
   PATCH (`agent: "/api/ai_agents/{id}"`) qui sert à relier un agent à sa collection, `AiAgent`
   n'ayant pas ce champ dans son propre formulaire admin.
 - **FAQ** (`Faq`) — questions/réponses pré-rédigées (`question`, `answer`, `category`, `isActive`,
-  `tags`, `priority` — entier, défaut `0`, ordre d'affichage croissant). Toujours pas branché sur
+  `tags`, `priority` — entier, défaut `0`, ordre d'affichage croissant — `isHighlighted`, défaut
+  `false`, sérialisé `highlighted` en JSON-LD). Toujours pas branché sur
   le pipeline RAG/chat : aucune référence à `Faq` dans
   `src/Chat/`, `src/KnowledgeBase/` ou `src/VectorConnector/` — pas d'indexation Qdrant, pas de
   lecture par `ChatOrchestrationService`/`RagContextService`. En l'état, un agent ne voit jamais
   ces entrées quand il répond. Consommé côté frontend comme questions de conversation suggérées
   (`frontend/composables/useFaqs.ts`, sur la home et le panneau chat) — seules les FAQ
   `isActive = true` remontent, triées par `priority ASC`
-  (`App\Doctrine\FaqActiveCollectionExtension`) ; la grille `/admin/faqs` trie pareil par défaut et
-  expose `priority` comme colonne triable.
+  (`App\Doctrine\FaqActiveCollectionExtension`), mais ce consommateur ne retient ensuite que
+  celles avec `highlighted: true` comme questions suggérées (curation éditoriale distincte de
+  `isActive`) ; la grille `/admin/faqs` trie pareil par défaut et expose `priority` comme colonne
+  triable.
   → **API** : lecture seule, `GET /api/faqs`, `GET /api/faqs/{id}`. Création/édition/suppression
   uniquement via ce backoffice — pas de `POST`/`PATCH`/`DELETE` côté API (même schéma que
   `AiAgent`, §4.5 de `SPECIFICATION.md`).
@@ -100,7 +106,9 @@ du hit).
 
 - **Workflows** (`Workflow`) — automatisations déclenchables manuellement, via API, ou comme
   **outil** d'un agent LLM (`triggerType: agent_tool`). Composés d'étapes (`WorkflowStep` :
-  `api_call`/`email`/`notification`/`data_transform`/`condition`/`delay`/`webhook`), avec un
+  `api_call`/`email`/`notification`/`data_transform`/`condition`/`delay`/`webhook`/
+  `set_conversation` — ce dernier n'a d'effet que sur le chemin tool-calling, voir §7.2 de
+  `SPECIFICATION.md`), avec un
   `parametersSchema` JSON utilisé comme définition de tool pour le LLM. Actions : suppression
   douce, `/workflows/{id}/trigger` (crée une `WorkflowExecution`), `/workflows/{id}/test`.
   → **API** : `GET/POST /api/workflows`, `GET/PATCH /api/workflows/{id}`, `DELETE
@@ -126,12 +134,16 @@ du hit).
   des `workflows`, passe uniquement par le formulaire `/admin/ai-agents/new` et
   `/admin/ai-agents/{id}/edit` (session, CSRF).
 - **Conversations** (`Conversation`) — fil de chat entre un opérateur et l'IA. `user` propriétaire
-  (SET NULL, stampé par `UserStampListener`), `messages` (OneToMany). Actions dédiées :
-  `/conversations/{id}/messages`, `/conversations/{id}/stream` (SSE). Accès restreint au
-  propriétaire, sauf `ROLE_ADMIN`.
+  (SET NULL, stampé par `UserStampListener`), `messages` (OneToMany), `visitorFirstName`/
+  `visitorLastName` (non écrivables via l'API, réglés par l'étape de workflow `set_conversation`
+  une fois le tool-calling capable d'extraire l'identité du visiteur). Actions dédiées :
+  `/conversations/{id}/messages`, `/conversations/{id}/stream` (SSE),
+  `/conversations/{id}/sources` (agrège les sources RAG citées), `/conversations/{id}/messages/
+  {messageId}/feedback` (thumbs up/down). Accès restreint au propriétaire, sauf `ROLE_ADMIN`.
   → **API** : `GET/POST /api/conversations`, `GET/PATCH/DELETE /api/conversations/{id}`,
   `GET/POST /api/conversations/{id}/messages` (POST : `{message, agent_id?}`, synchrone, renvoie le
-  `Message` assistant complet), `POST /api/conversations/{id}/stream` (variante SSE).
+  `Message` assistant complet), `POST /api/conversations/{id}/stream` (variante SSE),
+  `GET /api/conversations/{id}/sources`, `PATCH /api/conversations/{id}/messages/{messageId}/feedback`.
 - **Messages** (`Message`) — message individuel d'une conversation (`role`:
   `user`/`assistant`/`system`/`tool`, `content`, `metadata`), lecture seule, accessible seulement
   via sa conversation parente.
