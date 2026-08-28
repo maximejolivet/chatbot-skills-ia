@@ -1,7 +1,7 @@
 # Chatbot Full-Stack
 
-[![CI (backend)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/ci-backend.yml/badge.svg)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/ci-backend.yml)
-[![Deploy chat-ia (backend)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend.yml/badge.svg)](https://github.com/maximejolivet/chatbot-skills-ia/actions/workflows/deploy-backend.yml)
+[![CI (backend)](https://github.com/maximejolivet/symfony-ia-rag-chatbot/actions/workflows/ci-backend.yml/badge.svg)](https://github.com/maximejolivet/symfony-ia-rag-chatbot/actions/workflows/ci-backend.yml)
+[![Deploy chat-ia (backend)](https://github.com/maximejolivet/symfony-ia-rag-chatbot/actions/workflows/deploy-backend.yml/badge.svg)](https://github.com/maximejolivet/symfony-ia-rag-chatbot/actions/workflows/deploy-backend.yml)
 ![PHP](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)
 ![Symfony](https://img.shields.io/badge/Symfony-8.1-000000?logo=symfony&logoColor=white)
 ![API Platform](https://img.shields.io/badge/API%20Platform-4.3-1F76C8)
@@ -79,7 +79,7 @@ Tous les services sont routés par domaine via Traefik (`*.chatbot.localhost`, r
 ## Architecture
 
 ```
-chatbot-skills-ia/
+symfony-ia-rag-chatbot/
 ├── backend/       # API Symfony + API Platform, backoffice /admin
 ├── frontend/      # Composant chatbot Nuxt 4 + TailwindCSS
 ├── traefik/       # Reverse proxy : domaines par service (*.chatbot.localhost)

@@ -1,11 +1,11 @@
 {
-  "name": "chatbot-skills-ia",
+  "name": "symfony-ia-rag-chatbot",
   "version": "1.0.0",
   "private": true,
   "description": "Chatbot IA — Symfony backend + Nuxt frontend, routed via Traefik",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/maximejolivet/chatbot-skills-ia.git"
+    "url": "git+https://github.com/maximejolivet/symfony-ia-rag-chatbot.git"
   },
   "license": "ISC",
   "scripts": {

@@ -25,7 +25,7 @@ Tout tourne en Docker Compose, routé par domaine via Traefik (`*.chatbot.localh
 ## 2. Architecture du projet
 
 ```
-chatbot-skills-ia/
+symfony-ia-rag-chatbot/
 ├── backend/     API Symfony + API Platform, backoffice /admin
 ├── frontend/    Widget chatbot Nuxt 4 (composant + proxy serveur)
 ├── traefik/     Reverse proxy, domaines par service
