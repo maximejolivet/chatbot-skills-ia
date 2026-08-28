@@ -14,7 +14,7 @@ use Symfony\Contracts\HttpClient\ResponseInterface;
  */
 final class QdrantClient
 {
-    public const int VECTOR_SIZE = 1024; // mxbai-embed-large embedding dimension
+    public const int VECTOR_SIZE = 1024; // mistral-embed embedding dimension
 
     /** @var array<string, true> */
     private array $ensuredCollections = [];

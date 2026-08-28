@@ -50,6 +50,11 @@ Thumbs.db
 # Docker
 .dockerignore
 
+# Local-only compose override -- currently holds a real Qdrant Cloud API key
+# to point dev at the cloud free-tier instance instead of the local qdrant
+# service (see compose.override.yaml's own header comment).
+/compose.override.yaml
+
 # Temporary files
 *.tmp
 *.temp

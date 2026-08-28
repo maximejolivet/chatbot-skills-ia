@@ -1,0 +1,58 @@
+meta {
+  name: Create Provider (Chat - OpenRouter)
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url}}/api/ai_provider_configs
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/ld+json
+}
+
+body:json {
+  {
+    "name": "openrouter-chat-recruteurs",
+    "usage": "chat",
+    "provider": "api_endpoint",
+    "apiEndpoint": "https://openrouter.ai/api/v1/chat/completions",
+    "apiKey": "{{openrouter_api_key}}",
+    "model": "minimax/minimax-m2.7:free",
+    "isActive": true,
+    "isDefault": true
+  }
+}
+
+docs {
+  Cloud/free-tier alternative to "Create Provider (Chat)" (which targets local
+  Ollama) -- used by the "Assistant Recruteurs" scenario so the agent works
+  without a local Ollama server (prod has none either, see backend/.env.prod).
+
+  model: OpenRouter's free-tier catalog rotates -- "openai/gpt-oss-20b:free"
+  (the model originally configured in .env.prod) started 404ing ("model
+  unavailable for free") during this scenario's setup on 2026-08-28;
+  "minimax/minimax-m3:free" was tried next but also started 404ing/429ing
+  within the same day. "minimax/minimax-m2.7:free" is what's actually
+  configured and live-tested working as of 2026-08-28, picked after
+  live-testing several free chat models directly against
+  https://openrouter.ai/api/v1/chat/completions (curl) for one that actually
+  returns a clean, non-empty completion instead of erroring or burning its
+  token budget on hidden reasoning tokens. OpenRouter's free tier is
+  unstable enough that this model may also stop working later -- curl
+  https://openrouter.ai/api/v1/models | jq to list current free models and
+  re-test before assuming this value is still correct.
+
+  isDefault: true puts this ahead of any other active chat config in the
+  fallback chain (ProviderSelectionService, priority = isDefault DESC,
+  updatedAt DESC) -- it does not disable other configs, they just become
+  fallbacks.
+}

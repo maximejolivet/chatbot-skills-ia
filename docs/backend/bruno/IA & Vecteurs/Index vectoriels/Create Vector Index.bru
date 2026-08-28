@@ -30,5 +30,8 @@ body:json {
 
 docs {
   collectionId is the actual Qdrant collection name. dimension must match
-  the embedding provider's output size (1024 for mxbai-embed-large).
+  the embedding provider's output size -- 1024 for both models used in this
+  project: mxbai-embed-large (Ollama, local default) and mistral-embed
+  (Mistral AI, used to embed this particular collection,
+  "cv_maxime_jolivet" -- see "Create Provider (Embedding - Mistral)").
 }

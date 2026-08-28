@@ -52,6 +52,7 @@ final class VersionBase extends AbstractMigration
         $this->addSql('ALTER TABLE workflow_execution ADD CONSTRAINT FK_FF094DBF9AC0396 FOREIGN KEY (conversation_id) REFERENCES conversation (id) ON DELETE SET NULL');
         $this->addSql('ALTER TABLE workflow_execution ADD CONSTRAINT FK_FF094DBF63C5923F FOREIGN KEY (triggered_by_id) REFERENCES app_user (id) ON DELETE SET NULL');
         $this->addSql('ALTER TABLE workflow_step ADD CONSTRAINT FK_626EE072C7C2CBA FOREIGN KEY (workflow_id) REFERENCES workflow (id) ON DELETE CASCADE');
+        $this->addSql('ALTER TABLE document_chunk ADD FULLTEXT INDEX document_chunk_content_fulltext (content)');
     }
 
     public function down(Schema $schema): void
@@ -72,6 +73,7 @@ final class VersionBase extends AbstractMigration
         $this->addSql('ALTER TABLE workflow_execution DROP FOREIGN KEY FK_FF094DBF9AC0396');
         $this->addSql('ALTER TABLE workflow_execution DROP FOREIGN KEY FK_FF094DBF63C5923F');
         $this->addSql('ALTER TABLE workflow_step DROP FOREIGN KEY FK_626EE072C7C2CBA');
+        $this->addSql('ALTER TABLE document_chunk DROP INDEX document_chunk_content_fulltext');
         $this->addSql('DROP TABLE ai_agent');
         $this->addSql('DROP TABLE ai_agent_workflow');
         $this->addSql('DROP TABLE ai_provider_config');

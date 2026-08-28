@@ -557,11 +557,10 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       vectorizer dans la stack, disproportionné ici). À la place :
       `VectorSearchService::search()` fusionne le résultat vectoriel Qdrant
       avec une recherche lexicale MariaDB **FULLTEXT** (nouvel index sur
-      `document_chunk.content`, migration `Version20260822220000`, appliquée
-      manuellement via `dbal:run-sql` + insertion dans
-      `doctrine_migration_versions` — `doctrine:migrations:*` est cassé dans
-      cet environnement, limite déjà documentée dans le migration baseline),
-      combinées par **Reciprocal Rank Fusion** (k=60). Détails complets,
+      `document_chunk.content`, appliquée manuellement via `dbal:run-sql` +
+      insertion dans `doctrine_migration_versions` — `doctrine:migrations:*`
+      est cassé dans cet environnement, limite déjà documentée dans le
+      migration baseline), combinées par **Reciprocal Rank Fusion** (k=60). Détails complets,
       limites connues (scoping par collection, filtres category_id
       seulement côté lexical, sémantique du champ `score`) dans
       `docs/backend/SPECIFICATION.md` §6.5. 13 tests ajoutés
@@ -570,6 +569,19 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       réelles via `curl -X POST /api/vector/search` contre la vraie base
       Qdrant + MariaDB de dev (résultats vectoriels et lexicaux tous deux
       présents, scores et métadonnées cohérents).
+- [ ] **Index FULLTEXT manquant en production** — le squash de migrations
+      (`c498ca0`, "squash migrations into a single baseline") a supprimé par
+      inadvertance l'`ALTER TABLE document_chunk ADD FULLTEXT INDEX
+      document_chunk_content_fulltext (content)` introduit par `ebcc763`
+      (l'item hybrid search ci-dessus). Sans lui, `lexicalSearch()` échoue
+      silencieusement (log `warning`, dégradation vers vecteur seul) —
+      symptôme observé en dev : `Lexical search failed... Can't find
+      FULLTEXT index matching the column list`. Corrigé dans
+      `backend/migrations/VersionBase.php` (up + down) et appliqué
+      manuellement en dev via `dbal:run-sql`. **La base de production n'a pas
+      reçu ce correctif** — appliquer `ALTER TABLE document_chunk ADD
+      FULLTEXT INDEX document_chunk_content_fulltext (content)` en prod au
+      prochain déploiement/migration.
 - [x] **Étendre la couverture de tests** — `KnowledgeBase`, `VectorConnector`,
       `AiProvider` n'avaient aucun test. +48 tests (19 → 67, tous verts) :
       `TokenEstimatorTest`, `ProviderSelectionServiceTest` (sélection de

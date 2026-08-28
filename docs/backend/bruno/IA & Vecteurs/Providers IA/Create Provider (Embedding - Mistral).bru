@@ -1,0 +1,65 @@
+meta {
+  name: Create Provider (Embedding - Mistral)
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/api/ai_provider_configs
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/ld+json
+}
+
+body:json {
+  {
+    "name": "openrouter-embed-recruteurs",
+    "usage": "embedding",
+    "provider": "api_endpoint",
+    "apiEndpoint": "https://api.mistral.ai/v1/embeddings",
+    "apiKey": "{{mistral_api_key}}",
+    "model": "mistral-embed",
+    "isActive": true,
+    "isDefault": true
+  }
+}
+
+docs {
+  Cloud/free-tier alternative to "Create Provider (Embedding)" (Ollama +
+  mxbai-embed-large, dimension 1024). Despite the row's `name` (kept as
+  "openrouter-embed-recruteurs" for historical/DB continuity), this does NOT
+  go through OpenRouter -- as of 2026-08-28, `GET
+  https://openrouter.ai/api/v1/models` shows OpenRouter's catalog has zero
+  embedding models (no model has "embedding" in
+  `architecture.output_modalities`, none have "embed" in their id); an
+  earlier version of this request used
+  "liquid/lfm-2.5-embedding-350m:free" against OpenRouter's
+  /chat/completions-derived /embeddings endpoint
+  (OpenAiCompatibleEmbeddingClient), but that model no longer exists in
+  OpenRouter's catalog either.
+
+  Reconfigured to hit **Mistral AI directly**: `apiEndpoint:
+  https://api.mistral.ai/v1/embeddings`, `model: mistral-embed`. Still uses
+  `provider: api_endpoint` / OpenAiCompatibleEmbeddingClient (Mistral's
+  embeddings endpoint is OpenAI-compatible) -- only the target host and
+  model changed, not the provider type or client implementation.
+  `mistral-embed` natively outputs 1024-dimension vectors, matching
+  VectorIndex.dimension / QdrantClient::VECTOR_SIZE for the existing Qdrant
+  Cloud collection `cv_maxime_jolivet` with no resize/reindex needed.
+  `{{mistral_api_key}}` is a Mistral AI API key (console.mistral.ai), not an
+  OpenRouter one -- add it to your local Bruno environment.
+
+  IMPORTANT: the embedding provider used to index a document and the one used
+  to embed a query at search time MUST be the same model -- different models'
+  vectors are not comparable even at the same dimension. If you change this
+  provider later, reprocess every already-indexed document (see "Reprocess
+  Document") or searches will silently degrade to near-random.
+}
