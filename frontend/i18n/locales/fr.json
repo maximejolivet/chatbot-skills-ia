@@ -45,6 +45,7 @@
     "dateYesterday": "Hier",
     "scrollToTop": "Remonter en haut",
     "backOnline": "Connexion rétablie",
+    "assistantTyping": "L'assistant écrit une réponse…",
     "bookSlotMessage": "Je réserve le créneau du {label} ({iso}).",
     "identityMessage": "Je m'appelle {firstName} {lastName}, mon email est {email}.",
     "slashClear": "Effacer la conversation",

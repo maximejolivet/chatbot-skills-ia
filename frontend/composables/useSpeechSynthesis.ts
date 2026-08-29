@@ -3,7 +3,7 @@ import { ref } from 'vue';
 // Strips the markdown MessageBubble renders (see marked.parse there) down
 // to plain prose -- reading "astérisque astérisque gras astérisque astérisque"
 // aloud would defeat the point of a voice reply.
-const stripMarkdown = (markdown: string) =>
+export const stripMarkdown = (markdown: string) =>
   markdown
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/`([^`]+)`/g, '$1')
