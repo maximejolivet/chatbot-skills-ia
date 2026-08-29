@@ -1410,5 +1410,457 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
 
 ---
 
+## Idées d'innovation (brainstorm)
+
+> Pistes générées le 2026-08-28 en explorant des angles pas encore couverts
+> par le sommaire ci-dessus (75 faits / 2 restants). Détail complet par
+> thème plus bas ; triage/priorisation ci-dessous.
+
+### Priorisation (2026-08-28)
+
+**Critères** — contexte : projet solo, portfolio, trafic réel faible, forte
+valeur de démonstration technique (workflows réels type `planifier_entretien`
+avec vraie réservation Cal.eu) :
+
+- **Impact** : gain réel sur la qualité du RAG/agent, la fiabilité
+  opérationnelle, ou la valeur de démonstration technique pour un lecteur du
+  code (recruteur, pair).
+- **Effort** : effort solo, en s'appuyant sur ce qui existe déjà dans le
+  repo plutôt qu'en partant de zéro.
+- **P0** à faire en premier (impact fort, effort faible/moyen) · **P1** solide,
+  à planifier · **P2** intéressant mais plus lourd ou moins pressant ·
+  **P3** hors scope actuel (suppose un pivot produit/SaaS, du trafic ou un
+  coût d'infra que le projet ne justifie pas aujourd'hui).
+
+**P0 — à faire en premier**
+
+| Idée | Pourquoi maintenant |
+| --- | --- |
+| Détection de trous de connaissance | `SearchQuery` est déjà loggé — pur exploitation de données existantes, boucle de qualité directe. |
+| Eval set automatisé | Rien ne couvre la qualité de réponse en CI aujourd'hui (contrairement à PHPStan/PHPUnit) ; risque de régression silencieuse à chaque changement de prompt/modèle. |
+| Étape de workflow "notification" (Slack/email) | Valeur opérationnelle immédiate et réelle : être notifié tout de suite d'une vraie demande d'entretien plutôt que de découvrir `/admin` plus tard. |
+| Alerting proactif (llm-status / 👎) | Coût quasi nul (le statut existe déjà), évite de découvrir un Ollama down par un visiteur plutôt que soi-même. |
+| Dry-run de workflow | Sécurité de dev direct : teste `planifier_entretien` sans créer une vraie réservation Cal.eu. |
+
+**P1 — à planifier ensuite**
+
+Reformulation de requête multi-tour · Auto-critique/citation-check · Widget
+npm/CDN packagé · Détection de PII · Droit à l'oubli RGPD outillé ·
+Détection de staleness documentaire · Génération assistée de FAQ · Funnel de
+conversion visible en admin · Détection de langue + réponse localisée ·
+Chaîne de fallback automatique entre providers · Dégradation gracieuse si
+Qdrant est down · Personas simulés (QA) · Digest hebdomadaire admin ·
+Visibilité des jobs asynchrones en échec · Gestion du consentement visiteur.
+
+**P2 — plus tard / nice-to-have**
+
+Routage de modèle par complexité · Cache sémantique de réponses complètes ·
+Agents spécialisés avec orchestrateur · Constructeur de workflow assisté par
+LLM · Clustering de conversations · Rejeu "what-if" · Scan anti-injection sur
+upload · Ingestion externe planifiée · Tracing distribué (OpenTelemetry) ·
+Rejeu d'incident en un clic · Annotations admin sur conversation · Recherche
+sémantique côté admin · Profil visiteur long terme · Score de
+fraîcheur/autorité des sources · Détection de liens morts.
+
+**P3 — hors scope actuel**
+
+Canal WhatsApp/Slack · Upload d'image/document (vision) · Résumé audio de
+fin de conversation · A/B testing de prompt (a besoin de volume de trafic
+qu'un portfolio n'a pas) · Synchronisation CRM · Déclenchement proactif
+contextualisé · Isolation multi-tenant · Thème configurable par tenant ·
+Traduction à la volée des documents · Prise de main en direct (live
+handoff) · Webhooks sortants (pas de consommateur tiers aujourd'hui) ·
+Dataset de fine-tuning/distillation · Clés API scoped self-service (pas
+d'intégrateur tiers aujourd'hui).
+
+> Ce triage suppose que le projet reste un portfolio solo à trafic réel
+> faible. S'il pivote vers un produit multi-clients, plusieurs P3
+> (multi-tenant, CRM, clés API scoped) remonteraient nettement en priorité.
+
+### Qualité RAG / intelligence de l'agent
+
+- **Détection de trous de connaissance** : exploiter `SearchQuery` (déjà
+  loggé) pour surfacer dans `/admin/analytics` un top "questions à faible
+  score de similarité" → suggestion de FAQ/document à créer.
+- **Reformulation de requête multi-tour** : avant la recherche Qdrant,
+  faire réécrire la question par le LLM en tenant compte de l'historique
+  ("et lui ?" → "quel est le salaire de Maxime ?").
+- **Auto-critique / citation-check** : second passage LLM après génération
+  pour vérifier que chaque affirmation est supportée par les chunks
+  récupérés — flag "réponse non sourcée" côté admin uniquement (cohérent
+  avec le masquage des sources déjà en place côté widget public).
+- **Eval set automatisé** : jeu de questions/réponses "gold" rejoué en CI à
+  chaque changement de prompt système ou de modèle Ollama, pour détecter
+  les régressions de qualité de réponse avant déploiement (rien
+  d'équivalent à PHPStan/PHPUnit ne couvre ça aujourd'hui).
+
+### Coût / performance
+
+- **Routage de modèle par complexité** : petit modèle local pour les
+  questions FAQ-like, escalade vers un modèle plus capable seulement si le
+  tool-calling ou une question complexe l'exige — mesurable via
+  `token_usage` déjà affiché en mode debug.
+- **Cache sémantique de réponses complètes** (au-delà du cache
+  d'embeddings existant) : deux formulations proches d'une même question
+  réutilisent la réponse déjà générée, pas juste le vecteur de recherche.
+
+### Workflows / agents
+
+- **Agents spécialisés avec orchestrateur** : un agent "routeur" qui
+  délègue à des agents dédiés (RH/recrutement, technique, disponibilités)
+  au lieu d'un seul `AiAgent` — réutilise le modèle tool-calling existant,
+  chaque agent devient un "outil" de l'agent parent.
+- **Étape de workflow "notification"** (Slack/email à Maxime) quand un
+  workflow sensible se déclenche (ex. `planifier_entretien`), en plus de
+  l'action Cal.eu déjà en place — visibilité temps réel sans repasser par
+  `/admin`.
+- **Constructeur de workflow assisté par LLM** dans le backoffice :
+  décrire l'objectif en langage naturel, le LLM propose un squelette
+  d'étapes (`condition`/`set_field`/...) à valider par l'admin.
+
+### Canal / distribution
+
+- **Widget embarquable en package npm/script CDN** signé, pour être posé
+  sur un site tiers sans cloner le repo (le endpoint `quick-send` existe
+  déjà pour ça, mais pas de widget packagé livrable).
+- **Canal WhatsApp/Slack** en réutilisant le même moteur d'agents/workflows
+  — le domaine `Chat/` est déjà découplé du frontend HTTP, donc surtout un
+  nouvel adaptateur d'entrée.
+
+### Admin / observabilité
+
+- **Clustering de conversations** (embeddings déjà dispos via
+  `mxbai-embed-large`) pour regrouper les intentions récurrentes dans
+  `/admin/analytics`, au-delà des métriques agrégées (tokens, feedback)
+  déjà en place.
+- **Rejeu "what-if"** : dans `/admin`, republier une conversation passée
+  avec un prompt système ou un modèle différent pour comparer la réponse
+  générée, avant de changer la config en prod.
+
+### Sécurité / conformité
+
+- **Détection de PII avant stockage/envoi** : scanner les messages entrants
+  (email, téléphone, IBAN...) et masquer/avertir avant persistance en base
+  ou transmission à un provider LLM externe (pertinent si un endpoint
+  OpenAI-compatible externe est configuré en `/admin/ai-provider-configs`,
+  vs. Ollama local).
+- **Droit à l'oubli RGPD outillé** : commande/action admin qui purge en un
+  geste toutes les données liées à un visiteur (conversations, messages,
+  `SearchQuery` associées) plutôt qu'une suppression manuelle par table.
+- **Scan anti-injection sur upload de document** : au-delà du durcissement
+  déjà en place au moment de l'injection dans le prompt (chunks RAG
+  délimités), détecter à l'*ingestion* un document contenant des
+  instructions adressées au LLM ("ignore les consignes précédentes...").
+
+### Gestion de la base de connaissances
+
+- **Détection de staleness documentaire** : signaler dans `/admin` les
+  documents non modifiés depuis N mois, pour repérer les infos
+  potentiellement obsolètes (CV, offres, tarifs...) sans passage manuel.
+- **Génération assistée de FAQ** : le LLM propose des paires question/
+  réponse candidates à partir de chaque document indexé, l'admin
+  valide/édite avant publication — accélère le remplissage de
+  `/admin/faqs` plutôt que de les rédiger une à une.
+- **Ingestion depuis source externe planifiée** : synchronisation
+  périodique d'une page web ou d'un repo (ex. ce `README.md`) vers la
+  knowledge base, avec ré-indexation automatique au lieu d'un upload
+  manuel à chaque mise à jour.
+
+### Multi-modalité
+
+- **Upload d'image/document par le visiteur** dans le widget (ex. capture
+  d'écran d'une offre d'emploi à commenter) via un modèle vision — nouveau
+  cas d'usage au-delà du texte pur.
+- **Résumé audio de fin de conversation** : au-delà de la synthèse vocale
+  message par message déjà en place, un résumé TTS unique généré à la
+  fermeture du widget.
+
+### Fiabilité / observabilité avancée
+
+- **Tracing distribué (OpenTelemetry)** sur la chaîne complète LLM →
+  Qdrant → Workflow, pour diagnostiquer une latence sans grep dans les
+  logs Docker service par service.
+- **Alerting proactif** : notification (Slack/email) si le taux de
+  feedback 👎 dépasse un seuil sur une fenêtre glissante, ou si `llm-status`
+  reste `offline` au-delà de quelques minutes — aujourd'hui uniquement
+  consultable passivement dans l'en-tête du widget/`/admin/analytics`.
+
+### Expérimentation / DX
+
+- **A/B testing de prompt système** : servir deux variantes de prompt à un
+  échantillon de visiteurs et comparer feedback/taux de complétion des
+  workflows (ex. `planifier_entretien`) avant de trancher.
+- **Dry-run de workflow** dans `/admin` : simuler l'exécution d'un
+  `Workflow` (voir les `condition`/`set_field` évalués) sans déclencher
+  l'action réelle — utile pour tester `planifier_entretien` sans créer une
+  vraie réservation Cal.eu.
+- **Rejeu d'incident en un clic** : capturer le payload exact d'une requête
+  ayant produit une erreur 500 ou une réponse jugée mauvaise (via 👎), et le
+  rejouer depuis `/admin` en environnement local pour déboguer sans avoir à
+  reproduire manuellement le scénario.
+
+### Croissance / capture de leads
+
+- **Synchronisation CRM** : export automatique d'un lead qualifié (ex. après
+  `planifier_entretien`) vers Notion/Airtable/HubSpot, plutôt qu'une lecture
+  manuelle des conversations dans `/admin`.
+- **Funnel de conversion visible en admin** : taux question → déclenchement
+  d'un tool-calling → complétion du workflow, pour voir où les visiteurs
+  décrochent avant l'action finale.
+- **Déclenchement proactif contextualisé** : ouvrir le widget avec un
+  message d'accroche adapté au contenu de la page visitée, pas seulement à
+  un délai/scroll générique.
+
+### Multi-tenant / marque blanche
+
+- **Isolation multi-tenant** : plusieurs sites/clients sur une seule
+  instance, knowledge base et agents cloisonnés par tenant — transforme le
+  projet personnel en produit réutilisable pour d'autres profils/sites.
+- **Thème configurable par tenant** (couleurs, logo, avatar) pour le widget
+  embarquable, au-delà du simple mode clair/sombre déjà géré.
+
+### Internationalisation réelle
+
+- **Détection de langue + réponse dans la langue du visiteur** : au-delà de
+  l'infra i18n mono-locale déjà en place côté UI, faire répondre l'agent
+  dans la langue détectée du message entrant (utile si `mxbai-embed-large`/
+  `qwen3.6` gèrent correctement le multilingue).
+- **Traduction à la volée des documents indexés** pour que la recherche
+  vectorielle reste pertinente même si visiteur et documents source ne
+  partagent pas la même langue.
+
+### Résilience des providers IA
+
+- **Chaîne de fallback automatique** entre providers (Ollama local → API
+  externe compatible OpenAI) si le provider actif ne répond plus, plutôt
+  qu'un simple statut `offline` affiché passivement dans l'en-tête.
+- **Dégradation gracieuse si Qdrant est down** : répondre sans RAG (avec
+  avertissement explicite dans la réponse) au lieu d'un échec complet de la
+  conversation.
+
+### Collaboration humaine
+
+- **Prise de main en direct (live handoff)** : un admin répond manuellement
+  dans une conversation en cours depuis `/admin`, le visiteur voit la
+  réponse arriver dans le même fil sans discontinuité perceptible.
+- **Annotations admin sur conversation** : tags libres ("lead chaud", "à
+  relancer") posés sur une conversation depuis `/admin/conversations/{id}`,
+  sans toucher au contenu échangé.
+
+### Recherche et extensibilité
+
+- **Recherche sémantique côté admin** : réutiliser Qdrant (déjà en place
+  côté visiteur) pour une barre de recherche par sens dans `/admin`, plutôt
+  que le filtrage texte exact actuel sur les conversations.
+- **Webhooks sortants** sur événements clés (nouvelle conversation,
+  feedback négatif, workflow déclenché) pour une intégration tierce par
+  événement plutôt que par polling de l'API.
+
+### Mémoire et personnalisation
+
+- **Profil visiteur long terme (opt-in)** : résumé de session généré et
+  conservé, réinjecté dans les conversations futures du même visiteur
+  (au-delà de la persistance de conversation déjà en place, qui rejoue
+  l'historique brut mais ne capitalise pas dessus entre sessions).
+- **Score de fraîcheur/autorité des sources** pour arbitrer quand deux
+  chunks RAG récupérés se contredisent (ex. deux versions d'un même
+  document indexées à des dates différentes).
+
+### QA par simulation
+
+- **Personas simulés** (recruteur, développeur, visiteur curieux) qui
+  dialoguent automatiquement avec l'agent selon des scripts types, pour
+  détecter une dérive de ton ou de comportement avant de déployer un
+  changement de prompt système — complète l'eval set factuel déjà proposé
+  par des scénarios conversationnels plus longs.
+
+### Auto-maintenance de la base de connaissances
+
+- **Détection de liens morts** dans les documents/FAQ indexés (crawl
+  périodique des URLs citées), flag dans `/admin` plutôt que découverte
+  par un visiteur.
+- **Dataset de fine-tuning/distillation** construit à partir des échanges
+  ayant reçu un 👍 (`Message.feedback` déjà en base), pour entraîner à
+  terme un modèle local plus petit et spécialisé sur le domaine plutôt que
+  de dépendre uniquement d'un modèle généraliste.
+
+### Reporting et fiabilité opérationnelle
+
+- **Digest hebdomadaire admin** (top questions, volume de 👎, usage
+  tokens) envoyé par email via Messenger, plutôt qu'une consultation
+  active et régulière de `/admin/analytics`.
+- **Visibilité des jobs asynchrones en échec** (indexation de document,
+  déclenchement de workflow via Messenger) directement dans `/admin`, sans
+  avoir à grep les logs Docker pour trouver un message en dead-letter.
+
+### Ouverture API tierce
+
+- **Clés API scoped self-service** pour les intégrateurs de `quick-send` —
+  aujourd'hui un seul Basic Auth admin partagé, pas de quota ni de
+  révocation par intégrateur tiers.
+- **Gestion du consentement visiteur** (TTS, notifications, usage de
+  `localStorage`) comme préférences explicites et persistées, plutôt que
+  des fonctionnalités activées par défaut sans confirmation.
+
+### Versioning et gouvernance des prompts
+
+- **Versioning du prompt système** avec historique, diff entre versions et
+  rollback en un clic depuis `/admin` — aujourd'hui une simple valeur
+  éditable sans trace de ce qui a changé ni pourquoi.
+- **File d'approbation pour les workflows sensibles** : au-delà du dry-run
+  déjà proposé, une confirmation humaine explicite avant l'exécution réelle
+  d'un workflow à effet de bord externe (ex. `planifier_entretien` →
+  Cal.eu), avec fenêtre de validation admin plutôt qu'un déclenchement
+  100 % autonome.
+
+### Expérience de démonstration ciblée recruteur
+
+- **Mode "recruteur" détecté** : `enregistrer_identite` capture déjà
+  l'identité du visiteur — s'en servir pour adapter la profondeur
+  technique des réponses (recruteur non-tech vs. lead dev) plutôt qu'un
+  seul registre de réponse pour tous.
+- **Générateur de pitch sur-mesure** : le visiteur colle une offre
+  d'emploi, l'agent croise avec la knowledge base (CV, expériences) et
+  produit un argumentaire ciblé sur les points de correspondance —
+  au-delà de la commande `/cv` déjà existante qui renvoie le CV brut.
+- **Mode démo guidée** : parcours scripté de 3-4 questions suggérées pour
+  un visiteur qui ne sait pas par où commencer, au-delà de la liste plate
+  de suggestions FAQ actuelle — pensé comme un "tour" plutôt qu'un menu.
+
+### Auto-amélioration du prompt
+
+- **Suggestions de correctif de prompt** générées automatiquement à partir
+  des patterns de 👎 agrégés (ex. "les réponses sur X sont souvent mal
+  notées, voici une reformulation du prompt système à envisager"),
+  proposées à l'admin pour validation manuelle — jamais d'auto-application.
+
+### Transparence et confiance
+
+- **Page de statut public** (uptime, version du modèle actif, date de
+  dernière mise à jour de la base documentaire) façon status page DevOps —
+  renforce la crédibilité technique du projet pour un visiteur curieux.
+- **Explication "pourquoi cette question"** affichée au visiteur quand un
+  workflow collecte une info sensible (le formulaire inline
+  prénom/nom existe déjà, mais sans justification du pourquoi).
+
+### Outillage développeur
+
+- **CLI locale** pour interroger l'agent depuis le terminal (sans passer
+  par le navigateur), utile pour tester rapidement l'effet d'un changement
+  de prompt ou de document indexé sans cycle UI complet.
+- **Diagramme d'architecture généré à la volée** : quand on demande "montre
+  l'architecture du projet", l'agent produit un diagramme Mermaid construit
+  depuis la documentation indexée plutôt qu'un schéma statique figé dans
+  `README.md`.
+
+### Interopérabilité agent-à-agent
+
+- **Serveur MCP au-dessus de l'API existante** : exposer la knowledge base
+  et les agents comme un outil consommable par un autre assistant IA
+  (Claude Desktop, Claude Code...) plutôt que seulement par le widget de
+  chat conversationnel — angle distinct du canal WhatsApp/Slack déjà
+  proposé, ici le "visiteur" est un autre agent, pas un humain.
+- **Endpoint structuré (JSON typé)** pour une consommation programmatique
+  par un système tiers, sans repasser par une réponse en langage naturel à
+  parser.
+
+### Accessibilité approfondie
+
+- **Régions ARIA live correctement annoncées pendant le streaming** : au
+  contenu qui apparaît token par token, une région live mal configurée ou
+  absente peut soit tout annoncer en rafale, soit rien du tout au lecteur
+  d'écran — non couvert par la passe accessibilité/responsive déjà faite
+  (ciblée sur le mobile/contraste/tactile).
+
+### Disponibilité en temps réel
+
+- **Vérification de disponibilité réelle avant de proposer un créneau** :
+  lire le calendrier Cal.eu avant de suggérer une date à
+  `planifier_entretien`, plutôt que de découvrir un conflit seulement à la
+  confirmation.
+
+### Feature flags
+
+- **Système de feature flags interne** pour activer/désactiver une
+  fonctionnalité expérimentale par environnement sans redéploiement
+  complet — utile pour tester en prod une des idées ci-dessus sans risque
+  binaire "tout ou rien".
+
+### Fiabilité en conditions dégradées
+
+- **Chaos engineering ciblé** : injecter une latence ou une panne
+  artificielle sur Ollama/Qdrant en local pour valider *réellement* que la
+  dégradation gracieuse déjà proposée plus haut fonctionne, plutôt que de
+  la supposer correcte sans jamais la déclencher.
+- **Script de test de charge** (conversations concurrentes simulées) pour
+  observer le comportement sous charge avant d'en faire une hypothèse non
+  vérifiée.
+
+### Visualisation de compétences
+
+- **Radar de compétences généré depuis la knowledge base**, affiché comme
+  composant interactif dans le chat plutôt qu'une réponse purement
+  textuelle — pertinent pour une question type "quelles sont tes
+  compétences ?".
+
+### Sobriété numérique
+
+- **Mesure et affichage de l'empreinte énergétique/carbone** des requêtes
+  (Ollama local vs. un éventuel provider cloud externe) — argument
+  différenciant cohérent avec le choix déjà fait d'un LLM local par
+  défaut.
+
+### Graphe de connaissances structuré
+
+- **Graphe léger entités/relations** en complément de la recherche
+  vectorielle, pour fiabiliser les réponses sur des faits structurés
+  (dates, chiffres précis) là où la similarité vectorielle seule est
+  imprécise.
+
+### Widget offline-first
+
+- **Cache de lecture hors ligne** (FAQ, dernier historique) via service
+  worker, pour consulter une conversation passée sans connexion — sans
+  pouvoir envoyer de nouveau message tant qu'elle n'est pas rétablie
+  (distinct de la détection offline déjà faite, qui bloque l'envoi mais ne
+  permet pas la relecture).
+
+### Red-teaming runtime
+
+- **Tests adversariaux automatisés** simulant des tentatives d'injection
+  de prompt *par le visiteur lui-même* ("ignore tes consignes...") en
+  conditions réelles de conversation — distinct du scan anti-injection sur
+  upload de document déjà proposé, qui couvre la donnée entrante mais pas
+  l'entrée conversationnelle directe.
+
+### Débogage temporel
+
+- **Reconstruction de l'état exact** (prompt système + version de la base
+  documentaire) au moment d'une conversation passée, pour comprendre
+  pourquoi une réponse ancienne diffère de ce que le système produirait
+  aujourd'hui — complète le versioning de prompt déjà proposé en le liant
+  concrètement à une conversation donnée.
+
+### Score de valeur métier par conversation
+
+- **Classification automatique de la valeur d'une conversation** par le
+  LLM (recruteur réellement intéressé vs. visite curieuse), pour aider à
+  prioriser un suivi humain — au-delà du funnel de conversion agrégé déjà
+  proposé, ici au niveau de chaque conversation individuelle.
+
+### Continuité cross-device
+
+- **Reprise de conversation sur un autre appareil** via un lien ou un
+  code, pour continuer sur desktop une conversation démarrée sur mobile
+  sans création de compte.
+
+### Suivi de tension conversationnelle
+
+- **Détection de frustration croissante au sein d'une même conversation**
+  (pas seulement un score de feedback final sur un message), affichée
+  comme indicateur d'alerte précoce à l'admin.
+
+---
+
 *Ce fichier est un backlog vivant : cocher au fur et à mesure, ajouter/retirer
 des lignes librement.*
