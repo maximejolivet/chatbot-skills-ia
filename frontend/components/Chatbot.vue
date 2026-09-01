@@ -433,10 +433,17 @@
           </div>
           <template v-else>
             <template v-for="item in messageItems" :key="item.message.id">
+              <!-- w-full bg-background on the wrapper (not just the pill): a
+              sticky element inside this scrolling list always has message
+              text scrolled up behind it once pinned, unlike the page-level
+              nav bar above (which only ever has the ambient page background
+              behind it) -- without an opaque full-width backdrop here, that
+              text stays legible on both sides of the pill instead of being
+              covered by it. -->
               <div
                 v-if="item.dateLabel"
                 :class="[
-                  'sticky z-10 flex justify-center py-1',
+                  'sticky z-10 flex w-full justify-center bg-background py-2',
                   variant === 'page' ? 'top-12' : 'top-0',
                 ]"
               >
@@ -546,7 +553,7 @@
           type="button"
           :aria-label="$t('chatbot.scrollToTop')"
           :title="$t('chatbot.scrollToTop')"
-          class="absolute top-24 left-1/2 z-20 -translate-x-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-card text-muted-foreground shadow-lg shadow-foreground/10 transition-colors hover:text-accent"
+          class="absolute top-32 left-1/2 z-20 -translate-x-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-card text-muted-foreground shadow-lg shadow-foreground/10 transition-colors hover:text-accent"
           @click="jumpToTop"
         >
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
