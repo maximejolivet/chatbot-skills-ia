@@ -2,13 +2,30 @@
 // buffers the whole response through $fetch before returning it, which
 // would defeat the point of an SSE endpoint (the browser would only see
 // the response once the backend had already finished streaming it, or
-// worse, get a mis-typed body). proxyRequest instead pipes the backend's
-// response straight through without buffering. Being a more specific
-// route, Nitro matches this before falling back to the catch-all.
+// worse, get a mis-typed body). This route streams the backend's response
+// through manually instead.
+//
+// NOT using h3's proxyRequest/sendProxy here (despite being the "obvious"
+// h3 tool for this): it reads the request body as a raw Buffer
+// (readRawBody(event, false)) and hands that Buffer straight to fetch as
+// the body. When undici needs to silently retry the send (e.g. a pooled
+// keep-alive socket to chatbot.jolivetmaxime.fr turned out to be stale),
+// it tries to resend that same Buffer's ArrayBuffer -- which undici had
+// already detached transferring it the first time -- and throws
+// "Cannot perform ArrayBuffer.prototype.slice on a detached ArrayBuffer",
+// wrapped by h3 into a generic, uninformative "502 Bad Gateway" every
+// time. This hit ~30-50% of real requests in prod (confirmed via
+// vercel logs walking the full error.cause chain), independent of
+// Vercel's function duration -- a first attempt could fail this way just
+// as often as a retry. Reading the body as a string instead (readRawBody's
+// default encoding) sidesteps it entirely: strings aren't
+// transferable/detachable, so undici can always re-encode and resend one
+// safely.
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig();
   const apiUrl = config.public.apiUrl || 'http://chatbot-symfony:8000';
   const id = getRouterParam(event, 'id');
+  const body = await readRawBody(event);
 
   const headers: Record<string, string> = {
     'Content-Type': getHeader(event, 'content-type') || 'application/json',
@@ -24,43 +41,29 @@ export default defineEventHandler(async (event) => {
   }
 
   const targetUrl = `${apiUrl}/api/conversations/${id}/stream`;
+  const upstream = await fetch(targetUrl, { method: 'POST', headers, body });
 
-  // Intermittent connectivity blip between Vercel and o2switch on this
-  // specific streamed-POST route (h3's proxyRequest throws "Bad Gateway"
-  // within ~2s, well before any response bytes reach the client -- other,
-  // non-streamed routes through server/api/[...path].ts never see this).
-  // One retry is safe precisely because it fails this fast/early: nothing
-  // has been written to event.node.res yet, so a second attempt is a clean
-  // do-over, not a double response.
-  const maxAttempts = 2;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      return await proxyRequest(event, targetUrl, { headers });
-    } catch (error) {
-      const isLastAttempt = attempt === maxAttempts;
-      // h3 wraps the underlying fetch failure as a 502 H3Error, and
-      // Node/undici's "fetch failed" TypeError wraps ITS OWN root cause
-      // another level down (e.g. ECONNRESET, cert error) -- walk the whole
-      // .cause chain instead of stopping one level in.
-      const chain: string[] = [];
-      let current: unknown = error;
-      for (let i = 0; i < 5 && current; i++) {
-        if (current instanceof Error) {
-          const code = (current as NodeJS.ErrnoException).code;
-          chain.push(`${current.name}: ${current.message}${code ? ` (code: ${code})` : ''}`);
-          current = current.cause;
-        } else {
-          chain.push(JSON.stringify(current));
-          break;
-        }
-      }
-      console.error(
-        `[Stream Proxy] proxyRequest attempt ${attempt}/${maxAttempts} failed. Cause chain:`,
-        chain.join(' -> '),
-      );
-      if (isLastAttempt || event.node.res.headersSent) {
-        throw error;
-      }
+  event.node.res.statusCode = upstream.status;
+  for (const [key, value] of upstream.headers.entries()) {
+    // Same exclusions as h3's sendProxy: these describe the upstream fetch
+    // response's own framing, not what we're about to write to the client.
+    if (key === 'content-encoding' || key === 'content-length') continue;
+    event.node.res.setHeader(key, value);
+  }
+
+  if (!upstream.body) {
+    event.node.res.end();
+    return;
+  }
+
+  const reader = upstream.body.getReader();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      event.node.res.write(value);
     }
+  } finally {
+    event.node.res.end();
   }
 });
