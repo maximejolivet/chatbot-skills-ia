@@ -169,7 +169,7 @@ jobs:
         continue-on-error: true
         run: |
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && echo '--- ls -la .env* ---' && ls -la .env* 2>&1 && echo '--- grep ^APP_ENV in each env file ---' && grep -H '^APP_ENV' .env* 2>&1 && echo '--- php bin/console about (no --env override, same resolution as a real HTTP request) ---' && php bin/console about 2>&1 && echo '--- ls -la var/cache ---' && ls -la var/cache/ var/cache/local/ 2>&1 && echo '--- find recent var/log files ---' && find var/log -type f -newermt '2026-09-01' 2>&1 && echo '--- tail var/log/*.log ---' && tail -n 40 var/log/*.log 2>&1"
+            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && rm -rfv .env.save var/cache/local"
 
       # var/ (cache/logs/uploaded documents) and .env are excluded from
       # --delete too, not just from the sync source: --delete removes
