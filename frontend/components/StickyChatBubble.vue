@@ -1,5 +1,24 @@
 <template>
-  <div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+  <!-- Below sm: the hover-teaser bubble/popin above doesn't fit a touch
+  screen well (no hover, and the popin would crowd an already-small
+  viewport) -- a single tap button that goes straight to the dedicated
+  /chat page instead. -->
+  <NuxtLink
+    to="/chat"
+    :aria-label="$t('stickyBubble.start')"
+    class="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-foreground/20 transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 sm:hidden"
+  >
+    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+      />
+    </svg>
+  </NuxtLink>
+
+  <div class="fixed bottom-6 right-6 z-50 hidden flex-col items-end gap-3 sm:flex">
     <Transition
       enter-active-class="transition duration-200 ease-out"
       enter-from-class="opacity-0 translate-y-4 scale-95"
