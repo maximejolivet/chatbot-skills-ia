@@ -8,13 +8,19 @@ set -euo pipefail
 : "${CPANEL_USER:?missing}" "${CPANEL_PASSWORD:?missing}" "${CPANEL_HOST:?missing}" "${RUNNER_IP:?missing}"
 
 ENDPOINT='frontend/o2switch/o2switch-ssh-whitelist/index.live.php'
-CPANEL="https://${CPANEL_USER}:${CPANEL_PASSWORD}@${CPANEL_HOST}:2083"
+CPANEL="https://${CPANEL_HOST}:2083"
 
 # Bounds every call below -- without these, a curl request that connects but
 # never gets a response (seen in practice against this cPanel endpoint) hangs
 # until the job's overall 15-minute timeout kills it, with no error message
 # pointing at why. Failing fast here at least surfaces which call stalled.
-CURL_OPTS=(--connect-timeout 10 --max-time 30)
+#
+# Credentials go through --user rather than embedded in the URL
+# (https://user:pass@host/...) -- a password containing a URL-special
+# character (@, :, /, %, whitespace...) breaks the embedded form with an
+# opaque "URL malformed" (curl exit 3) that gives no hint it's the password.
+# --user handles arbitrary bytes without escaping.
+CURL_OPTS=(--connect-timeout 10 --max-time 30 --user "${CPANEL_USER}:${CPANEL_PASSWORD}")
 
 echo "Fetching currently whitelisted IPs..."
 LIST_HTTP=$(curl -sX GET "${CURL_OPTS[@]}" -o /tmp/o2switch-list.json -w '%{http_code}' "$CPANEL/$ENDPOINT?r=list")
