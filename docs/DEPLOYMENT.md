@@ -29,19 +29,23 @@ Deux pipelines distincts, le second déclenché par le premier :
   sans toucher aux secrets de déploiement. `deploy-backend.yml` ne se
   déclenche qu'après un succès de ce pipeline sur `master`
   (`on: workflow_run`). En revanche, à l'intérieur de `deploy-backend.yml`,
-  build et déploiement restent **un seul job** (pas de split), parce que
-  l'étape de whitelisting IP doit obligatoirement tourner dans le même job
-  que le SSH/rsync — chaque job GitHub Actions a sa propre VM avec sa propre
-  IP publique ; whitelister dans un job et faire le SSH dans un autre
-  whitelisterait la mauvaise IP. C'est cette contrainte-là (pas l'absence de
-  CI séparée) qui borne le job unique.
+  build et déploiement restent **un seul job** (pas de split) : chaque job
+  GitHub Actions a sa propre VM avec sa propre IP publique, et cette IP doit
+  être whitelistée à la main sur o2switch avant que le SSH/rsync ne
+  fonctionne (voir ci-dessous) — la scinder en deux jobs ferait qu'on
+  whiteliste l'IP d'un job pendant que le SSH tente de se connecter depuis
+  un autre.
 - **Whitelisting IP** : o2switch restreint l'accès SSH par IP (cPanel >
   Sécurité > Accès SSH). Les runners GitHub Actions changent d'IP à chaque
-  run, donc le workflow whiteliste l'IP du runner via l'API cPanel avant de
-  tenter le SSH (logique dans
-  [`.github/scripts/o2switch-whitelist.sh`](../.github/scripts/o2switch-whitelist.sh)).
-  Le quota de whitelist étant limité, le script retire les 2 IP les plus
-  récemment ajoutées avant d'ajouter la nouvelle.
+  run, donc **il n'y a pas d'automatisation** : le step "Get runner public
+  IP" affiche l'IP du runner en tout début de job (annotation `::notice::`
+  visible immédiatement dans l'onglet Actions), et il faut l'ajouter à la
+  main dans cPanel avant que le déploiement n'atteigne l'étape SSH — le
+  step "Wait for SSH port to open" patiente jusqu'à 2 minutes le temps que
+  ce soit fait. Un ancien script whitelistait automatiquement l'IP via
+  l'API cPanel, mais a été retiré : le quota de whitelist d'o2switch est
+  limité (3 IP maximum) et rendait ce mécanisme plus fragile qu'utile au
+  quotidien.
 
 ### Disposition sur le serveur
 
@@ -76,7 +80,6 @@ Deux pipelines distincts, le second déclenché par le premier :
 | `DEPLOY_SSH_HOST`        | `{{user}}.o2switch.net`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `DEPLOY_SSH_USER`        | `{{user}}` (identifiant cPanel)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `DEPLOY_PROJECT_PATH`    | `/home/{{user}}/repositories/chatbot-skills-ia/backend`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `DEPLOY_CPANEL_PASSWORD` | Mot de passe cPanel — utilisé **uniquement** pour l'API de whitelist SSH (port 2083), sans rapport avec la clé SSH ci-dessus                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `DEPLOY_ENV_FILE`        | Contenu complet du `.env` de production : **`APP_ENV=prod`** (sans ça, un `.env` vide ou incomplet fait retomber Symfony en `dev`, qui référence des bundles dev-only absents du build `--no-dev` déployé -- le workflow force déjà `--env=prod` sur les migrations par défense en profondeur, mais mieux vaut ne pas en dépendre), `DATABASE_URL` (instance MariaDB o2switch, `serverVersion=11.4.12-MariaDB`), `ADMIN_USERNAME`/`ADMIN_PASSWORD_HASH` (`bin/console security:hash-password`), `QDRANT_HOST`/`QDRANT_PORT`/`QDRANT_API_KEY` (Qdrant Cloud), `AI_PROVIDER=api_endpoint` + `AI_API_*` (ou configurer une ligne `AiProviderConfig` après le premier déploiement), `CORS_ALLOW_ORIGIN` pour l'origine réelle du frontend, `MESSENGER_TRANSPORT_DSN` (`sync://` tant qu'aucun Redis externe n'existe côté o2switch -- voir `backend/README.md` §File d'attente async) |
 
 Définir ces secrets via `gh secret set <NAME>` ou l'UI GitHub (Settings >
@@ -105,17 +108,12 @@ gh secret set DEPLOY_SSH_USER -b"{{user}}"
 # Gestionnaire de fichiers pour repérer /home/{{user}}/).
 gh secret set DEPLOY_PROJECT_PATH -b"/home/{{user}}/repositories/chatbot-skills-ia/backend"
 
-# DEPLOY_CPANEL_PASSWORD -- mot de passe cPanel, utilisé UNIQUEMENT pour
-# l'API de whitelist SSH (port 2083). Sans -b ni redirection : gh le lit en
-# saisie interactive masquée, rien ne traîne dans l'historique du shell.
-gh secret set DEPLOY_CPANEL_PASSWORD
-
 # DEPLOY_ENV_FILE -- .env de production complet, préparé dans un fichier
 # local non commité (voir le détail de son contenu dans le tableau ci-dessus).
 gh secret set DEPLOY_ENV_FILE < chemin/vers/.env.prod
 ```
 
-Vérifier ensuite que les 6 secrets sont bien enregistrés (sans exposer leur
+Vérifier ensuite que les 5 secrets sont bien enregistrés (sans exposer leur
 contenu) :
 
 ```bash
@@ -128,9 +126,10 @@ gh secret list
 gh workflow run deploy-backend.yml -f dry_run=true
 ```
 
-Exécute tout le pipeline (build, whitelist, SSH) mais passe `--dry-run` à
+Exécute tout le pipeline (build, SSH) mais passe `--dry-run` à
 rsync et saute l'écriture du `.env` / les migrations — un aperçu sans risque
-de ce qu'un déploiement changerait.
+de ce qu'un déploiement changerait. Nécessite quand même que l'IP du runner
+soit déjà whitelistée sur o2switch (voir plus haut).
 
 ## Frontend (Nuxt)
 

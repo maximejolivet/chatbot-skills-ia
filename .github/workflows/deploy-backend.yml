@@ -5,10 +5,11 @@
 # Triggered by ci-backend.yml succeeding on master (not by push directly):
 # lint/test/audit/phpstan/cs-fixer are that separate workflow's job now,
 # not duplicated here. Still a single job below despite that split --
-# the IP-whitelisting step must run in the same job as the SSH/rsync
-# steps (each GitHub Actions job gets its own runner VM, and its own
-# public IP), so build and deploy can't be split into their own jobs the
-# way build and CI could.
+# the runner's IP must be whitelisted on o2switch (cPanel > Sécurité > Accès
+# SSH) by hand before the SSH/rsync steps below can connect (each GitHub
+# Actions job gets its own runner VM, and its own public IP), so the "Get
+# runner public IP" step needs to run in the same job as SSH/rsync for the
+# printed IP to be the one that actually needs whitelisting.
 
 name: Deploy chat-ia (backend)
 
@@ -25,7 +26,7 @@ on:
         default: false
 
 # Queues overlapping runs instead of letting them race: two concurrent runs
-# would interleave whitelist add/remove calls and rsync to the same path.
+# would rsync to the same remote path at once.
 concurrency:
   group: deploy-backend-${{ github.ref }}
 
@@ -51,19 +52,17 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      # Moved ahead of the build steps (and the whitelisting step is
-      # currently disabled below) so the IP to whitelist manually on o2switch
-      # is visible in the log/Actions summary right away, instead of only
-      # after several minutes of build steps.
+      # Moved ahead of the build steps so the IP to whitelist manually on
+      # o2switch (cPanel > Sécurité > Accès SSH) is visible in the
+      # log/Actions summary right away, instead of only after several
+      # minutes of build steps.
       #
       # Inline instead of a third-party action: haythem/public-ip is
       # unmaintained (last release 2022, deprecated Node 16 runtime) and
       # does nothing more than call a public IP echo service.
       - name: Get runner public IP
-        id: ip
         run: |
           IP=$(curl -sS https://api.ipify.org)
-          echo "ipv4=$IP" >> "$GITHUB_OUTPUT"
           echo "::notice::Runner IP to whitelist on o2switch: $IP"
 
       - name: Set up PHP
@@ -124,22 +123,11 @@ jobs:
           APP_ENV: prod
         run: php bin/console asset-map:compile
 
-      # Logic lives in .github/scripts/o2switch-whitelist.sh
-      # (checked out from repo root, hence ../.., since this job's default
-      # working-directory is backend/) -- extracted out of the workflow so
-      # it's testable/readable on its own. An unrelated WordPress project on
-      # this same shared hosting account has its own, different
-      # o2switch-whitelist.sh -- same filename, different repo/directory, no
-      # runtime collision, but don't confuse the two if grepping the server.
-      - name: Whitelist runner IP on o2switch (and drop the 2 oldest)
-        env:
-          CPANEL_USER: ${{ secrets.DEPLOY_SSH_USER }}
-          CPANEL_PASSWORD: ${{ secrets.DEPLOY_CPANEL_PASSWORD }}
-          CPANEL_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
-          RUNNER_IP: ${{ steps.ip.outputs.ipv4 }}
-        run: ../.github/scripts/o2switch-whitelist.sh
-
-      - name: Wait for SSH port to open (post-whitelist propagation)
+      # Runner IP whitelisting on o2switch is manual (cPanel > Sécurité >
+      # Accès SSH) -- see the "Get runner public IP" step above for the IP
+      # to add. This step just waits for that to have happened / propagated
+      # before the SSH steps below try to connect.
+      - name: Wait for SSH port to open
         run: |
           echo "Waiting for ${{ secrets.DEPLOY_SSH_HOST }}:22 to accept connections..."
           for i in $(seq 1 24); do
@@ -149,7 +137,7 @@ jobs:
             fi
             sleep 5
           done
-          echo "::error::TCP connect to ${{ secrets.DEPLOY_SSH_HOST }}:22 still failing after 120s -- whitelist may not have propagated yet, or host/port is wrong."
+          echo "::error::TCP connect to ${{ secrets.DEPLOY_SSH_HOST }}:22 still failing after 120s -- is the runner IP printed above whitelisted on o2switch, or is host/port wrong?"
           exit 1
 
       - uses: webfactory/ssh-agent@v0.10.0
