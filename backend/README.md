@@ -8,6 +8,7 @@ Backend du chatbot IA, en Symfony. Organisé en 5 domaines métier : `ai_provide
 - NelmioApiDocBundle (`/doc`) pour une doc OpenAPI 3.0 « pure » (sans Hydra/JSON-LD), miroir automatique des ressources API Platform
 - Doctrine ORM + Migrations, MariaDB 11.4
 - Qdrant pour le stockage et la recherche vectorielle
+- Redis pour le cache applicatif (`config/packages/cache.yaml` — voir §File d'attente async ci-dessous)
 - Symfony HttpClient pour parler à Ollama / aux endpoints OpenAI-compatibles / à Qdrant
 - smalot/pdfparser (PDF) + ZipArchive (DOCX) pour l'extraction de texte des documents
 - Sylius Resource/Grid Bundle + Symfony Form pour le backoffice (`/admin`), Tailwind CSS (CDN) pour le style
@@ -222,4 +223,29 @@ bin/console messenger:consume async`) consomme en continu.
 > faudra soit une tâche cron invoquant `messenger:consume --limit=N
 > --time-limit=X` périodiquement, soit un Redis externe managé — voir
 > [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md) pour le détail de l'hébergement,
-> même logique que Qdrant Cloud pour la base vectorielle.
+> même logique que Qdrant Cloud pour la base vectorielle. En production,
+> `MESSENGER_TRANSPORT_DSN` reste `sync://` (pas de worker persistant côté
+> o2switch) même si un Redis externe existe désormais pour le cache
+> ci-dessous — les deux usages sont indépendants, rien n'empêche de
+> pointer Messenger vers ce même Redis plus tard sans passer par le cache.
+
+## Cache applicatif (Redis)
+
+Trois pools de cache dédiés (`config/packages/cache.yaml`, adapter
+`cache.adapter.redis`, DSN commun `REDIS_URL`) — distincts du cache "app"
+générique de Symfony (resté sur son adapter filesystem par défaut) pour ne
+pas mélanger leurs cycles de vie :
+
+- `cache.conversation_history` — `App\Chat\ConversationHistoryCache`, TTL 1h.
+- `cache.query_embedding` — `App\VectorConnector\QueryEmbeddingCache`, TTL 7
+  jours (un embedding ne devient obsolète que si le modèle/provider actif
+  change, voir le docblock de la classe).
+- `cache.admin_analytics` — `App\Chat\AnalyticsService`, TTL 5 min (dashboard
+  `/admin/analytics`, évite de recalculer plusieurs agrégats DQL coûteux à
+  chaque vue).
+
+`REDIS_URL` est **requis** dès que l'un de ces pools est sollicité (pas de
+repli silencieux) : en local, `docker compose` fournit un service `redis`
+(`redis://redis:6379`, voir `.env.example`) ; en production, o2switch n'a pas
+de Redis local — voir [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md) pour le
+Redis externe managé (Upstash) utilisé là-bas, `rediss://` (TLS) obligatoire.

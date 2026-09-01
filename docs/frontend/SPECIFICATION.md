@@ -110,7 +110,8 @@ fetch('/api/conversations/{id}/stream', { method: 'POST', body: { message, agent
         │  URL relative → interceptée par le serveur Nitro de CE projet
         ▼
 server/api/conversations/[id]/stream.post.ts  (route Nitro dédiée, prioritaire sur le catch-all)
-        │  proxyRequest() sans buffering vers ${API_URL}/api/conversations/{id}/stream
+        │  fetch() manuel vers ${API_URL}/api/conversations/{id}/stream, puis pipe chunk par
+        │  chunk vers event.node.res (pas h3 proxyRequest/sendProxy, voir §7.2)
         ▼
 Backend Symfony — POST /api/conversations/{id}/stream (ConversationStreamController)
         │  persiste le message utilisateur, exécute RAG + tool-calling si un agent est sélectionné,
@@ -299,7 +300,7 @@ Cette liste est aussi, depuis l'audit de sécurité, l'**allowlist exacte** que 
 | `GET`   | `/api/ai_agents`                                            | `useChatbot().fetchAgents()` (aussi via `server/api/ai_agents.get.ts`, cache 5 min) | Liste des agents IA, pour sélectionner automatiquement le premier actif                 |
 | `GET`   | `/api/health`                                               | Non appelé par ce widget aujourd'hui                                | Endpoint de santé agrégé (DB/Qdrant/Redis/Ollama) — gardé dans l'allowlist pour un futur monitoring externe |
 
-`POST /api/conversations/{id}/stream` (l'envoi réel de message, streaming SSE) passe par une route Nitro dédiée (`server/api/conversations/[id]/stream.post.ts`), prioritaire sur le catch-all — voir §5.1.
+`POST /api/conversations/{id}/stream` (l'envoi réel de message, streaming SSE) passe par une route Nitro dédiée (`server/api/conversations/[id]/stream.post.ts`), prioritaire sur le catch-all — voir §5.1. Cette route ne réutilise **pas** le générique `[...path].ts` (§3.4, `$fetch` bufferisé — casserait le streaming), ni les helpers h3 `proxyRequest()`/`sendProxy()` (l'outil "évident" pour ce cas) : elle lit le corps de la requête entrante via `readRawBody(event)` (encodage string par défaut) puis fait elle-même un `fetch()` vers le backend et pipe la réponse chunk par chunk (`event.node.res.write(...)`) — `proxyRequest()`, elle, lit le corps en `Buffer` brut (`readRawBody(event, false)`), qu'undici transfère à `fetch` par son `ArrayBuffer` ; un retry silencieux d'undici sur une connexion keep-alive périmée tente alors de renvoyer ce même `ArrayBuffer`, déjà détaché par le premier envoi, ce que h3 masque en un `502 Bad Gateway` générique — un `Buffer`/`ArrayBuffer` n'est pas ré-envoyable après un premier transfert, une chaîne l'est toujours. Sans lien avec `nitro.vercel.functions.maxDuration` (§8.4, requis séparément pour laisser le temps à une réponse LLM complète de streamer sur Vercel).
 
 > [!NOTE]
 > Voir [le cahier des charges backend](../backend/SPECIFICATION.md#8-référence-api-complète) pour le détail complet de l'API Symfony (bien plus large que cette liste — tout le reste, ressources admin comprises, existe côté backend mais n'est justement **pas** dans cette allowlist).
@@ -308,7 +309,7 @@ Cette liste est aussi, depuis l'audit de sécurité, l'**allowlist exacte** que 
 
 | Variable         | Défaut                        | Rôle                                                                                                                                                                                                                                                                                                                                                                    |
 | ---------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `API_URL`        | `http://chatbot-symfony:8000` | URL du backend Symfony, résolue **côté serveur** (Nitro) au moment du proxy. Le nom `chatbot-symfony` n'est résolvable que dans le réseau Docker de `backend/compose.yaml` — en dehors de Docker Compose, il faut la surcharger explicitement (ex. `http://symfony.chatbot.localhost` via Traefik ; `localhost:8000` ne fonctionne plus, le port fixe ayant été retiré) |
+| `API_URL`        | `http://chatbot-symfony:8000` en dev (`NODE_ENV` ≠ `production`), `https://chatbot.jolivetmaxime.fr` sinon | URL du backend Symfony, résolue **côté serveur** (Nitro) au moment du proxy. Le nom `chatbot-symfony` n'est résolvable que dans le réseau Docker de `backend/compose.yaml` — en dehors de Docker Compose en dev, il faut la surcharger explicitement (ex. `http://symfony.chatbot.localhost` via Traefik ; `localhost:8000` ne fonctionne plus, le port fixe ayant été retiré). Le repli o2switch ne s'applique qu'aux builds où `NODE_ENV=production` (`nuxt.config.ts`) — en pratique tous les déploiements réels (Vercel compris) définissent `API_URL` explicitement de toute façon, ce repli n'est qu'un filet de sécurité |
 | `ADMIN_USERNAME` | `''`                          | Identifiant du compte de service utilisé pour l'en-tête `Authorization: Basic` envoyé au backend (voir §3.4)                                                                                                                                                                                                                                                            |
 | `ADMIN_PASSWORD` | `''`                          | Mot de passe en clair du même compte — jamais exposé côté client (`runtimeConfig` non-`public`, donc server-only)                                                                                                                                                                                                                                                       |
 
@@ -351,6 +352,8 @@ npm run preview    # sert le build localement
 ```
 
 **Via Docker** (`backend/compose.yaml`, service `nuxt`) : le conteneur exécute `npm ci && npm run build && HOST=0.0.0.0 PORT=3000 node .output/server/index.mjs` — build puis lancement direct du serveur Nitro compilé, pas de `npm run dev`. `API_URL` y est fixée à `http://chatbot-symfony:8000` (résolution via le réseau Docker interne), `ADMIN_USERNAME`/`ADMIN_PASSWORD` proviennent de `backend/.env`. Exposé sur le port hôte **3010**, et routable via `http://nuxt-symfony.chatbot.localhost` (Traefik, provider fichier — pas de label Docker, voir le cahier des charges backend §2).
+
+**Déploiement réel (Vercel)** : voir [`docs/DEPLOYMENT.md`](../DEPLOYMENT.md#frontend-nuxt) pour le détail (projet `chatbot-skills-ia`, alias `https://ia.maxime.bzh`, variables d'environnement côté Vercel). `nuxt.config.ts` y ajoute `nitro.vercel.functions.maxDuration: 60` — le preset Nitro `vercel` regroupe toutes les routes dans une seule fonction serverless, donc ce réglage s'applique projet entier, pas seulement à `/api/conversations/{id}/stream` ; nécessaire car la durée par défaut d'une fonction Vercel (10s sur le plan Hobby) est trop courte pour laisser le temps à une réponse LLM complète de streamer en SSE (60s = plafond du plan Hobby, le plan Pro autorise plus).
 
 ### 8.5 Qualité de code
 

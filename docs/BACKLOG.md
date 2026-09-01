@@ -132,11 +132,19 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
         complet (`MessageSerializer::serialize()`) au lieu de juste `content`,
         pour ne pas perdre `sources`/`tool_calls`/`id`/`feedback`.
       - Frontend : nouvelle route de proxy dédiée
-        `server/api/conversations/[id]/stream.post.ts` (`proxyRequest`, pas de
+        `server/api/conversations/[id]/stream.post.ts`, pas de
         buffering — le catch-all générique `[...path].ts` bufferise via
-        `$fetch` et casserait le stream) ; `useChatbot.ts::sendMessage` lit le
+        `$fetch` et casserait le stream ; `useChatbot.ts::sendMessage` lit le
         flux SSE via `fetch` + `ReadableStream` au lieu de l'appel bloquant
-        JSON.
+        JSON. *Mise à jour* : cette route utilisait initialement h3
+        `proxyRequest()`/`sendProxy()`, remplacé depuis par un `fetch()`
+        manuel + pipe chunk par chunk — `proxyRequest()` lit le corps en
+        `Buffer` brut, qu'un retry silencieux d'undici sur une connexion
+        keep-alive périmée ne peut pas renvoyer (`ArrayBuffer` déjà détaché
+        par le premier envoi), ce que h3 masquait en `502 Bad Gateway`
+        générique sur ~30-50% des requêtes réelles en prod contre
+        `chatbot.jolivetmaxime.fr`. Voir `docs/frontend/SPECIFICATION.md`
+        §7.2 pour le détail du mécanisme actuel.
       - **Note** : n'apporte aucun effet de frappe progressive — le backend
         génère la réponse complète avant d'émettre quoi que ce soit (limite
         assumée, §12.1). Branché pour cohérence d'architecture à la demande

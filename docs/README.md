@@ -9,7 +9,7 @@ Index de tous les fichiers Markdown du dépôt.
 
 - [README.md](../README.md) — présentation générale du projet full-stack
 - [docs/ONBOARDING.md](ONBOARDING.md) — guide d'onboarding : stack, architecture, commandes, conventions, points d'attention
-- [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) — procédure de déploiement (backend Symfony)
+- [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) — procédure de déploiement (backend Symfony sur o2switch, frontend Nuxt sur Vercel)
 - [SECURITY.md](../SECURITY.md) — politique de sécurité et signalement de vulnérabilités
 
 ## Backend
