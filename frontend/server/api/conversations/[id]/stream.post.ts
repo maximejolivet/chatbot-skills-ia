@@ -38,9 +38,15 @@ export default defineEventHandler(async (event) => {
       return await proxyRequest(event, targetUrl, { headers });
     } catch (error) {
       const isLastAttempt = attempt === maxAttempts;
+      // h3's sendProxy wraps every underlying fetch failure into a generic
+      // "502 Bad Gateway" H3Error -- the real cause (DNS, TLS, connection
+      // reset, timeout...) is only visible on error.cause.
+      const cause = error instanceof Error ? (error as { cause?: unknown }).cause : undefined;
       console.error(
         `[Stream Proxy] proxyRequest attempt ${attempt}/${maxAttempts} failed:`,
         error instanceof Error ? error.message : error,
+        'cause:',
+        cause instanceof Error ? `${cause.name}: ${cause.message}` : cause,
       );
       if (isLastAttempt || event.node.res.headersSent) {
         throw error;
