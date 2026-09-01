@@ -47,7 +47,7 @@ symfony-nuxt-ia-rag-chatbot/
 
 `Workflow/` et `Chat/` se référencent mutuellement (tool-calling) ; tous les autres domaines dépendent en cascade de `VectorConnector/` (feuille), jamais l'inverse.
 
-Dossiers transverses : `Controller/` (24, dont les contrôleurs API Platform personnalisés), `Entity/` (19, Doctrine), `Repository/` (17), `ApiResource/` (10, endpoints stateless type `HealthAction`/`QuickSendAction`), `Doctrine/` (query extensions type `OwnershipCollectionExtension`), `Security/` (voters), `EventListener/`, `Message/`+`MessageHandler/` (Messenger async), `Form/`+`Grid/` (backoffice Sylius), `Twig/` (extensions), `Enum/` (12, backed enums), `Command/`.
+Dossiers transverses : `Controller/` (25, dont les contrôleurs API Platform personnalisés), `Entity/` (17, Doctrine — 16 entités + l'interface `OwnedResourceInterface`), `Repository/` (15), `ApiResource/` (8, endpoints stateless type `HealthAction`/`QuickSendAction`), `Doctrine/` (query extensions type `OwnershipCollectionExtension`), `Security/` (voters), `EventListener/`, `Message/`+`MessageHandler/` (Messenger async), `Form/`+`Grid/` (backoffice Sylius), `Twig/` (extensions), `Enum/` (11, backed enums), `Command/`.
 
 ### Frontend — composants dumb, composables smart
 
@@ -141,7 +141,7 @@ make rebuild SERVICE=<name>    # rebuild un seul service Docker (app, nuxt, data
 - **Repositories Doctrine + Sylius** : `class XRepository extends ServiceEntityRepository implements SyliusRepositoryInterface`, avec toujours les deux docblocks génériques `@extends ServiceEntityRepository<X>` **et** `@implements SyliusRepositoryInterface<X>` (l'omission du second casse PHPStan — conflit de générique, voir la skill phpstan). `use ResourceRepositoryTrait;` pour l'intégration Sylius.
 - **Entités backoffice** : `implements Sylius\Resource\Model\ResourceInterface` — condition pour qu'une entité soit gérable dans `/admin` sans code de CRUD dédié (voir `backend/README.md#backoffice-admin` pour ajouter une ressource).
 - **Sécurité par ressource, pas globale** : chaque `#[ApiResource(security: ...)]` porte sa propre règle. Le `security:` déclaratif d'API Platform **ne s'applique pas de façon fiable aux contrôleurs personnalisés** (vérifié empiriquement, cause d'un vrai incident — voir §5) : ceux-ci portent systématiquement leur propre `#[IsGranted(...)]` explicite.
-- **Enums PHP backed** (valeurs string) plutôt que colonnes ENUM SQL — `Enum/` (12 fichiers).
+- **Enums PHP backed** (valeurs string) plutôt que colonnes ENUM SQL — `Enum/` (11 fichiers).
 - **DTOs immuables** pour le transport (`ChatMessage`, `ToolCall`, `ToolSpec`, `CompletionResult`, `EmbeddingResult` dans `AiProvider/Client/`) plutôt que des tableaux associatifs entre couches.
 - **Async par défaut pour les opérations lentes** (indexation de document, déclenchement de workflow via `/trigger`), **sauf le tool-calling LLM** qui reste délibérément synchrone (la boucle a besoin du résultat immédiatement) — ne pas "corriger" ça en asynchrone.
 - **Types stricts, jamais affaiblis pour satisfaire l'outillage** : un `?int` réellement non-null à un point donné se narrow via `?? throw new \LogicException(...)`, pas en changeant la signature ni en castant du `mixed` à l'aveugle. Détail complet et patterns récurrents : `.claude/skills/phpstan/SKILL.md`.

@@ -62,4 +62,17 @@ docs {
   vectors are not comparable even at the same dimension. If you change this
   provider later, reprocess every already-indexed document (see "Reprocess
   Document") or searches will silently degrade to near-random.
+
+  CAVEAT (found while setting this scenario up): if this row is
+  ever left `isActive: true` with an empty `apiKey`,
+  ProviderSelectionService::getEmbeddingClient() does NOT throw or log a
+  warning about it -- unlike the equivalent chat path, there is no
+  try/catch here, just a plain `if ($config->getApiKey())` check. It
+  silently falls through to OllamaEmbeddingClient using *this row's own*
+  `model` field (e.g. "mistral-embed") instead of OLLAMA_EMBEDDING_MODEL,
+  so Ollama then 404s ("model not found") since it has no model by that
+  name. The only log emitted is the misleading info-level "Using
+  AiProviderConfig ... for embedding" (that config isn't actually what
+  ends up used). Always set a real `apiKey` before/at the same time as
+  flipping `isActive: true` on an `api_endpoint` embedding config.
 }

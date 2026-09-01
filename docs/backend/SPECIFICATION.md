@@ -64,7 +64,7 @@ src/
 ├── KnowledgeBase/          # knowledge_base : documents, chunking, collections
 ├── Workflow/                # workflows : moteur d'exécution des steps
 ├── Chat/                    # chat : orchestration LLM + RAG + tool-calling
-├── Entity/                  # 15 entités Doctrine (voir §4), dont OwnedResourceInterface
+├── Entity/                  # 16 entités Doctrine (voir §4) + l'interface OwnedResourceInterface
 ├── Security/Voter/           # OwnershipVoter : cloisonnement par propriétaire (Conversation/WorkflowExecution)
 ├── Doctrine/                  # OwnershipCollectionExtension : même cloisonnement, pour GetCollection
 ├── Message/                   # messages Messenger (IndexDocumentMessage, ExecuteWorkflowMessage)
@@ -98,7 +98,7 @@ ai_providers  ──┐
 
 ## 4. Modèle de données
 
-15 entités Doctrine, toutes avec un ID auto-incrémenté. Sauf indication contraire, `createdAt`/`updatedAt` sont gérés automatiquement (`#[ORM\HasLifecycleCallbacks]` + `#[ORM\PreUpdate]`).
+16 entités Doctrine, toutes avec un ID auto-incrémenté. Sauf indication contraire, `createdAt`/`updatedAt` sont gérés automatiquement (`#[ORM\HasLifecycleCallbacks]` + `#[ORM\PreUpdate]`).
 
 ### 4.1 `ai_providers`
 
@@ -223,7 +223,7 @@ Cloisonné par propriétaire : un compte `ROLE_USER` ne voit/modifie que les ex�
 | ---------- | -------------------------------------------------------------------------- |
 | `title`    | string(200)                                                                |
 | `isActive` | bool                                                                       |
-| `visitorFirstName`, `visitorLastName` | string(100) nullable, `#[ApiProperty(writable: false)]` — jamais renseignés directement par un client API ; réglés en interne par l'étape de workflow `set_conversation` (voir §7.2) une fois l'agent en tool-calling capable d'extraire l'identité du visiteur (`enregistrer_identite`), et réinjectés dans le prompt système par `ChatOrchestrationService::buildMessages()` pour que le modèle ne redemande jamais le nom déjà connu (voir §5.3) |
+| `visitorFirstName`, `visitorLastName` | string(100) nullable, `#[ApiProperty(writable: false)]` — jamais renseignés directement par un client API ; conçus pour être réglés en interne par l'étape de workflow `set_conversation` (voir §7.2) une fois l'agent en tool-calling capable d'extraire l'identité du visiteur, et réinjectés dans le prompt système par `ChatOrchestrationService::buildMessages()` pour que le modèle ne redemande jamais le nom déjà connu (voir §5.3). Aucun workflow actif n'utilise `set_conversation` actuellement -- `planifier_entretien` capture `attendee_name`/`attendee_email` directement comme arguments d'outil plutôt que via cette voie, donc ces deux champs restent `null` en pratique |
 | `messages` | `OneToMany` vers `Message`, ordonné par `createdAt`, `orphanRemoval: true` |
 | `user`     | `ManyToOne` nullable vers `User`, `onDelete: SET NULL` — non lisible/écrivable via l'API (voir §4.6) |
 
@@ -256,6 +256,16 @@ Cloisonné par propriétaire : un compte `ROLE_USER` ne voit/modifie (y compris 
 | `password` | string — hash bcrypt                               |
 | `roles`    | array (JSON) — `getRoles()` ajoute toujours `ROLE_USER` ; `ROLE_ADMIN` est stocké explicitement |
 | `isActive` | bool                                               |
+
+**`AuditLog`** (table `audit_log`) — une ligne par création/modification/suppression sur une ressource gérée par le backoffice. Append-only, non exposée via l'API (pas de `#[ApiResource]`), lecture seule via `/admin/audit-log` (`AuditLogController`, voir `docs/backend/ADMIN.md`). Alimentée par `App\EventListener\AuditLogListener` (événements génériques `app.<resource>.post_create`/`post_update`/`pre_delete` — voir §10).
+| Champ           | Type                                                                          |
+| ---------------- | ----------------------------------------------------------------------------- |
+| `action`         | string(20) — `create` \| `update` \| `delete`                                |
+| `resourceType`   | string(60)                                                                    |
+| `resourceId`     | string(40) nullable                                                           |
+| `resourceLabel`  | string(255) nullable — libellé best-effort (`getName`/`getTitle`/... selon l'entité) |
+| `actorEmail`     | string(180) nullable — instantané, pas une FK vers `User`                     |
+| `occurredAt`     | datetime immuable                                                             |
 
 `OwnedResourceInterface` (`getOwnerUser(): ?User`, `getOwnerFieldName(): string`) est implémentée par `Conversation` (`user`) et `WorkflowExecution` (`triggeredBy`) — voir §10 pour le mécanisme de cloisonnement.
 
@@ -310,6 +320,9 @@ Règle de résolution, par usage (`chat` / `embedding`) :
 **Chaîne de repli pour `chat`** (`ProviderSelectionService::getLlmClient()`) : contrairement à `embedding` (une seule config active prise en compte, `getActiveForUsage()`), **toutes** les `AiProviderConfig` actives pour l'usage `chat` sont résolues (`getAllActiveForUsage()`, triées `isDefault DESC, updatedAt DESC`) et enveloppées dans un `FallbackLlmClient` si plus d'une est utilisable — chaque config dont la construction échoue (ex. `api_endpoint` sans clé API) est ignorée avec un log `warning`, sans interrompre la résolution des suivantes. `FallbackLlmClient::complete()`/`checkStatus()` essaient chaque client dans l'ordre jusqu'au premier qui réussit (`stream()` idem, mais ne rebascule sur le suivant que si l'échec survient *avant* le premier chunk émis, pour ne jamais dupliquer un flux déjà partiellement renvoyé au client). Avec zéro ou une seule config utilisable, le comportement est inchangé (délégation directe). Permet par ex. un provider `api_endpoint` cloud par défaut avec un Ollama local en secours si le premier est indisponible.
 
 Le provider est **re-résolu à chaque appel** (pas de cache d'instance) : un changement de config admin prend effet immédiatement, sans redémarrage.
+
+> [!CAUTION]
+> Le repli « silencieux sur Ollama avec un log `warning` » du point 3 ci-dessus ne vaut que pour `chat` (`getLlmClient()`, protégé par un `try/catch` sur `InvalidArgumentException`). Pour `embedding`, `getEmbeddingClient()` n'a pas ce `try/catch` : c'est un simple test `if ($config->getApiKey())` avant de construire `OpenAiCompatibleEmbeddingClient`. Si l'`AiProviderConfig` active a `provider: api_endpoint` mais une `apiKey` vide, aucune exception n'est levée — le code tombe directement sur `OllamaEmbeddingClient` en réutilisant le champ `model` de *cette même config* (ex. `mistral-embed`) au lieu d'`OLLAMA_EMBEDDING_MODEL`, et Ollama répond `404` (pas de modèle de ce nom). Seul le log `info` « Using AiProviderConfig ... for embedding » apparaît, ce qui induit en erreur puisque ce n'est pas cette config qui est réellement utilisée. Vécu en pratique lors du scénario « Assistant Recruteurs » (voir `docs/backend/bruno/IA & Vecteurs/Providers IA/Create Provider (Embedding - Mistral).bru`) — toujours renseigner une `apiKey` valide avant/en même temps que de passer une config `embedding` en `isActive: true`.
 
 Le modèle d'**analyse de documents** (`getAnalysisLlmClient()`) est un cas particulier : toujours Ollama, piloté uniquement par `OLLAMA_ANALYSIS_MODEL` (pas d'`AiProviderConfig` dédiée).
 
@@ -452,7 +465,7 @@ Types d'étapes supportés (`WorkflowStepType`) :
 | `delay`          | `sleep()` bloquant pendant le nombre de secondes configuré                                                                                                                                              |
 | `email`          | Envoi réel via **Symfony Mailer** (`MAILER_DSN`), expéditeur `MAILER_FROM_ADDRESS`. En dev Docker, pointe vers un catcher **MailHog** local (`http://mailhog.chatbot.localhost`) -- rien ne part réellement tant que `MAILER_DSN` n'est pas configuré vers un vrai provider en prod                    |
 | `notification`   | POST vers `webhook_url` (payload `{"text": ..., "channel": ...}`, compatible Slack/Discord/Mattermost) si configuré dans le step ; sinon journalise seulement (`status: logged`)                        |
-| `set_conversation` | N'a d'effet que dans le chemin de tool-calling (`ChatOrchestrationService::execute()` passe la `Conversation` courante en contexte) — pas de conversation disponible sur un déclenchement manuel/API (`trigger`/`test`), auquel cas l'étape est un no-op (`status: skipped`). `configuration.fields` mappe un nom de champ `Conversation` (`visitor_first_name`, `visitor_last_name` — seuls champs supportés) vers une clé de `inputData` (les arguments extraits par le LLM lors de l'appel d'outil) ; persiste la ou les valeurs scalaires trouvées sur l'entité et flush. Utilisé par le workflow `enregistrer_identite` pour mémoriser l'identité du visiteur une fois que le LLM l'a extraite en tool-calling structuré (voir `docs/BACKLOG.md`) |
+| `set_conversation` | N'a d'effet que dans le chemin de tool-calling (`ChatOrchestrationService::execute()` passe la `Conversation` courante en contexte) — pas de conversation disponible sur un déclenchement manuel/API (`trigger`/`test`), auquel cas l'étape est un no-op (`status: skipped`). `configuration.fields` mappe un nom de champ `Conversation` (`visitor_first_name`, `visitor_last_name` — seuls champs supportés) vers une clé de `inputData` (les arguments extraits par le LLM lors de l'appel d'outil) ; persiste la ou les valeurs scalaires trouvées sur l'entité et flush. Type de step générique, réutilisable par n'importe quel workflow qui a besoin de mémoriser l'identité du visiteur une fois extraite en tool-calling structuré -- aucun workflow actif ne l'utilise actuellement (voir `docs/BACKLOG.md` pour l'historique) |
 
 ### 7.3 Synchronicité
 
@@ -710,7 +723,7 @@ Il faut alors fournir soi-même une base MariaDB et une instance Qdrant joignabl
 php bin/console doctrine:migrations:migrate
 ```
 
-(1 migration dans `migrations/`, couvrant l'ensemble du schéma des 15 entités.)
+(1 migration dans `migrations/`, couvrant l'ensemble du schéma des 16 entités.)
 
 ### 11.4 Variables d'environnement
 
@@ -740,6 +753,7 @@ Fichier de référence : `.env.example`.
 | `ADMIN_USERNAME`         | `admin`                                                                           | Ne seed que la première ligne `app_user` (migration) ; jamais lu par Symfony au runtime (§10) |
 | `ADMIN_PASSWORD_HASH`    | *(vide — à générer)*                                                              | Hash bcrypt (`bin/console security:hash-password`) — idem, seed uniquement                 |
 | `ADMIN_PASSWORD`         | *(vide — à générer)*                                                              | Contrepartie en clair, jamais lue par Symfony : uniquement pour le proxy Nuxt (Basic Auth) |
+| `CAL_EU_API_KEY`         | *(vide)*                                                                          | Clé API Cal.eu (Cal.com-compatible), résolue via `%env(CAL_EU_API_KEY)%` dans l'en-tête `Authorization` de l'étape `api_call` "Reserver sur Cal.eu" du workflow `planifier_entretien` (`WorkflowExecutionService::resolveEnvHeaders()`, voir §7.2) -- jamais stockée en clair dans la ligne `workflow_step`. Le worker Messenger ne relit `.env` qu'à son démarrage (§7.3) : redémarrer le conteneur worker après toute modification de cette variable |
 
 > `DEFAULT_URI` (génération d'URL en CLI) est aussi présent, non lié à l'IA.
 

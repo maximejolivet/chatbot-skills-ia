@@ -77,6 +77,7 @@
 | 🚫 Retiré  | Frontend | Mode mains-libres                                               | implémentée puis retirée à la demande explicite, sans remplacement.                                                             |
 | ⏳ À faire | Backend  | 2FA sur `/admin`                                                | aujourd'hui mot de passe seul (firewall `form_login` classique).                                                                |
 | ⏳ À faire | Backend  | CAPTCHA/Turnstile léger sur `quick-send`                        | le seul endpoint pensé pour des embedders tiers, donc le plus exposé à un abus anonyme malgré le rate-limiting déjà en place.   |
+| ⏳ À faire | Backend  | Valider `start_time` avant l'appel Cal.eu                       | l'agent peut affirmer qu'un créneau est disponible sans support réel dans les tool calls de la conversation ; Cal.eu valide bien côté serveur au moment de réserver, mais le message affiché au recruteur avant ça peut être trompeur.        |
 | ✅ Fait    | Backend  | `GET /api/faqs` rendu public (lecture seule)                    | `Faq` n'exposait que du CRUD réservé `ROLE_ADMIN` sur toute la ressource. `GetCollection` et `Get` sont désormais…              |
 | ✅ Fait    | Backend  | Streaming compatible tool-calling                               | limite précédemment assumée (§12.1 de la spec backend) : réponse générée entièrement côté serveur puis émise en SSE en un seul… |
 | ✅ Fait    | Backend  | `quick-send` n'expose pas les `sources`                         | **la prémisse s'est révélée fausse en creusant** : `QuickSendController` renvoyait déjà `sources` en clair depuis le commit…    |
@@ -153,8 +154,13 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       `planifier_entretien` dans `MessageBubble.vue` (carte "✅ Entretien
       confirmé pour {nom} — {date}"), construite uniquement à partir des
       `arguments` du tool call (notre propre schéma), jamais de la réponse
-      Cal.eu elle-même. *Non testé de bout en bout : déclencher ce workflow
-      pour de vrai créerait une vraie réservation Cal.eu + un vrai email.*
+      Cal.eu elle-même. *Non testé de bout en bout au moment de cette
+      décision (déclencher ce workflow pour de vrai créerait une vraie
+      réservation Cal.eu + un vrai email) — depuis fait pour de vrai en
+      reconstruisant l'étape "Reserver sur Cal.eu" du workflow (booking id
+      1367960, voir plus haut et
+      `docs/backend/bruno/Workflows/Workflows/Create Workflow Step
+      (Cal.eu Booking).bru`).*
 - [x] **Questions suggérées pilotées par API** — `HeroChatBar.vue` (hero de la
       home) et le panneau `Chatbot.vue` (état vide) affichaient chacun la même
       liste de questions codée en dur. Remplacée par `composables/useFaqs.ts`
@@ -655,6 +661,27 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
 - [ ] **CAPTCHA/Turnstile léger sur `quick-send`** — le seul endpoint pensé
       pour des embedders tiers, donc le plus exposé à un abus anonyme malgré
       le rate-limiting déjà en place.
+- [ ] **Valider `start_time` avant l'appel Cal.eu** — observé en testant le
+      workflow `planifier_entretien` (carte "✅ Entretien confirmé" dans
+      `MessageBubble.vue`) : l'agent peut affirmer dans son texte qu'un
+      créneau est "disponible dans les plannings de Maxime" sans qu'aucun
+      appel `lister_creneaux_disponibles` de la conversation ne le confirme
+      réellement (créneaux retournés pour d'autres jours que celui annoncé).
+      **Pas un problème d'intégrité des données** : Cal.eu valide lui-même la
+      disponibilité côté serveur au moment de la réservation (vérifié via une
+      vraie exécution : `workflow_execution.output_data`, `status_code: 201`,
+      `status: accepted`, booking Cal.eu réel créé uniquement quand le
+      créneau était réellement libre) — c'est la formulation du bot *avant*
+      confirmation qui n'est pas fiable, pas la réservation elle-même. Deux
+      resserrages successifs du prompt système de l'agent (interdiction
+      explicite de confirmer un horaire hors des créneaux retournés, exemple
+      chiffré de conversion UTC) n'ont pas suffi à empêcher l'affirmation
+      infondée — limite du modèle à respecter une consigne texte, pas un bug
+      de code. Correctif envisagé : dans `ChatOrchestrationService` (ou
+      l'exécution du workflow), garder trace des créneaux réellement
+      retournés par `lister_creneaux_disponibles` pendant la conversation et
+      rejeter/court-circuiter tout appel `planifier_entretien` dont le
+      `start_time` n'y correspond pas, avant même d'atteindre Cal.eu.
 - [x] **Journal d'audit des actions admin** — qui a créé/modifié/supprimé
       quelle ressource (`AiProviderConfig`, `Faq`, `Workflow`...) et quand.
       Nouvelle table `audit_log` (migration `Version20260823120000`, appliquée
@@ -1208,16 +1235,29 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
       du visiteur en texte libre, une petite carte (deux champs + bouton
       "Valider") apparaît sous sa dernière bulle au lieu d'obliger à taper
       une phrase. Détection par heuristique dans `Chatbot.vue` (le modèle
-      n'émet un tool-call structuré qu'une fois les deux noms obtenus, voir
-      `enregistrer_identite` / `WorkflowExecutionService::handleSetConversation`
-      — rien à détecter avant), affichée seulement sur la toute dernière
-      bulle assistant, jamais sur l'historique restauré ni pendant le
-      streaming. La validation envoie "Je m'appelle {prénom} {nom}." comme un
-      message normal — aucun changement backend, le tool-calling existant le
-      traite comme du texte libre ordinaire. Le champ de saisie principal
-      (les deux variantes) et le bouton d'envoi sont désactivés tant que la
-      carte est affichée, pour éviter deux chemins concurrents pour répondre
-      à la même question (taper librement *et* remplir la carte).
+      n'émet pas de signal structuré tant qu'il n'a pas fini de rassembler
+      les arguments de `planifier_entretien` — rien à détecter avant),
+      affichée seulement sur la toute dernière bulle assistant, jamais sur
+      l'historique restauré ni pendant le streaming. La validation envoie
+      "Je m'appelle {prénom} {nom}." comme un message normal — aucun
+      changement backend, le tool-calling existant le traite comme du texte
+      libre ordinaire. Le champ de saisie principal (les deux variantes) et
+      le bouton d'envoi sont désactivés tant que la carte est affichée, pour
+      éviter deux chemins concurrents pour répondre à la même question
+      (taper librement *et* remplir la carte).
+
+      **Superseded depuis** : la carte ne collecte plus seulement
+      prénom/nom — email, objet de l'échange, modalité (visio/téléphone) et
+      date/heure du rendez-vous (avec validation horaires ouvrés + hors
+      week-end côté client) s'y sont ajoutés au fil de l'évolution du
+      workflow `planifier_entretien`. Le tool `enregistrer_identite`
+      mentionné ci-dessus (et son usage de `set_conversation` /
+      `WorkflowExecutionService::handleSetConversation`) n'existe plus comme
+      workflow actif : l'identité est désormais capturée directement comme
+      arguments `attendee_name`/`attendee_email` de `planifier_entretien`,
+      sans étape `set_conversation` dédiée (voir §4/§7.2 de la spec
+      backend). Voir `docs/frontend/SPECIFICATION.md` §4.3 pour l'état
+      actuel de cette carte.
 - [x] **Priorité d'affichage des FAQ** — nouveau champ `Faq.priority`
       (entier, 0 par défaut, migration manuelle `dbal:run-sql` +
       `doctrine_migration_versions` — `doctrine:migrations:*` toujours cassé

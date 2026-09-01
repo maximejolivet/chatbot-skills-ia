@@ -22,8 +22,10 @@ headers {
 body:json {
   {
     "input_data": {
-      "date_souhaitee": "15 mars 2026",
-      "contact_email": "recruteur@entreprise-demo.fr"
+      "objet": "Entretien d embauche",
+      "start_time": "2026-03-15T10:00:00.000Z",
+      "attendee_name": "Julie Dupont",
+      "attendee_email": "recruteur@entreprise-demo.fr"
     }
   }
 }
@@ -35,4 +37,9 @@ docs {
   and dispatches ExecuteWorkflowMessage -- poll "Get Workflow Execution" for
   the final status. Manual trigger -- conversation stays null on the
   resulting execution (only a tool call from a chat message sets it).
+
+  Runs the real steps for real -- for THIS workflow that includes "Reserver
+  sur Cal.eu" (see "Create Workflow Step (Cal.eu Booking)"), a real booking
+  on Maxime's real Cal.eu account with a receivable email and a genuinely
+  free ISO-8601 slot. Don't run with real attendee data unless you mean it.
 }

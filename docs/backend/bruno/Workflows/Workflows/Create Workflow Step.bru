@@ -41,4 +41,15 @@ docs {
   name (visitor_first_name, visitor_last_name -- the only two supported) to
   an inputData key, e.g. {"fields": {"visitor_first_name": "first_name"}}.
   See docs/backend/SPECIFICATION.md §7.2.
+
+  CAVEAT on the body above: WorkflowExecutionService::handleNotification()
+  only ever reads `message`, `channel` and `webhook_url` from
+  `configuration` -- `to`/`template` (as used here) are silently ignored,
+  not a documented shorthand for "send an email using this template". With
+  no `message` and no `webhook_url` set, this step is inert: it just logs
+  an empty-message info line (`status: logged`) and notifies no one. To
+  actually reach Maxime, either set `webhook_url` (POSTs `{"text":
+  message, "channel": channel}` to a Slack/Discord/Mattermost-style
+  incoming webhook) or use `step_type: email` instead, which does send a
+  real message via Symfony Mailer.
 }

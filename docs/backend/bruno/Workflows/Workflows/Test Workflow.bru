@@ -22,8 +22,10 @@ headers {
 body:json {
   {
     "input_data": {
-      "date_souhaitee": "15 mars 2026",
-      "contact_email": "recruteur@entreprise-demo.fr"
+      "objet": "Entretien d embauche",
+      "start_time": "2026-03-15T10:00:00.000Z",
+      "attendee_name": "Julie Dupont",
+      "attendee_email": "recruteur@entreprise-demo.fr"
     }
   }
 }
@@ -32,4 +34,11 @@ docs {
   Same async pattern as Trigger Workflow (body wrapped under "input_data"),
   except it skips the "status must be active" check -- usable on a draft
   workflow.
+
+  NOT a dry-run despite the name: it runs the real steps, including the
+  real "Reserver sur Cal.eu" api_call step (see "Create Workflow Step
+  (Cal.eu Booking)") -- with a real, receivable email and an ISO-8601 date
+  matching an actually-free slot, this creates a real booking + real
+  Google Meet link on the connected Cal.eu account. Verified for real once
+  (booking id 1367960); don't re-run casually with real attendee data.
 }

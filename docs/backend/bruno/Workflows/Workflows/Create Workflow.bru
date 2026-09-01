@@ -29,10 +29,12 @@ body:json {
     "parametersSchema": {
       "type": "object",
       "properties": {
-        "date_souhaitee": {"type": "string", "description": "Date souhaitee pour l entretien, format libre"},
-        "contact_email": {"type": "string", "description": "Email du recruteur pour confirmation"}
+        "objet": {"type": "string", "description": "Objet de l echange souhaite par le recruteur (ex: entretien d embauche, echange sur une collaboration, prise de contact, etc.)"},
+        "start_time": {"type": "string", "description": "Date et heure souhaitees pour l entretien, au format ISO-8601 UTC strict (ex: 2026-03-15T10:00:00.000Z). Le recruteur s exprime generalement en heure francaise (UTC+2 en ete / heure d ete de Paris, UTC+1 en hiver) -- convertir systematiquement vers UTC avant d appeler cet outil, l API de reservation Cal.eu rejette tout autre format."},
+        "attendee_name": {"type": "string", "description": "Nom complet (prenom + nom) du recruteur"},
+        "attendee_email": {"type": "string", "description": "Email du recruteur pour confirmation"}
       },
-      "required": ["date_souhaitee"]
+      "required": ["start_time", "attendee_name", "attendee_email"]
     }
   }
 }
@@ -42,4 +44,15 @@ docs {
   (JSON Schema) is what gets exposed to the LLM as this tool's definition --
   attach the workflow to an AiAgent (admin form) for the model to be able to
   call it during a conversation.
+
+  FIELD NAMES ARE A HARD FRONTEND CONTRACT, not arbitrary: `start_time` and
+  `attendee_name` specifically -- MessageBubble.vue's `bookingConfirmation`
+  reads exactly `args.start_time`/`args.attendee_name` from the tool call to
+  render the "Entretien confirme" card, and returns null (card silently
+  doesn't render) for any other field names, e.g. `date_souhaitee`/`nom`/
+  `prenom`/`contact_email` (tried once during a DB-reset rebuild of this
+  workflow, broke the confirmation card in the real widget, reverted).
+  `attendee_email`/`objet` aren't read by the frontend but ARE read by the
+  "Reserver sur Cal.eu" step's {{placeholders}} -- keep all four in sync
+  across this schema and that step's `configuration.data` if either changes.
 }

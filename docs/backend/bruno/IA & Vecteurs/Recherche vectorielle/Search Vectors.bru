@@ -23,8 +23,6 @@ body:json {
   {
     "query": "experience et technologies backend de Maxime Jolivet",
     "collection_name": "cv_maxime_jolivet",
-    "language": "fr",
-    "complexity": "expert",
     "limit": 5
   }
 }
@@ -38,4 +36,15 @@ docs {
   indexed for your documents before filtering on them. All filters present
   combine with AND. Every successful call here is logged as a SearchQuery
   row (visible only in /admin/search-queries, no API for it).
+
+  CAVEAT (verified against this collection): any payload filter
+  here (language/complexity/document_type/category_id) makes QdrantClient
+  bubble up a 500 wrapping Qdrant's own 400 for the "cv_maxime_jolivet"
+  collection -- Qdrant Cloud's `strict_mode` is enabled on it with no
+  payload indexes created, and strict_mode rejects filtered queries against
+  unindexed payload fields. Unfiltered search (as in the body above) works
+  fine. This is a Qdrant Cloud collection configuration issue, not an
+  App\VectorConnector bug -- create a payload index for a field
+  (`PUT /collections/{name}/index`) directly against Qdrant before relying
+  on filters against this particular collection.
 }

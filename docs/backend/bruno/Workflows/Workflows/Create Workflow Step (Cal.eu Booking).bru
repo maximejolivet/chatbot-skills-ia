@@ -1,0 +1,98 @@
+meta {
+  name: Create Workflow Step (Cal.eu Booking)
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url}}/api/workflows/{{workflow_id}}/steps
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Reserver sur Cal.eu",
+    "step_type": "api_call",
+    "order": 1,
+    "configuration": {
+      "url": "https://api.cal.eu/v2/bookings",
+      "method": "POST",
+      "headers": {
+        "Authorization": "%env(CAL_EU_API_KEY)%",
+        "cal-api-version": "2024-08-13",
+        "Content-Type": "application/json"
+      },
+      "data": {
+        "eventTypeId": 369376,
+        "start": "{{start_time}}",
+        "attendee": {
+          "name": "{{attendee_name}}",
+          "email": "{{attendee_email}}",
+          "timeZone": "Europe/Paris"
+        },
+        "bookingFieldsResponses": {
+          "notes": "{{objet}}"
+        }
+      }
+    },
+    "is_active": true
+  }
+}
+
+docs {
+  Second step of the "planifier_entretien" workflow, runs after "Notifier
+  Maxime" (order 0) -- the actual booking call the workflow is named for,
+  referenced throughout docs/BACKLOG.md but missing from this collection
+  until now (the original row's real config was lost in a DB reset and
+  never recovered).
+
+  Rebuilt and VERIFIED FOR REAL against Maxime's real Cal.eu account
+  (`CAL_EU_API_KEY` in backend/.env) -- GET https://api.cal.eu/v2/me
+  (account: maximejolivet, Europe/Paris), GET
+  https://api.cal.eu/v2/event-types?username=maximejolivet (eventTypeId
+  369376, slug "pro", "Rendez-vous professionnel", 30/60 min, Google Meet),
+  and a real POST /v2/bookings via "Test Workflow" that created a real
+  booking (id 1367960, 2026-09-01 13:00-14:00 UTC, real Google Meet link).
+  `api.cal.eu` is a real, live, Cal.com-API-compatible service (identical
+  response envelope/error shapes to Cal.com's own v2 API) -- NEVER assume
+  it's interchangeable with api.cal.com without checking, they are
+  different accounts/keys.
+
+  Two real bugs found and fixed while getting that booking to succeed:
+  - `Authorization` header must be EXACTLY `%env(VAR)%`, no prefix/suffix --
+    WorkflowExecutionService::resolveEnvHeaders() anchors its regex
+    (`^%env\(\w+\)%$`), so a value like `"Bearer %env(CAL_EU_API_KEY)%"`
+    silently fails to substitute and sends that literal string as the
+    header (401, not an error the code surfaces distinctly from a real
+    invalid key). Fix used here: put the full `"Bearer <key>"` string
+    *inside* `CAL_EU_API_KEY` itself in backend/.env, keep the header value
+    as the bare placeholder.
+  - The messenger worker container only reads backend/.env at process
+    boot -- adding/editing a var there needs `docker restart
+    backend_symfony-worker-1` (or equivalent) before an async step picks it
+    up; the app/php-fpm container re-reads per-request so doesn't need this
+    for synchronous paths, only this worker.
+
+  `objet` -> `bookingFieldsResponses.notes` wiring is verified live (real
+  booking id 1368010 landed with the right `notes`/`description`).
+
+  Placeholders here are `{{start_time}}`/`{{attendee_name}}`/
+  `{{attendee_email}}`/`{{objet}}`, matching Workflow.parametersSchema --
+  NOT `{{date_souhaitee}}`/`{{nom}}`/`{{prenom}}`/`{{contact_email}}` (an
+  earlier version of this step and schema, briefly live, broke
+  MessageBubble.vue's "Entretien confirme" card because it reads exactly
+  `args.start_time`/`args.attendee_name` -- see "Create Workflow"'s docs
+  block for the full explanation). If you ever change these field names
+  again, update the frontend's `bookingConfirmation` computed in
+  MessageBubble.vue in the same change, not just this step/schema.
+}
