@@ -72,7 +72,25 @@ export default defineNuxtConfig({
     adminUsername: process.env.ADMIN_USERNAME || '',
     adminPassword: process.env.ADMIN_PASSWORD || '',
     public: {
-      apiUrl: process.env.API_URL || 'http://chatbot-symfony:8000',
+      // API_URL wins when set (every deploy target sets it explicitly).
+      // Otherwise: a production build defaults to the o2switch backend
+      // instead of the docker-compose-only hostname below, so a prod host
+      // that forgets to set API_URL still points somewhere real.
+      apiUrl:
+        process.env.API_URL ||
+        (isDev ? 'http://chatbot-symfony:8000' : 'https://chatbot.jolivetmaxime.fr'),
+    },
+  },
+  // Vercel's default serverless function duration (10s on Hobby) is too
+  // short for a full LLM reply through /api/conversations/[id]/stream --
+  // Nitro's vercel preset bundles every route into one function, so this
+  // applies project-wide, not just to that route. 60s is the Hobby-plan
+  // ceiling (Pro allows more).
+  nitro: {
+    vercel: {
+      functions: {
+        maxDuration: 60,
+      },
     },
   },
   vite: {
