@@ -162,6 +162,14 @@ jobs:
             ControlPersist 60s
           EOF
 
+      # TEMP DEBUG -- REDIS_URL is set but the same endpoints still 500.
+      # Remove once diagnosed.
+      - name: Debug -- tail error_log again
+        continue-on-error: true
+        run: |
+          ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && tail -n 40 public/error_log 2>&1"
+
       # var/ (cache/logs/uploaded documents) and .env are excluded from
       # --delete too, not just from the sync source: --delete removes
       # anything on the server not present here, and var/uploads/documents
