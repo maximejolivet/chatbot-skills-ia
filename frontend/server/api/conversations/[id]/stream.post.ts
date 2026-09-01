@@ -38,15 +38,25 @@ export default defineEventHandler(async (event) => {
       return await proxyRequest(event, targetUrl, { headers });
     } catch (error) {
       const isLastAttempt = attempt === maxAttempts;
-      // h3's sendProxy wraps every underlying fetch failure into a generic
-      // "502 Bad Gateway" H3Error -- the real cause (DNS, TLS, connection
-      // reset, timeout...) is only visible on error.cause.
-      const cause = error instanceof Error ? (error as { cause?: unknown }).cause : undefined;
+      // h3 wraps the underlying fetch failure as a 502 H3Error, and
+      // Node/undici's "fetch failed" TypeError wraps ITS OWN root cause
+      // another level down (e.g. ECONNRESET, cert error) -- walk the whole
+      // .cause chain instead of stopping one level in.
+      const chain: string[] = [];
+      let current: unknown = error;
+      for (let i = 0; i < 5 && current; i++) {
+        if (current instanceof Error) {
+          const code = (current as NodeJS.ErrnoException).code;
+          chain.push(`${current.name}: ${current.message}${code ? ` (code: ${code})` : ''}`);
+          current = current.cause;
+        } else {
+          chain.push(JSON.stringify(current));
+          break;
+        }
+      }
       console.error(
-        `[Stream Proxy] proxyRequest attempt ${attempt}/${maxAttempts} failed:`,
-        error instanceof Error ? error.message : error,
-        'cause:',
-        cause instanceof Error ? `${cause.name}: ${cause.message}` : cause,
+        `[Stream Proxy] proxyRequest attempt ${attempt}/${maxAttempts} failed. Cause chain:`,
+        chain.join(' -> '),
       );
       if (isLastAttempt || event.node.res.headersSent) {
         throw error;
