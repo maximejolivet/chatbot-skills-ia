@@ -51,6 +51,21 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
+      # Moved ahead of the build steps (and the whitelisting step is
+      # currently disabled below) so the IP to whitelist manually on o2switch
+      # is visible in the log/Actions summary right away, instead of only
+      # after several minutes of build steps.
+      #
+      # Inline instead of a third-party action: haythem/public-ip is
+      # unmaintained (last release 2022, deprecated Node 16 runtime) and
+      # does nothing more than call a public IP echo service.
+      - name: Get runner public IP
+        id: ip
+        run: |
+          IP=$(curl -sS https://api.ipify.org)
+          echo "ipv4=$IP" >> "$GITHUB_OUTPUT"
+          echo "::notice::Runner IP to whitelist on o2switch: $IP"
+
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
@@ -109,13 +124,6 @@ jobs:
           APP_ENV: prod
         run: php bin/console asset-map:compile
 
-      # Inline instead of a third-party action: haythem/public-ip is
-      # unmaintained (last release 2022, deprecated Node 16 runtime) and
-      # does nothing more than call a public IP echo service.
-      - name: Get runner public IP
-        id: ip
-        run: echo "ipv4=$(curl -sS https://api.ipify.org)" >> "$GITHUB_OUTPUT"
-
       # Logic lives in .github/scripts/o2switch-whitelist.sh
       # (checked out from repo root, hence ../.., since this job's default
       # working-directory is backend/) -- extracted out of the workflow so
@@ -123,7 +131,9 @@ jobs:
       # this same shared hosting account has its own, different
       # o2switch-whitelist.sh -- same filename, different repo/directory, no
       # runtime collision, but don't confuse the two if grepping the server.
+      # TEMPORARILY DISABLED -- re-enable by removing this `if: false`.
       - name: Whitelist runner IP on o2switch (and drop the 2 oldest)
+        if: false
         env:
           CPANEL_USER: ${{ secrets.DEPLOY_SSH_USER }}
           CPANEL_PASSWORD: ${{ secrets.DEPLOY_CPANEL_PASSWORD }}
