@@ -377,7 +377,7 @@
             </button>
           </div>
         </div>
-        <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col space-y-3 p-4 pb-36 sm:px-6">
+        <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col space-y-3 p-4 sm:px-6">
           <div
             v-if="isRestoringHistory"
             class="flex flex-1 flex-col justify-end gap-3"
@@ -615,12 +615,16 @@
       </Transition>
 
       <!-- Astuce de découverte, bannière d'erreur et formulaire de saisie
-           groupés dans un seul conteneur ancré en bas : le formulaire seul
-           en `absolute bottom-0` (avant ce groupement) recouvrait ces deux
-           bannières, qui restaient en flux normal juste en dessous de la
-           zone de messages -- invisibles derrière lui plutôt qu'empilées
-           au-dessus, cf. bannière d'erreur signalée "cachée". -->
-      <div class="absolute inset-x-0 bottom-0 z-10 flex flex-col">
+           groupés dans un seul conteneur, en flux normal comme sibling de
+           la zone de messages (flex-1 overflow-y-auto juste au-dessus) --
+           PAS en `absolute bottom-0` : ça flottait par-dessus les messages
+           au lieu de réserver sa propre place dans le flex, cachant le bas
+           d'une conversation derrière lui (le pb-36 sur le contenu des
+           messages ne faisait que deviner sa hauteur, sans jamais vraiment
+           matcher). En flux normal, le flex-1 de la zone de messages absorbe
+           automatiquement l'espace restant, quelle que soit la hauteur
+           réelle de ce groupe. -->
+      <div class="z-10 flex flex-col">
         <!-- Astuce de découverte (commandes slash, Cmd/Ctrl+K) -- une seule
            fois, voir maybeShowDiscoveryHint plus haut. -->
         <Transition
