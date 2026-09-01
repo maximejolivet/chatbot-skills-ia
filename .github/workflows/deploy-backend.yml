@@ -23,6 +23,10 @@ on:
         description: 'Dry run (rsync --dry-run, skip .env write and migrations)'
         type: boolean
         default: false
+      ip_only:
+        description: 'Only fetch the runner IP and stop there (whitelisting step is currently disabled -- use this to grab the IP to whitelist manually)'
+        type: boolean
+        default: false
 
 # Queues overlapping runs instead of letting them race: two concurrent runs
 # would interleave whitelist add/remove calls and rsync to the same path.
@@ -67,12 +71,14 @@ jobs:
           echo "::notice::Runner IP to whitelist on o2switch: $IP"
 
       - name: Set up PHP
+        if: ${{ !inputs.ip_only }}
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           coverage: none
 
       - name: Cache Composer packages
+        if: ${{ !inputs.ip_only }}
         uses: actions/cache@v5
         with:
           path: ~/.composer/cache
@@ -84,9 +90,11 @@ jobs:
       # unrelated to the real production .env, which is written to the
       # server later from the DEPLOY_ENV_FILE secret.
       - name: Prepare .env for the build
+        if: ${{ !inputs.ip_only }}
         run: cp .env.example .env
 
       - name: Install dependencies
+        if: ${{ !inputs.ip_only }}
         run: composer install --prefer-dist --no-interaction --no-progress
 
       # Rebuilt here (on the runner), never on the server -- no vendor/ from
@@ -99,6 +107,7 @@ jobs:
       # container fails with a ClassNotFoundError. Forcing prod here warms
       # the prod container instead, which never references them.
       - name: Prune to production dependencies
+        if: ${{ !inputs.ip_only }}
         env:
           APP_ENV: prod
         run: composer install --prefer-dist --no-dev --optimize-autoloader --no-interaction
@@ -109,6 +118,7 @@ jobs:
       # container already had it built from an earlier session; a fresh
       # runner checkout doesn't.
       - name: Build Tailwind CSS
+        if: ${{ !inputs.ip_only }}
         env:
           APP_ENV: prod
         run: php bin/console tailwind:build
@@ -120,6 +130,7 @@ jobs:
       # above, which only vendor the raw sources -- this is the separate
       # "build" step.
       - name: Compile AssetMapper assets for production
+        if: ${{ !inputs.ip_only }}
         env:
           APP_ENV: prod
         run: php bin/console asset-map:compile
@@ -142,6 +153,7 @@ jobs:
         run: ../.github/scripts/o2switch-whitelist.sh
 
       - name: Wait for SSH port to open (post-whitelist propagation)
+        if: ${{ !inputs.ip_only }}
         run: |
           echo "Waiting for ${{ secrets.DEPLOY_SSH_HOST }}:22 to accept connections..."
           for i in $(seq 1 24); do
@@ -155,6 +167,7 @@ jobs:
           exit 1
 
       - uses: webfactory/ssh-agent@v0.10.0
+        if: ${{ !inputs.ip_only }}
         with:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
 
@@ -166,6 +179,7 @@ jobs:
       # alive past the last command; harmless, the runner VM is destroyed
       # right after this job anyway.
       - name: Trust the remote host key
+        if: ${{ !inputs.ip_only }}
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -v "${{ secrets.DEPLOY_SSH_HOST }}" >> ~/.ssh/known_hosts
@@ -182,6 +196,7 @@ jobs:
       # (uploaded knowledge-base files) plus the live .env only ever exist
       # on the server, never in this checkout.
       - name: Rsync to o2switch
+        if: ${{ !inputs.ip_only }}
         run: |
           rsync -avz --delete ${{ inputs.dry_run && '--dry-run' || '' }} \
             --exclude '.env' --exclude '.env.*' \
@@ -193,7 +208,7 @@ jobs:
       # into the run: script, so the secret's content is never re-parsed by
       # the shell.
       - name: Deploy production .env
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && !inputs.ip_only }}
         env:
           ENV_FILE: ${{ secrets.DEPLOY_ENV_FILE }}
         run: |
@@ -205,7 +220,7 @@ jobs:
       # the Actions log before the run fails on CREATE TABLE, instead of
       # only being visible via SSH after the fact.
       - name: Check migration status
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && !inputs.ip_only }}
         run: |
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
             "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console doctrine:migrations:status --env=prod"
@@ -216,13 +231,13 @@ jobs:
       # bundles (e.g. MakerBundle) stripped from the --no-dev vendor/ this
       # rsynced, crashing the same way the runner-side prune step did.
       - name: Run database migrations
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && !inputs.ip_only }}
         run: |
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
             "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console doctrine:migrations:migrate --env=prod --no-interaction"
 
       - name: Warm up the prod cache
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && !inputs.ip_only }}
         run: |
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
             "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console cache:clear --env=prod --no-debug"
@@ -232,7 +247,7 @@ jobs:
       # means Symfony booted and the firewall is enforcing, which is the
       # actual thing worth confirming here.
       - name: Smoke test -- confirm the API is up and enforcing auth
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && !inputs.ip_only }}
         run: |
           for i in 1 2 3; do
             STATUS=$(curl -sk -o /dev/null -w '%{http_code}' "https://chatbot.jolivetmaxime.fr/api/ai_agents") && break
