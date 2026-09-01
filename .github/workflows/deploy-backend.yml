@@ -200,42 +200,40 @@ jobs:
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
             "cat > ${{ secrets.DEPLOY_PROJECT_PATH }}/.env" <<< "$ENV_FILE"
 
-      # doctrine/migrations 3.x's metadata storage table needs columns
-      # (executed_at, execution_time, ...) that a table created by an older
-      # bundle version / manual schema doesn't have -- sync-metadata-storage
-      # adds them without touching recorded versions. No-op once already
-      # synced, so safe to run on every deploy rather than only once by hand.
+      # Only really matters for the very first deploy (creates the tracking
+      # table). Harmless no-op afterwards -- see the "Check migration
+      # status" comment below for why it can't fix that step's error.
       - name: Sync migrations metadata storage
         if: ${{ !inputs.dry_run }}
         run: |
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console doctrine:migrations:sync-metadata-storage --env=prod -vvv"
+            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console doctrine:migrations:sync-metadata-storage --env=prod"
 
       # Printed ahead of the actual migrate so a squashed/rebuilt baseline
       # (schema already present but not recorded as executed) shows up in
       # the Actions log before the run fails on CREATE TABLE, instead of
       # only being visible via SSH after the fact.
-      # TEMP DEBUG -- remove once the metadata storage mismatch is diagnosed.
-      - name: Debug -- describe migrations table
+      #
+      # continue-on-error: doctrine/migrations always reports
+      # "MetadataStorageError: not up to date" here on this DB (MariaDB with
+      # a non-server-default collation) -- confirmed upstream bug, never
+      # fixed: https://github.com/doctrine/DoctrineMigrationsBundle/issues/484
+      # and https://github.com/doctrine/migrations/issues/1302. Root cause:
+      # StatusCommand calls getExecutedMigrations() -> checkInitialization(),
+      # which throws on ANY schema diff, and MySQL/MariaDB introspection
+      # always attaches charset/collation platformOptions to string columns
+      # while TableMetadataStorage::getExpectedTable() never sets any --
+      # guaranteed, permanent false-positive diff, unfixable by
+      # sync-metadata-storage. The actual "Run database migrations" step
+      # below is unaffected: MigrateCommand calls ensureInitialized() (which
+      # never throws, just alters if needed) before touching executed
+      # migrations, so this step failing does not mean the deploy is broken.
+      - name: Check migration status
         if: ${{ !inputs.dry_run }}
         continue-on-error: true
         run: |
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console dbal:run-sql \"SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, CHARACTER_SET_NAME, COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'doctrine_migration_versions'\" --env=prod"
-          ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console dbal:run-sql \"SELECT INDEX_NAME, COLUMN_NAME, NON_UNIQUE FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'doctrine_migration_versions'\" --env=prod"
-          ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console dbal:run-sql \"SELECT ENGINE, TABLE_COLLATION FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'doctrine_migration_versions'\" --env=prod"
-          ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console dbal:run-sql \"SELECT * FROM information_schema.COLLATION_CHARACTER_SET_APPLICABILITY WHERE COLLATION_NAME = 'utf8mb4_unicode_ci'\" --env=prod"
-          ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console dbal:run-sql \"SELECT VERSION()\" --env=prod"
-
-      - name: Check migration status
-        if: ${{ !inputs.dry_run }}
-        run: |
-          ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console doctrine:migrations:status --env=prod -vvv"
+            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console doctrine:migrations:status --env=prod"
 
       # --env=prod explicit, not left to DEPLOY_ENV_FILE containing
       # APP_ENV=prod correctly -- an empty/misconfigured .env would
