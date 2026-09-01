@@ -142,9 +142,12 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=1
       - NODE_OPTIONS="--dns-result-order=ipv4first"
-      - API_URL=http://chatbot-symfony:8000
-      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+    # API_URL/ADMIN_USERNAME/ADMIN_PASSWORD intentionally NOT set here --
+    # they used to be hardcoded to the local Symfony container, which always
+    # overrode frontend/.env (Nuxt's own dotenv loading never replaces a var
+    # already present in process.env). Leaving them unset lets frontend/.env
+    # be the single source of truth for which backend this dev server talks
+    # to (local chatbot-symfony:8000, or the o2switch prod API).
     depends_on:
       - app
     networks:
