@@ -14,8 +14,9 @@ interface UseChatbotProps {
 }
 
 // Keeps the conversation alive across page reloads/navigation within the
-// same browser -- otherwise a visitor who refreshes mid-chat (or who gave
-// their name via enregistrer_identite) loses everything and starts over.
+// same browser -- otherwise a visitor who refreshes mid-chat (or who already
+// gave their name/email while booking an interview) loses everything and
+// starts over.
 export const CONVERSATION_ID_STORAGE_KEY = 'chatbot:conversation_id';
 
 // Lets StickyChatBubble.vue show a teaser of the last assistant reply on
@@ -134,7 +135,6 @@ export const useChatbot = ({ apiUrl = '/api/chat', onMessage }: UseChatbotProps 
   const TOOL_CALL_LABEL_KEYS: Record<string, string> = {
     planifier_entretien: 'chatbot.toolCallPlanifierEntretien',
     lister_creneaux_disponibles: 'chatbot.toolCallListerCreneaux',
-    enregistrer_identite: 'chatbot.toolCallEnregistrerIdentite',
   };
 
   const toolCallLabel = computed(() => {

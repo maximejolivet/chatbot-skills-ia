@@ -1,4 +1,4 @@
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 
 // Strips the markdown MessageBubble renders (see marked.parse there) down
 // to plain prose -- reading "astérisque astérisque gras astérisque astérisque"
@@ -15,11 +15,21 @@ export const stripMarkdown = (markdown: string) =>
     .trim();
 
 export const useSpeechSynthesis = () => {
-  const isSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+  // Same reasoning as useSpeechRecognition's isSupported: starts false to
+  // match SSR (no `window`), flips in onMounted (client-only) instead of
+  // detecting synchronously in setup() -- 'speechSynthesis' in window is
+  // true in nearly every real browser, so detecting synchronously meant
+  // this button was in the client's expected DOM but absent from the
+  // server-rendered HTML on every single assistant message, logging a
+  // "Hydration node mismatch" warning on every /chat load.
+  const isSupported = ref(false);
+  onMounted(() => {
+    isSupported.value = 'speechSynthesis' in window;
+  });
   const speakingId = ref<string | null>(null);
 
   const speak = (id: string, markdown: string) => {
-    if (!isSupported) return;
+    if (!isSupported.value) return;
 
     // Toggle off: clicking the button of the message currently being read
     // just stops it instead of restarting the same utterance.
@@ -42,7 +52,7 @@ export const useSpeechSynthesis = () => {
   };
 
   const stop = () => {
-    if (!isSupported) return;
+    if (!isSupported.value) return;
     window.speechSynthesis.cancel();
     speakingId.value = null;
   };

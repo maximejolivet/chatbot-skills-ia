@@ -33,6 +33,20 @@ export interface Message {
   pinned?: boolean;
 }
 
+// Payload emitted by MessageBubble.vue's identity/email cards (see
+// asksForIdentity/asksForEmail there) -- Chatbot.vue turns it into the
+// natural-language sentence sent to the model, no backend change needed.
+export interface InterviewBookingSubmission {
+  firstName: string;
+  lastName: string;
+  email: string;
+  objet: string;
+  date: string;
+  modalite: 'visio' | 'telephone';
+  // Only meaningful (and only required) for modalite === 'telephone'.
+  telephone: string;
+}
+
 export interface AIAgent {
   id: number;
   name: string;

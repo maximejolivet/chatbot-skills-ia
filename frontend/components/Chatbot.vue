@@ -459,7 +459,6 @@
                   'assistant' === item.message.role &&
                   item.message.id === messages[messages.length - 1]?.id
                 "
-                @select-slot="onSelectSlot"
                 @speak="speak"
                 @feedback="setFeedback"
                 @regenerate="regenerateLastReply"
@@ -995,7 +994,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ChatbotProps } from '../types/index';
+import type { ChatbotProps, InterviewBookingSubmission } from '../types/index';
 
 // title/placeholder defaults stay plain French literals, not $t() calls --
 // withDefaults() is hoisted to module scope at compile time, so it can't
@@ -1399,34 +1398,49 @@ const onClearMessages = () => {
   clearMessages();
 };
 
-const onSelectSlot = (iso: string, label: string) => {
-  sendMessage(t('chatbot.bookSlotMessage', { label, iso }));
+// Builds the same natural-language sentence the visitor would have typed
+// themselves -- no backend change needed, the model's own tool-calling
+// (objet/attendee_name/attendee_email/start_time args on planifier_entretien
+// -- there is no separate identity-capture workflow) parses it exactly like
+// free text. telephone is only appended for "telephone" -- the card
+// requires it in that case, and hides (doesn't require) it for "visio".
+const buildBookingMessage = ({
+  firstName,
+  lastName,
+  email,
+  objet,
+  date,
+  modalite,
+  telephone,
+}: InterviewBookingSubmission): string => {
+  let message = t('chatbot.identityMessage', { firstName, lastName, email, date });
+  message +=
+    ' ' + t('telephone' === modalite ? 'chatbot.identityMessageTelephone' : 'chatbot.identityMessageVisio');
+  message += ' ' + t('chatbot.identityMessageObjet', { objet });
+  if ('telephone' === modalite) message += ' ' + t('chatbot.identityMessageTelephoneNumero', { telephone });
+  return message;
 };
 
-// Sends the same natural-language sentence the visitor would have typed
-// themselves -- no backend change needed, the model's own tool-calling
-// (enregistrer_identite) parses it exactly like free text.
-const onSubmitIdentity = (firstName: string, lastName: string, email: string) => {
-  sendMessage(t('chatbot.identityMessage', { firstName, lastName, email }));
+const onSubmitIdentity = (submission: InterviewBookingSubmission) => {
+  sendMessage(buildBookingMessage(submission));
 };
 
 // Same reasoning as onSubmitIdentity -- a natural sentence the model's
 // tool-calling (planifier_entretien) reads exactly like free text, no
-// backend change needed. Carries firstName/lastName too now (same fields
-// as the identity card, see MessageBubble.vue's asksForEmail), so reuses
-// the same phrasing.
-const onSubmitEmail = (firstName: string, lastName: string, email: string) => {
-  sendMessage(t('chatbot.identityMessage', { firstName, lastName, email }));
+// backend change needed. Carries the same fields as the identity card, see
+// MessageBubble.vue's asksForEmail.
+const onSubmitEmail = (submission: InterviewBookingSubmission) => {
+  sendMessage(buildBookingMessage(submission));
 };
 
 // Detected here (not in MessageBubble.vue) because the main input also
 // needs to disable itself while this card is the expected way to reply --
 // typing a free-text message *and* filling the card at the same time would
 // be two competing paths to answer the same question. Heuristic, not a
-// structured tool-call signal: the model only calls "enregistrer_identite"
-// once it already has both names (see
-// WorkflowExecutionService::handleSetConversation), so there's nothing
-// structured to key off at the moment it's still just *asking*.
+// structured tool-call signal: identity isn't a separate tool call, it's
+// just attendee_name/attendee_email arguments the model gathers before
+// calling planifier_entretien, so there's nothing structured to key off at
+// the moment it's still just *asking*.
 const awaitingIdentity = computed(() => {
   const last = messages.value[messages.value.length - 1];
   if (!last || 'assistant' !== last.role || isLoading.value) return false;
