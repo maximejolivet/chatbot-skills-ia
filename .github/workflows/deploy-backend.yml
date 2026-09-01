@@ -131,9 +131,7 @@ jobs:
       # this same shared hosting account has its own, different
       # o2switch-whitelist.sh -- same filename, different repo/directory, no
       # runtime collision, but don't confuse the two if grepping the server.
-      # TEMPORARILY DISABLED -- re-enable by removing this `if: false`.
       - name: Whitelist runner IP on o2switch (and drop the 2 oldest)
-        if: false
         env:
           CPANEL_USER: ${{ secrets.DEPLOY_SSH_USER }}
           CPANEL_PASSWORD: ${{ secrets.DEPLOY_CPANEL_PASSWORD }}
@@ -201,39 +199,22 @@ jobs:
             "cat > ${{ secrets.DEPLOY_PROJECT_PATH }}/.env" <<< "$ENV_FILE"
 
       # Only really matters for the very first deploy (creates the tracking
-      # table). Harmless no-op afterwards -- see the "Check migration
-      # status" comment below for why it can't fix that step's error.
+      # table). Harmless no-op afterwards: doctrine/migrations' status check
+      # has a confirmed, unfixed upstream bug that reports this table as
+      # permanently out of date on MariaDB with a non-server-default
+      # collation (charset/collation platformOptions attached by
+      # introspection but never set on the expected table -- see
+      # https://github.com/doctrine/DoctrineMigrationsBundle/issues/484 and
+      # https://github.com/doctrine/migrations/issues/1302), which is why
+      # there's no "check migration status" step here -- it would always
+      # fail. "Run database migrations" below is unaffected: MigrateCommand
+      # calls ensureInitialized() (never throws, just alters if needed)
+      # before touching executed migrations.
       - name: Sync migrations metadata storage
         if: ${{ !inputs.dry_run }}
         run: |
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
             "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console doctrine:migrations:sync-metadata-storage --env=prod"
-
-      # Printed ahead of the actual migrate so a squashed/rebuilt baseline
-      # (schema already present but not recorded as executed) shows up in
-      # the Actions log before the run fails on CREATE TABLE, instead of
-      # only being visible via SSH after the fact.
-      #
-      # continue-on-error: doctrine/migrations always reports
-      # "MetadataStorageError: not up to date" here on this DB (MariaDB with
-      # a non-server-default collation) -- confirmed upstream bug, never
-      # fixed: https://github.com/doctrine/DoctrineMigrationsBundle/issues/484
-      # and https://github.com/doctrine/migrations/issues/1302. Root cause:
-      # StatusCommand calls getExecutedMigrations() -> checkInitialization(),
-      # which throws on ANY schema diff, and MySQL/MariaDB introspection
-      # always attaches charset/collation platformOptions to string columns
-      # while TableMetadataStorage::getExpectedTable() never sets any --
-      # guaranteed, permanent false-positive diff, unfixable by
-      # sync-metadata-storage. The actual "Run database migrations" step
-      # below is unaffected: MigrateCommand calls ensureInitialized() (which
-      # never throws, just alters if needed) before touching executed
-      # migrations, so this step failing does not mean the deploy is broken.
-      - name: Check migration status
-        if: ${{ !inputs.dry_run }}
-        continue-on-error: true
-        run: |
-          ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console doctrine:migrations:status --env=prod"
 
       # --env=prod explicit, not left to DEPLOY_ENV_FILE containing
       # APP_ENV=prod correctly -- an empty/misconfigured .env would
