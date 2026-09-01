@@ -24,19 +24,27 @@ export default defineEventHandler(async (event) => {
   }
 
   const targetUrl = `${apiUrl}/api/conversations/${id}/stream`;
-  const startedAt = Date.now();
-  console.log(`[Stream Proxy] Starting proxyRequest to ${targetUrl}`);
-  try {
-    const result = await proxyRequest(event, targetUrl, { headers });
-    console.log(
-      `[Stream Proxy] proxyRequest resolved after ${Date.now() - startedAt}ms, response status: ${event.node.res.statusCode}`,
-    );
-    return result;
-  } catch (error) {
-    console.error(
-      `[Stream Proxy] proxyRequest threw after ${Date.now() - startedAt}ms:`,
-      error instanceof Error ? error.message : error,
-    );
-    throw error;
+
+  // Intermittent connectivity blip between Vercel and o2switch on this
+  // specific streamed-POST route (h3's proxyRequest throws "Bad Gateway"
+  // within ~2s, well before any response bytes reach the client -- other,
+  // non-streamed routes through server/api/[...path].ts never see this).
+  // One retry is safe precisely because it fails this fast/early: nothing
+  // has been written to event.node.res yet, so a second attempt is a clean
+  // do-over, not a double response.
+  const maxAttempts = 2;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await proxyRequest(event, targetUrl, { headers });
+    } catch (error) {
+      const isLastAttempt = attempt === maxAttempts;
+      console.error(
+        `[Stream Proxy] proxyRequest attempt ${attempt}/${maxAttempts} failed:`,
+        error instanceof Error ? error.message : error,
+      );
+      if (isLastAttempt || event.node.res.headersSent) {
+        throw error;
+      }
+    }
   }
 });
