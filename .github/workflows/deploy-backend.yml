@@ -5,11 +5,10 @@
 # Triggered by ci-backend.yml succeeding on master (not by push directly):
 # lint/test/audit/phpstan/cs-fixer are that separate workflow's job now,
 # not duplicated here. Still a single job below despite that split --
-# the runner's IP must be whitelisted on o2switch (cPanel > Sécurité > Accès
-# SSH) by hand before the SSH/rsync steps below can connect (each GitHub
-# Actions job gets its own runner VM, and its own public IP), so the "Get
-# runner public IP" step needs to run in the same job as SSH/rsync for the
-# printed IP to be the one that actually needs whitelisting.
+# the IP-whitelisting step must run in the same job as the SSH/rsync
+# steps (each GitHub Actions job gets its own runner VM, and its own
+# public IP), so build and deploy can't be split into their own jobs the
+# way build and CI could.
 
 name: Deploy chat-ia (backend)
 
@@ -26,7 +25,7 @@ on:
         default: false
 
 # Queues overlapping runs instead of letting them race: two concurrent runs
-# would rsync to the same remote path at once.
+# would interleave whitelist add/remove calls and rsync to the same path.
 concurrency:
   group: deploy-backend-${{ github.ref }}
 
@@ -52,18 +51,15 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      # Moved ahead of the build steps so the IP to whitelist manually on
-      # o2switch (cPanel > Sécurité > Accès SSH) is visible in the
-      # log/Actions summary right away, instead of only after several
-      # minutes of build steps.
-      #
       # Inline instead of a third-party action: haythem/public-ip is
       # unmaintained (last release 2022, deprecated Node 16 runtime) and
       # does nothing more than call a public IP echo service.
       - name: Get runner public IP
+        id: ip
         run: |
           IP=$(curl -sS https://api.ipify.org)
-          echo "::notice::Runner IP to whitelist on o2switch: $IP"
+          echo "ipv4=$IP" >> "$GITHUB_OUTPUT"
+          echo "::notice::Runner IP: $IP"
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -123,9 +119,27 @@ jobs:
           APP_ENV: prod
         run: php bin/console asset-map:compile
 
-      # Runner IP whitelisting on o2switch is manual (cPanel > Sécurité >
-      # Accès SSH) -- see the "Get runner public IP" step above for the IP
-      # to add. This step just waits for that to have happened / propagated
+      # Logic lives in .github/scripts/o2switch-whitelist.sh (checked out
+      # from repo root, hence ../.., since this job's default
+      # working-directory is backend/) -- extracted out of the workflow so
+      # it's testable/readable on its own, and so a manual run (see
+      # docs/DEPLOYMENT.md) can call it standalone to whitelist an
+      # arbitrary IP. Uses a cPanel API Token (O2SWITCH_API_LOGIN +
+      # O2SWITCH_API_TOKEN), o2switch's recommended auth method since
+      # 2025-05-02 -- see
+      # https://faq.o2switch.fr/cpanel/outils/exception-parefeu/. Quota is
+      # 5 exceptions total; the script drops the single oldest one first
+      # only if already at quota.
+      - name: Whitelist runner IP on o2switch
+        env:
+          O2SWITCH_API_LOGIN: ${{ secrets.O2SWITCH_API_LOGIN }}
+          O2SWITCH_API_TOKEN: ${{ secrets.O2SWITCH_API_TOKEN }}
+          CPANEL_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          RUNNER_IP: ${{ steps.ip.outputs.ipv4 }}
+        run: ../.github/scripts/o2switch-whitelist.sh
+
+      # Whitelisting propagates on o2switch's side after the API call
+      # above returns -- this just waits for it to actually be effective
       # before the SSH steps below try to connect.
       - name: Wait for SSH port to open
         run: |
