@@ -17,7 +17,14 @@ CPANEL="https://${CPANEL_USER}:${CPANEL_PASSWORD}@${CPANEL_HOST}:2083"
 CURL_OPTS=(--connect-timeout 10 --max-time 30)
 
 echo "Fetching currently whitelisted IPs..."
-RESPONSE=$(curl -sX GET "${CURL_OPTS[@]}" "$CPANEL/$ENDPOINT?r=list")
+LIST_HTTP=$(curl -sX GET "${CURL_OPTS[@]}" -o /tmp/o2switch-list.json -w '%{http_code}' "$CPANEL/$ENDPOINT?r=list")
+RESPONSE=$(cat /tmp/o2switch-list.json)
+if ! echo "$RESPONSE" | jq empty 2>/dev/null; then
+    echo "::error::o2switch list endpoint returned non-JSON (HTTP $LIST_HTTP). First 500 chars of body below:" >&2
+    echo "$RESPONSE" | head -c 500 >&2
+    echo >&2
+    exit 5
+fi
 LAST_IPS=$(echo "$RESPONSE" | jq -r '.data.list[]? | .address' | tail -n2)
 
 for address in $LAST_IPS; do
