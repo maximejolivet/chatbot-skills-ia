@@ -23,5 +23,20 @@ export default defineEventHandler(async (event) => {
     headers['Authorization'] = `Basic ${credentials}`;
   }
 
-  return proxyRequest(event, `${apiUrl}/api/conversations/${id}/stream`, { headers });
+  const targetUrl = `${apiUrl}/api/conversations/${id}/stream`;
+  const startedAt = Date.now();
+  console.log(`[Stream Proxy] Starting proxyRequest to ${targetUrl}`);
+  try {
+    const result = await proxyRequest(event, targetUrl, { headers });
+    console.log(
+      `[Stream Proxy] proxyRequest resolved after ${Date.now() - startedAt}ms, response status: ${event.node.res.statusCode}`,
+    );
+    return result;
+  } catch (error) {
+    console.error(
+      `[Stream Proxy] proxyRequest threw after ${Date.now() - startedAt}ms:`,
+      error instanceof Error ? error.message : error,
+    );
+    throw error;
+  }
 });
