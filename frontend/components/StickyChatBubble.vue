@@ -8,7 +8,12 @@
     :aria-label="$t('stickyBubble.start')"
     class="fixed bottom-6 right-0 z-50 flex size-11 items-center justify-center rounded-l-full border-y border-l-0 border-r border-primary bg-primary text-primary-foreground shadow-lg transition-transform duration-300 hover:scale-105 hover:bg-accent hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 sm:hidden"
   >
-    <svg class="pointer-events-none size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg
+      class="pointer-events-none size-4 translate-x-px"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
       <path
         stroke-linecap="round"
         stroke-linejoin="round"
