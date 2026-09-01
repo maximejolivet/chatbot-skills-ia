@@ -221,11 +221,15 @@ jobs:
         continue-on-error: true
         run: |
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
-            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console dbal:run-sql \"SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'doctrine_migration_versions'\" --env=prod"
+            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console dbal:run-sql \"SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, CHARACTER_SET_NAME, COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'doctrine_migration_versions'\" --env=prod"
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
             "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console dbal:run-sql \"SELECT INDEX_NAME, COLUMN_NAME, NON_UNIQUE FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'doctrine_migration_versions'\" --env=prod"
           ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
             "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console dbal:run-sql \"SELECT ENGINE, TABLE_COLLATION FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'doctrine_migration_versions'\" --env=prod"
+          ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console dbal:run-sql \"SELECT * FROM information_schema.COLLATION_CHARACTER_SET_APPLICABILITY WHERE COLLATION_NAME = 'utf8mb4_unicode_ci'\" --env=prod"
+          ssh "${{ secrets.DEPLOY_SSH_USER }}@${{ secrets.DEPLOY_SSH_HOST }}" \
+            "cd ${{ secrets.DEPLOY_PROJECT_PATH }} && php bin/console dbal:run-sql \"SELECT VERSION()\" --env=prod"
 
       - name: Check migration status
         if: ${{ !inputs.dry_run }}
