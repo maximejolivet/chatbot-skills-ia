@@ -1,5 +1,5 @@
 <template>
-  <div :class="[themeClass, 'font-sans text-foreground antialiased']">
+  <div :class="[themeClass, 'h-full font-sans text-foreground antialiased']">
     <NuxtPage />
   </div>
 </template>

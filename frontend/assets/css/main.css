@@ -65,6 +65,17 @@
 
   html {
     font-family: 'Inter', system-ui, sans-serif;
+    /* Static height:100% chain (html -> body -> #__nuxt), so `h-full` on a
+       page root (pages/chat.vue) resolves against a stable size instead of
+       the viewport-relative `dvh`/`vh` units -- those recompute every time
+       a mobile browser's address bar or on-screen keyboard shows/hides
+       mid-conversation, visibly shrinking/growing the whole chat panel. */
+    height: 100%;
+  }
+
+  body,
+  #__nuxt {
+    height: 100%;
   }
 
   ::selection {

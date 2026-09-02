@@ -950,8 +950,10 @@
            messages ne faisait que deviner sa hauteur, sans jamais vraiment
            matcher). En flux normal, le flex-1 de la zone de messages absorbe
            automatiquement l'espace restant, quelle que soit la hauteur
-           réelle de ce groupe. -->
-      <div class="z-10 flex flex-col">
+           réelle de ce groupe. `sticky bottom-0` en plus : reste collé en
+           bas du panneau (qui, lui, ne scrolle jamais -- seule la zone de
+           messages scrolle) même si un ancêtre venait à devenir scrollable. -->
+      <div class="sticky bottom-0 z-10 flex flex-col">
         <!-- Astuce de découverte (commandes slash, Cmd/Ctrl+K) -- une seule
            fois, voir maybeShowDiscoveryHint plus haut. -->
         <Transition

@@ -1,5 +1,5 @@
 <template>
-  <main class="hero-wash relative flex h-dvh flex-col overflow-hidden">
+  <main class="hero-wash relative flex h-full flex-col overflow-hidden">
     <div
       aria-hidden="true"
       class="hero-aura pointer-events-none absolute inset-0 animate-aura-drift motion-reduce:animate-none"
