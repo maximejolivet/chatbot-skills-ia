@@ -325,9 +325,7 @@ const bubbleClass = computed(() => [
   'group max-w-[80%] px-4 py-2.5',
   isUser.value
     ? 'rounded-3xl bg-[#1d3540] text-white'
-    : props.plain
-      ? 'rounded-none bg-transparent px-0 py-0 text-foreground'
-      : 'rounded-3xl bg-white text-[#1d3540] shadow-sm shadow-foreground/5',
+    : 'rounded-3xl bg-white text-[#1d3540] shadow-sm shadow-foreground/5',
 ]);
 const wrapperMargin = computed(() => (props.isGrouped ? 'mb-1' : 'mb-3'));
 const formattedTime = computed(() =>
