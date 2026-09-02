@@ -23,7 +23,7 @@
         aria-hidden="true" />
       <LinkPreviewCard v-for="link in previewLinks" :key="link" :url="link" />
       <div class="mt-1 flex items-center gap-2">
-        <p :class="['font-mono text-[10px]', isUser ? 'text-accent-foreground/70' : 'text-muted-foreground']">
+        <p :class="['font-mono text-[10px]', isUser ? 'text-white/70' : 'text-muted-foreground']">
           {{ formattedTime }}
         </p>
         <button v-if="!isTyping" type="button" :aria-pressed="message.pinned"
@@ -31,10 +31,10 @@
             'flex h-5 w-5 items-center justify-center rounded-full transition-all sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100',
             message.pinned
               ? isUser
-                ? 'text-accent-foreground sm:opacity-100'
+                ? 'text-white sm:opacity-100'
                 : 'text-accent sm:opacity-100'
               : isUser
-                ? 'text-accent-foreground/70 hover:text-accent-foreground'
+                ? 'text-white/70 hover:text-white'
                 : 'text-muted-foreground hover:text-accent',
           ]" @click="$emit('pin', message.id)">
           <svg class="h-3.5 w-3.5" :fill="message.pinned ? 'currentColor' : 'none'" stroke="currentColor"
@@ -316,15 +316,18 @@ onBeforeUnmount(() => {
 
 const isUser = computed(() => props.message.role === 'user');
 const isTyping = computed(() => props.message.isTyping);
-// accent-foreground is always ink (see main.css) -- the mint bubble needs
-// that dark text regardless of variant, white read too low-contrast on it.
+// Both branches below are fixed hex, not the --accent/--card tokens, so they
+// stay put across light/dark instead of following the theme -- the paired
+// text color has to be fixed too (not accent-foreground/card-foreground,
+// which flip per theme and would go invisible against a bg that no longer
+// does).
 const bubbleClass = computed(() => [
   'group max-w-[80%] px-4 py-2.5',
   isUser.value
-    ? 'rounded-3xl bg-accent text-accent-foreground'
+    ? 'rounded-3xl bg-[#1d3540] text-white'
     : props.plain
       ? 'rounded-none bg-transparent px-0 py-0 text-foreground'
-      : 'rounded-3xl bg-card text-card-foreground shadow-sm shadow-foreground/5',
+      : 'rounded-3xl bg-white text-[#1d3540] shadow-sm shadow-foreground/5',
 ]);
 const wrapperMargin = computed(() => (props.isGrouped ? 'mb-1' : 'mb-3'));
 const formattedTime = computed(() =>
