@@ -13,14 +13,16 @@
  *
  * Either way this injects an <iframe src="<origin>/embed"> (pages/embed.vue,
  * which mounts only <StickyChatBubble embedded [headless] />) fixed in the
- * bottom-right corner, and resizes that iframe by listening for the
- * postMessage StickyChatBubble.vue's notifyEmbedHost() sends on every open/
- * close. The sizes below are a fixed approximation of that component's own
- * Tailwind box (button + bottom-6/right-6 margins for closed; the widget
- * panel + button row + gaps for open) -- they don't need to be pixel-
- * perfect, just big enough that nothing gets clipped and small enough that
- * the transparent iframe box doesn't cover host-page content the visitor
- * still needs to click. In triggered mode the closed box is 0x0 instead --
+ * bottom-right corner. Sized to match StickyChatBubble's own real rendered
+ * box, reported back via a 'size' postMessage (a ResizeObserver there,
+ * covering both open and closed) -- not a fixed guess: a guess drifts from
+ * reality in easy-to-miss ways (headless mode has no button row, so its
+ * closed size is smaller than default mode's closed size; open differs by
+ * conversation/theme too), and every bit of drift shows up as a stretch of
+ * plain iframe canvas past wherever the panel itself actually reaches.
+ * FALLBACK_CLOSED_SIZE/FALLBACK_OPEN_SIZE below are only what's applied
+ * before that first real measurement arrives. In triggered mode the
+ * closed box is 0x0 --
  * StickyChatBubble's own bubble/tab is hidden there (?headless=1), so
  * there's nothing of its own to show or click until the host's button
  * opens it.
@@ -51,21 +53,32 @@
   if (document.getElementById(IFRAME_ID)) return;
 
   var TRIGGER_SELECTOR = CURRENT_SCRIPT.dataset.trigger || '';
-  // CSS min(), not a JS/resize-listener computation: 100vw/100vh here are
-  // the HOST page's viewport (this script runs there, not inside the
-  // iframe), and the browser keeps these correct across resize/rotation on
-  // its own. Without the cap, a narrow phone viewport (< 480px) would still
-  // get a 480px-wide iframe fixed to the right edge -- clipping its left
-  // side, since a fixed-position element doesn't shrink to fit like normal
-  // in-flow content would.
-  var CLOSED_SIZE = TRIGGER_SELECTOR
-    ? { width: '0px', height: '0px' }
+  var ZERO_SIZE = { width: '0px', height: '0px' };
+  // Only used before StickyChatBubble's first real 'size' report -- a
+  // rough approximation of its Tailwind box (button + margins for closed;
+  // panel + button row + gaps for open), just to avoid an empty flash.
+  var FALLBACK_CLOSED_SIZE = TRIGGER_SELECTOR
+    ? ZERO_SIZE
     : { width: 'min(340px, 100vw)', height: '104px' };
-  var OPEN_SIZE = { width: 'min(480px, 100vw)', height: 'min(620px, 100vh)' };
+  var FALLBACK_OPEN_SIZE = { width: 'min(480px, 100vw)', height: 'min(620px, 100vh)' };
+  var measuredClosedSize = FALLBACK_CLOSED_SIZE;
+  var measuredOpenSize = FALLBACK_OPEN_SIZE;
+  var isOpen = false;
 
   function applySize(iframe, size) {
     iframe.style.width = size.width;
     iframe.style.height = size.height;
+  }
+
+  // CSS min(), not a JS/resize-listener computation: 100vw/100vh here are
+  // the HOST page's viewport (this script runs here, not inside the
+  // iframe), and the browser keeps these correct across resize/rotation on
+  // its own. Without the cap, a phone viewport narrower than the reported
+  // width would still get an iframe fixed to the right edge at that width
+  // -- clipping its left side, since a fixed-position element doesn't
+  // shrink to fit like normal in-flow content would.
+  function toCssSize(width, height) {
+    return { width: 'min(' + width + 'px, 100vw)', height: 'min(' + height + 'px, 100vh)' };
   }
 
   function hostTheme() {
@@ -97,13 +110,30 @@
     // Above virtually anything a host page sets, short of it also reaching
     // into the high end of the range itself.
     iframe.style.zIndex = '2147483000';
-    applySize(iframe, CLOSED_SIZE);
+    applySize(iframe, measuredClosedSize);
 
     window.addEventListener('message', function (event) {
       if (event.origin !== ORIGIN) return;
       var data = event.data;
-      if (!data || 'chatbot-ia-widget' !== data.source || 'toggle' !== data.type) return;
-      applySize(iframe, data.open ? OPEN_SIZE : CLOSED_SIZE);
+      if (!data || 'chatbot-ia-widget' !== data.source) return;
+
+      if ('toggle' === data.type) {
+        isOpen = !!data.open;
+        applySize(iframe, isOpen ? measuredOpenSize : measuredClosedSize);
+        return;
+      }
+
+      if ('size' === data.type) {
+        var size = toCssSize(data.width, data.height);
+        if (data.open) {
+          measuredOpenSize = size;
+        } else {
+          measuredClosedSize = size;
+        }
+        // Live-update immediately only if this size report is for whichever
+        // state (open/closed) the iframe is currently actually showing.
+        if (data.open === isOpen) applySize(iframe, size);
+      }
     });
 
     // Live sync if the host toggles its own dark mode after the iframe
