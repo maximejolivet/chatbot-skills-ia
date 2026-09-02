@@ -1250,29 +1250,6 @@
               >
                 🙂
               </button>
-              <button
-                v-if="micSupported"
-                type="button"
-                @click="toggleListening"
-                :disabled="isLoading"
-                :aria-pressed="isListening"
-                :title="isListening ? $t('chatbot.micStop') : $t('chatbot.micStart')"
-                :class="[
-                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-                  isListening
-                    ? 'animate-pulse-dot motion-reduce:animate-none bg-destructive text-white'
-                    : 'text-muted-foreground hover:bg-muted hover:text-accent',
-                ]"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
-                  />
-                </svg>
-              </button>
               <textarea
                 ref="textareaRef"
                 :value="inputValue"
