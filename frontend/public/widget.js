@@ -39,10 +39,17 @@
   if (document.getElementById(IFRAME_ID)) return;
 
   var TRIGGER_SELECTOR = CURRENT_SCRIPT.dataset.trigger || '';
+  // CSS min(), not a JS/resize-listener computation: 100vw/100vh here are
+  // the HOST page's viewport (this script runs there, not inside the
+  // iframe), and the browser keeps these correct across resize/rotation on
+  // its own. Without the cap, a narrow phone viewport (< 480px) would still
+  // get a 480px-wide iframe fixed to the right edge -- clipping its left
+  // side, since a fixed-position element doesn't shrink to fit like normal
+  // in-flow content would.
   var CLOSED_SIZE = TRIGGER_SELECTOR
     ? { width: '0px', height: '0px' }
-    : { width: '340px', height: '104px' };
-  var OPEN_SIZE = { width: '480px', height: '620px' };
+    : { width: 'min(340px, 100vw)', height: '104px' };
+  var OPEN_SIZE = { width: 'min(480px, 100vw)', height: 'min(620px, 100vh)' };
 
   function applySize(iframe, size) {
     iframe.style.width = size.width;
