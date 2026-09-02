@@ -84,6 +84,18 @@ L'API Symfony est appelée via la variable d'environnement `API_URL` (définie �
 
 Le backend exige une authentification HTTP Basic sur `/api/*` (voir `backend/README.md#sécurité`) : le proxy ajoute automatiquement l'en-tête `Authorization` à partir des variables serveur `ADMIN_USERNAME`/`ADMIN_PASSWORD`, de façon transparente pour les visiteurs du widget.
 
+## Widget embarqué sur un site tiers
+
+En plus du composant Vue (`## Utilisation` ci-dessus, pour un site déjà bâti sur ce Nuxt), le widget peut être ajouté à n'importe quel site externe via un simple tag `<script>`, sans rien connaître de Vue/Nuxt côté hôte :
+
+```html
+<script src="https://<origine-de-cette-app>/widget.js" async></script>
+```
+
+Ce script (`public/widget.js`) injecte un `<iframe>` pointant vers `/embed` (`pages/embed.vue`, qui ne monte que `<StickyChatBubble embedded />`), fixé en bas à droite de la page hôte. La bulle et le panneau du chat vivent entièrement dans cet iframe ; `StickyChatBubble.vue` prévient `widget.js` par `postMessage` à chaque ouverture/fermeture pour que l'iframe se redimensionne entre sa petite boîte fermée et son panneau ouvert — l'iframe n'a sinon aucun moyen de connaître la taille réelle de la page hôte.
+
+`/embed` est la seule route dont la CSP autorise `frame-ancestors *` (voir `nuxt.config.ts`) : toutes les autres restent verrouillées à `'self'` contre le clickjacking. Les appels API du widget (`/api/...`) restent relatifs à l'origine de cette app (celle de l'iframe), pas à celle du site hôte — aucune config CORS supplémentaire n'est donc nécessaire côté backend.
+
 ## Notes de version
 
 - **TypeScript 7** : `@vue/compiler-sfc` échoue à résoudre les props typées (`defineProps<X>()`) sous TS7 (`No fs option provided to compileScript in non-Node environment`). Contourné en passant explicitement le module `fs` de Node via `vite.vue.script.fs` dans `nuxt.config.ts`.

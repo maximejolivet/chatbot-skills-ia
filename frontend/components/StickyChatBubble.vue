@@ -2,8 +2,13 @@
   <!-- Below sm: the hover-teaser bubble/popin above doesn't fit a touch
   screen well (no hover, and the popin would crowd an already-small
   viewport) -- a single tap button that goes straight to the dedicated
-  /chat page instead. -->
+  /chat page instead. Skipped entirely when embedded (pages/embed.vue):
+  the sm: breakpoint would resolve against the iframe's own tiny width,
+  not the host page's, so it'd render as "mobile" even on a desktop host
+  -- and navigating to /chat inside the iframe would strand the visitor
+  in a small broken view instead of the host page. -->
   <NuxtLink
+    v-if="!embedded"
     to="/chat"
     :aria-label="$t('stickyBubble.start')"
     class="fixed bottom-6 right-0 z-50 flex size-11 items-center justify-center rounded-l-full border-y border-l-0 border-r border-primary bg-primary text-primary-foreground shadow-lg transition-transform duration-300 hover:scale-105 hover:bg-accent hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 sm:hidden"
@@ -23,7 +28,12 @@
     </svg>
   </NuxtLink>
 
-  <div class="fixed bottom-6 right-6 z-50 hidden flex-col items-end gap-3 sm:flex">
+  <div
+    :class="[
+      'fixed bottom-6 right-6 z-50 flex-col items-end gap-3',
+      embedded ? 'flex' : 'hidden sm:flex',
+    ]"
+  >
     <Transition
       enter-active-class="transition duration-200 ease-out"
       enter-from-class="opacity-0 translate-y-4 scale-95"
@@ -39,7 +49,10 @@
         api-url="/api"
         :placeholder="$t('chatbot.writePlaceholder')"
         show-close
-        @close="isOpen = false"
+        @close="
+          isOpen = false;
+          notifyEmbedHost();
+        "
       />
     </Transition>
 
@@ -94,6 +107,16 @@
 </template>
 
 <script setup lang="ts">
+// Set only by pages/embed.vue, which mounts this component alone inside
+// the iframe that frontend/public/widget.js injects into a third-party
+// host page (see nuxt.config.ts's routeRules['/embed'] for the matching
+// CSP relaxation). Everywhere else (pages/index.vue) this runs at the
+// site's own top level, so all the branches below stay their normal,
+// pre-embed behaviour.
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), {
+  embedded: false,
+});
+
 const isOpen = ref(false);
 
 // Discreet ping badge drawing the eye to the bubble on a visitor's first
@@ -120,7 +143,9 @@ onMounted(() => {
 
 // A conversation already exists (id persisted by useChatbot's
 // ensureConversation) -- send the visitor to /chat to pick it back up there
-// instead of restarting a second thread in the popin.
+// instead of restarting a second thread in the popin. Not when embedded:
+// /chat would load inside the small iframe itself rather than the host
+// page, so an existing conversation just reopens in the popin there too.
 const onBubbleClick = () => {
   if (showFirstVisitBadge.value) {
     showFirstVisitBadge.value = false;
@@ -129,16 +154,30 @@ const onBubbleClick = () => {
 
   if (isOpen.value) {
     isOpen.value = false;
+    notifyEmbedHost();
     return;
   }
 
   const hasStartedConversation = !!localStorage.getItem(CONVERSATION_ID_STORAGE_KEY);
-  if (hasStartedConversation) {
+  if (hasStartedConversation && !props.embedded) {
     navigateTo('/chat');
     return;
   }
 
   isOpen.value = true;
+  notifyEmbedHost();
+};
+
+// Tells frontend/public/widget.js (running on the host page) to resize the
+// iframe between its small closed-bubble box and the full open-panel size
+// -- the iframe's own viewport has no idea how big the host page actually
+// is, so it can't size itself. No-op outside pages/embed.vue.
+const notifyEmbedHost = () => {
+  if (!props.embedded) return;
+  window.parent.postMessage(
+    { source: 'chatbot-ia-widget', type: 'toggle', open: isOpen.value },
+    '*',
+  );
 };
 
 // Cmd/Ctrl+K opens (or closes) the widget from anywhere on the page --

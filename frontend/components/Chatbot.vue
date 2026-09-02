@@ -198,7 +198,7 @@
             </button>
             <button
               type="button"
-              @click="navigateTo('/chat')"
+              @click="goFullscreen"
               :title="$t('chatbot.fullscreenEnter')"
               class="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-accent"
             >
@@ -1355,6 +1355,20 @@ const { t } = useI18n();
 
 defineEmits<{ close: [] }>();
 
+// Both "go fullscreen" entry points (header button below, slash command
+// further down) used a bare navigateTo('/chat') -- fine at top level, but
+// inside the /embed iframe (see pages/embed.vue) that would navigate the
+// small iframe itself to /chat instead of the host page, stranding the
+// visitor in a tiny broken view. window.self !== window.top is true only
+// when actually framed, so this stays a no-op change everywhere else.
+const goFullscreen = () => {
+  if (window.self !== window.top) {
+    window.open(`${window.location.origin}/chat`, '_blank', 'noopener');
+    return;
+  }
+  navigateTo('/chat');
+};
+
 // Astuce de découverte (commandes slash, Cmd/Ctrl+K) -- ce widget a
 // accumulé plusieurs raccourcis puissants (voir slashCommands plus bas,
 // et le listener Cmd/Ctrl+K de StickyChatBubble.vue) qu'un visiteur ne
@@ -1607,7 +1621,7 @@ const slashCommands = computed<SlashCommand[]>(() => {
     commands.push({
       name: 'ecran',
       description: t('chatbot.slashFullscreen'),
-      run: () => navigateTo('/chat'),
+      run: () => goFullscreen(),
     });
   }
   return commands;

@@ -32,28 +32,50 @@ export default defineNuxtConfig({
   // 'unsafe-eval' only in dev -- Vite's HMR module runner needs it; the
   // production build never does. connect-src allows dev's HMR websocket
   // (ws:) for the same reason.
-  routeRules: {
-    '/**': {
-      headers: {
-        'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-        'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'SAMEORIGIN',
-        'Referrer-Policy': 'strict-origin-when-cross-origin',
-        'Content-Security-Policy': [
-          "default-src 'self'",
-          `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
-          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-          "font-src 'self' https://fonts.gstatic.com",
-          "img-src 'self' data:",
-          `connect-src 'self'${isDev ? ' ws:' : ''}`,
-          "frame-ancestors 'self'",
-          "object-src 'none'",
-          "base-uri 'self'",
-          "form-action 'self'",
-        ].join('; '),
+  //
+  // frameAncestors is the one directive that varies by route: everywhere
+  // it's locked to 'self' (clickjacking hardening), except /embed below,
+  // which exists specifically to be framed by arbitrary third-party sites
+  // (see public/widget.js).
+  routeRules: (() => {
+    const buildCsp = (frameAncestors: string) =>
+      [
+        "default-src 'self'",
+        `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data:",
+        `connect-src 'self'${isDev ? ' ws:' : ''}`,
+        `frame-ancestors ${frameAncestors}`,
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+      ].join('; ');
+
+    return {
+      '/**': {
+        headers: {
+          'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+          'X-Content-Type-Options': 'nosniff',
+          'X-Frame-Options': 'SAMEORIGIN',
+          'Referrer-Policy': 'strict-origin-when-cross-origin',
+          'Content-Security-Policy': buildCsp("'self'"),
+        },
       },
-    },
-  },
+      // Mounts only <StickyChatBubble embedded /> (see pages/embed.vue) --
+      // the page public/widget.js loads inside the <iframe> it injects into
+      // a third-party host page. X-Frame-Options has no "allow any origin"
+      // value, but browsers ignore it whenever a CSP frame-ancestors
+      // directive is also present, so overriding just the CSP here is
+      // enough even though the stricter X-Frame-Options from '/**' above
+      // still technically merges in.
+      '/embed': {
+        headers: {
+          'Content-Security-Policy': buildCsp('*'),
+        },
+      },
+    };
+  })(),
   // Infrastructure only for now: every user-facing string lives in
   // i18n/locales/fr.json instead of hardcoded in components, so adding a
   // second language later is "translate the file", not "hunt down strings
