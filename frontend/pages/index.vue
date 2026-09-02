@@ -17,12 +17,19 @@
         class="mb-6 h-20 w-20 animate-breathe rounded-full object-cover shadow-lg shadow-foreground/10 motion-reduce:animate-none sm:h-28 sm:w-28"
       />
 
-      <span
-        class="mb-8 inline-flex items-center gap-2 rounded-full bg-muted px-4 py-1.5 text-[13px] font-medium tracking-wide text-accent"
-      >
-        <span class="h-1.5 w-1.5 rounded-full bg-accent" />
-        {{ $t('home.badge') }}
-      </span>
+      <div class="mb-8 flex items-center gap-2">
+        <span
+          class="inline-flex items-center gap-2 rounded-full bg-muted px-4 py-1.5 text-[13px] font-medium tracking-wide text-accent"
+        >
+          <span class="h-1.5 w-1.5 rounded-full bg-accent" />
+          {{ $t('home.badge') }}
+        </span>
+        <span
+          class="rounded-full bg-accent/10 px-2 py-1 text-[10px] font-bold uppercase leading-none tracking-wide text-accent"
+        >
+          {{ $t('chatbot.betaBadge') }}
+        </span>
+      </div>
 
       <h1 class="font-serif text-[2.75rem] font-medium leading-[1.05] tracking-tight sm:text-6xl">
         {{ $t('home.heading') }}
