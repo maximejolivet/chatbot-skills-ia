@@ -157,7 +157,16 @@ export const useChatbot = ({ apiUrl = '/api/chat', onMessage }: UseChatbotProps 
   const scrollToBottom = async () => {
     if (!autoScroll.value) return;
     await nextTick();
-    messagesEndRef.value?.scrollIntoView({ behavior: 'smooth' });
+    // NOT `scrollIntoView({ behavior: 'smooth' })` -- confirmed (isolated
+    // repro, unrelated to this app's own CSS) a real Chromium bug: smooth
+    // scrollIntoView silently no-ops when its target sits inside a
+    // scrollable container that is itself nested in an `overflow: hidden`
+    // ancestor, which is exactly this panel's layout (page variant). The
+    // conversation would visibly stay pinned at the top forever, never
+    // following new messages down. `instant` on the same call is
+    // unaffected by that bug and was verified to reliably reach the
+    // bottom.
+    messagesEndRef.value?.scrollIntoView({ behavior: 'instant', block: 'end' });
   };
 
   // Desktop notification when a reply arrives while the tab is in the
@@ -276,6 +285,14 @@ export const useChatbot = ({ apiUrl = '/api/chat', onMessage }: UseChatbotProps 
         feedback: message.feedback ?? null,
         pinned: pinnedIds.has(String(message.id)),
       }));
+      // Before scrollToBottom(), not after: it awaits nextTick() and
+      // scrolls the DOM as it exists at that point -- if isRestoringHistory
+      // were still true here, that DOM is still the short skeleton
+      // placeholder (see the template's v-if), not the real (much taller)
+      // message list. Scrolling "to the bottom" of the skeleton lands at
+      // the top of the real content once it swaps in right after, with
+      // nothing left to correct it.
+      isRestoringHistory.value = false;
       await scrollToBottom();
     } catch (error) {
       // Conversation may have been deleted server-side (admin cleanup) --
