@@ -20,7 +20,11 @@
               scheme === 'dark' ? 'bg-background' : '',
             ]
           : [
-              'rounded-3xl border border-border bg-background shadow-2xl shadow-foreground/10',
+              // No bg-background here on purpose: the floating widget's
+              // panel (header/messages/composer) is meant to stay
+              // transparent, showing whatever's behind it -- only the
+              // message bubbles and composer pill are opaque.
+              'rounded-3xl border border-border shadow-2xl shadow-foreground/10',
               'h-[min(30rem,calc(100vh-6rem))] w-[min(28rem,calc(100vw-2rem))]',
             ],
       ]"
@@ -37,7 +41,7 @@
       </div>
 
       <!-- En-tête (widget flottant uniquement) -->
-      <div v-if="variant !== 'page'" class="border-b border-border bg-card px-4 py-3 sm:px-6">
+      <div v-if="variant !== 'page'" class="border-b border-border px-4 py-3 sm:px-6">
         <div class="mx-auto flex w-full max-w-3xl items-center justify-between gap-3">
           <div class="flex min-w-0 items-center gap-3">
             <div class="relative shrink-0">
@@ -692,7 +696,7 @@
           ref="messagesContainerRef"
         :class="[
           'flex-1 overflow-y-auto',
-          variant !== 'page' || scheme === 'dark' ? 'bg-background' : '',
+          'page' === variant && scheme === 'dark' ? 'bg-background' : '',
         ]"
         role="log"
         aria-live="polite"
@@ -762,16 +766,20 @@
           </div>
           <template v-else>
             <template v-for="item in messageItems" :key="item.message.id">
-              <!-- w-full bg-background on the wrapper (not just the pill): a
-              sticky element inside this scrolling list always has message
-              text scrolled up behind it once pinned, unlike the page-level
-              nav bar above (which only ever has the ambient page background
-              behind it) -- without an opaque full-width backdrop here, that
-              text stays legible on both sides of the pill instead of being
-              covered by it. -->
+              <!-- w-full bg-background on the wrapper (not just the pill), page
+              variant only: a sticky element inside this scrolling list always
+              has message text scrolled up behind it once pinned, unlike the
+              page-level nav bar above (which only ever has the ambient page
+              background behind it) -- without an opaque full-width backdrop
+              here, that text stays legible on both sides of the pill instead
+              of being covered by it. The floating widget stays transparent
+              here too, consistent with the rest of its panel. -->
               <div
                 v-if="item.dateLabel"
-                class="sticky top-0 z-10 flex w-full justify-center bg-background py-2"
+                :class="[
+                  'sticky top-0 z-10 flex w-full justify-center py-2',
+                  'page' === variant ? 'bg-background' : '',
+                ]"
               >
                 <span
                   class="rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm shadow-foreground/5"
@@ -1030,7 +1038,7 @@
           @submit="onSubmit"
           :class="[
             'px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6',
-            variant !== 'page' ? 'border-t border-border bg-card' : '',
+            variant !== 'page' ? 'border-t border-border' : '',
           ]"
         >
           <div class="relative mx-auto w-full max-w-3xl">
