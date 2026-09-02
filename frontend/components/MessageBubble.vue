@@ -1,13 +1,13 @@
 <template>
-  <div :class="['flex items-end gap-2', isUser ? 'justify-end' : 'justify-start', wrapperMargin]">
+  <div :class="[
+    'flex gap-2',
+    plain && !isUser ? 'items-start' : 'items-end',
+    isUser ? 'justify-end' : 'justify-start',
+    wrapperMargin,
+  ]">
     <NuxtImg v-if="!isUser" src="/maximejolivet.jpg" alt="Maxime" width="36" height="36" format="webp"
-      class="mb-1 h-7 w-7 shrink-0 rounded-full object-cover sm:h-9 sm:w-9" />
-    <div :class="[
-      'group max-w-[80%] rounded-3xl px-4 py-2.5',
-      isUser
-        ? 'bg-accent text-white'
-        : 'bg-card text-card-foreground shadow-sm shadow-foreground/5',
-    ]">
+      :class="[plain ? 'mt-0.5' : 'mb-1', 'h-7 w-7 shrink-0 rounded-full object-cover sm:h-9 sm:w-9']" />
+    <div :class="bubbleClass">
       <div v-if="isTyping" class="flex gap-1 py-0.5">
         <span class="h-1.5 w-1.5 animate-bounce-slow rounded-full bg-current motion-reduce:animate-none" />
         <span class="h-1.5 w-1.5 animate-bounce-slow rounded-full bg-current motion-reduce:animate-none"
@@ -23,7 +23,7 @@
         aria-hidden="true" />
       <LinkPreviewCard v-for="link in previewLinks" :key="link" :url="link" />
       <div class="mt-1 flex items-center gap-2">
-        <p :class="['font-mono text-[10px]', isUser ? 'text-white/70' : 'text-muted-foreground']">
+        <p :class="['font-mono text-[10px]', isUser ? 'text-accent-foreground/70' : 'text-muted-foreground']">
           {{ formattedTime }}
         </p>
         <button v-if="!isTyping" type="button" :aria-pressed="message.pinned"
@@ -31,10 +31,10 @@
             'flex h-5 w-5 items-center justify-center rounded-full transition-all sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100',
             message.pinned
               ? isUser
-                ? 'text-white sm:opacity-100'
+                ? 'text-accent-foreground sm:opacity-100'
                 : 'text-accent sm:opacity-100'
               : isUser
-                ? 'text-white/70 hover:text-white'
+                ? 'text-accent-foreground/70 hover:text-accent-foreground'
                 : 'text-muted-foreground hover:text-accent',
           ]" @click="$emit('pin', message.id)">
           <svg class="h-3.5 w-3.5" :fill="message.pinned ? 'currentColor' : 'none'" stroke="currentColor"
@@ -267,6 +267,13 @@ interface Props {
   // Same reasoning as awaitingIdentity, same place (Chatbot.vue) -- see
   // asksForEmail below.
   awaitingEmail?: boolean;
+  // Chatbot.vue passes this for the full-page /chat variant only (its
+  // "Studio" layout, see the <aside> identity panel there): drops the
+  // assistant bubble's card background/shadow for a plain avatar+text read,
+  // and swaps the user bubble's text color from the widget's hardcoded
+  // white to the accent-foreground token (always ink -- see main.css) to
+  // match. The widget keeps its original bubble-both-ways look untouched.
+  plain?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -309,6 +316,16 @@ onBeforeUnmount(() => {
 
 const isUser = computed(() => props.message.role === 'user');
 const isTyping = computed(() => props.message.isTyping);
+// accent-foreground is always ink (see main.css) -- the mint bubble needs
+// that dark text regardless of variant, white read too low-contrast on it.
+const bubbleClass = computed(() => [
+  'group max-w-[80%] px-4 py-2.5',
+  isUser.value
+    ? 'rounded-3xl bg-accent text-accent-foreground'
+    : props.plain
+      ? 'rounded-none bg-transparent px-0 py-0 text-foreground'
+      : 'rounded-3xl bg-card text-card-foreground shadow-sm shadow-foreground/5',
+]);
 const wrapperMargin = computed(() => (props.isGrouped ? 'mb-1' : 'mb-3'));
 const formattedTime = computed(() =>
   props.message.timestamp.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),

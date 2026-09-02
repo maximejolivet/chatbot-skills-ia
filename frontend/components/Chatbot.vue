@@ -11,7 +11,7 @@
         'relative flex flex-col overflow-hidden transition-all duration-200',
         variant === 'page'
           ? [
-              'h-full min-h-0',
+              'h-full min-h-0 lg:flex-row',
               // Light mode: the ambient hero-wash/hero-aura gradient behind
               // this page (pages/chat.vue) is meant to bleed through here,
               // so no opaque background. Dark mode has no dark equivalent of
@@ -51,9 +51,16 @@
               />
             </div>
             <div class="min-w-0 leading-tight">
-              <p class="truncate font-sans font-semibold text-foreground">
-                {{ title }}<span class="text-accent">.</span>
-              </p>
+              <div class="flex items-center gap-1.5">
+                <p class="truncate font-sans font-semibold text-foreground">
+                  {{ title }}<span class="text-accent">.</span>
+                </p>
+                <span
+                  class="shrink-0 rounded-full bg-accent/10 px-2.5 py-1 text-xs font-bold uppercase leading-none tracking-wide text-accent"
+                >
+                  {{ $t('chatbot.betaBadge') }}
+                </span>
+              </div>
               <p class="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
                 <span
                   :class="[
@@ -224,27 +231,20 @@
         </div>
       </div>
 
-      <!-- Messages -->
-      <div
-        ref="messagesContainerRef"
-        :class="[
-          'flex-1 overflow-y-auto',
-          variant !== 'page' || scheme === 'dark' ? 'bg-background' : '',
-        ]"
-        role="log"
-        aria-live="polite"
-        aria-relevant="additions"
-        @scroll="onMessagesScroll"
+      <!-- Panneau d'identité (plein écran, desktop uniquement) -- contenu
+           persistant (avatar, statut, suggestions, actions) qui remplace
+           l'ancienne barre de nav sticky. En dessous de lg, son contenu
+           équivalent vit dans l'en-tête compacte + le menu ••• juste
+           après. -->
+      <aside
+        v-if="variant === 'page'"
+        class="hidden w-[360px] shrink-0 flex-col overflow-y-auto border-r border-border bg-card px-8 pb-6 pt-8 lg:flex xl:w-[400px] xl:px-9"
       >
-        <!-- Navigation sticky (plein écran, pas de bandeau d'en-tête) -->
-        <div
-          v-if="variant === 'page'"
-          class="sticky top-0 z-10 flex w-full items-center justify-between bg-background px-4 pt-2 pb-2 sm:bg-transparent sm:px-6 sm:pt-4"
-        >
+        <div class="flex items-center justify-between">
           <NuxtLink
             to="/"
             :title="$t('chatbot.backHome')"
-            class="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-card hover:text-accent"
+            class="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-accent"
           >
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -255,128 +255,450 @@
               />
             </svg>
           </NuxtLink>
-          <div class="flex items-center gap-1">
-            <button
-              type="button"
-              @click="toggleColorScheme"
-              :title="
-                scheme === 'dark' ? $t('chatbot.themeToggleLight') : $t('chatbot.themeToggleDark')
-              "
-              class="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-card hover:text-accent"
-            >
-              <svg
-                v-if="scheme === 'light'"
-                class="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                />
-              </svg>
-              <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              @click="toggleSoundMuted"
-              :aria-pressed="soundMuted"
-              :title="soundMuted ? $t('chatbot.soundUnmute') : $t('chatbot.soundMute')"
-              class="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-card hover:text-accent"
-            >
-              <svg
-                v-if="soundMuted"
-                class="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"
-                />
-              </svg>
-              <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"
-                />
-              </svg>
-            </button>
-            <button
-              v-if="pinnedMessages.length > 0"
-              type="button"
-              @click="showPinnedList = !showPinnedList"
-              :aria-pressed="showPinnedList"
-              :title="$t('chatbot.pinnedMessages')"
+          <span
+            class="rounded-full bg-accent/10 px-3 py-1.5 text-sm font-bold uppercase leading-none tracking-wide text-accent"
+          >
+            {{ $t('chatbot.betaBadge') }}
+          </span>
+        </div>
+
+        <div class="flex flex-1 flex-col justify-center gap-5 py-6">
+          <div class="relative h-24 w-24">
+            <div class="absolute -inset-1.5 rounded-full border border-accent/30" aria-hidden="true" />
+            <NuxtImg
+              src="/maximejolivet.jpg"
+              alt="Maxime"
+              width="96"
+              height="96"
+              format="webp"
+              class="h-24 w-24 animate-breathe rounded-full object-cover motion-reduce:animate-none"
+            />
+          </div>
+          <div>
+            <h1 class="mb-1.5 font-serif text-3xl italic text-foreground">
+              {{ title }}<span class="text-accent">.</span>
+            </h1>
+            <p class="text-sm leading-relaxed text-muted-foreground">{{ $t('chatbot.emptyGreeting') }}</p>
+          </div>
+          <p class="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+            <span
               :class="[
-                'relative flex h-11 w-11 items-center justify-center rounded-full transition-colors',
-                showPinnedList
-                  ? 'text-accent'
-                  : 'text-muted-foreground hover:bg-card hover:text-accent',
+                'h-1.5 w-1.5 rounded-full',
+                llmStatus === 'online'
+                  ? 'animate-pulse-dot bg-accent motion-reduce:animate-none'
+                  : llmStatus === 'offline'
+                    ? 'bg-destructive'
+                    : 'bg-muted-foreground',
               ]"
-            >
-              <svg class="h-4 w-4" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
-                />
-              </svg>
-              <span
-                class="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground"
-              >
-                {{ pinnedMessages.length }}
-              </span>
-            </button>
+            />
+            {{ llmStatusLabel }}
+          </p>
+
+          <div v-if="suggestedQuestions.length > 0" class="mt-1 flex flex-col border-t border-border pt-5">
+            <span class="mb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {{ $t('chatbot.emptyTitle') }}
+            </span>
             <button
-              v-if="messages.length > 0"
+              v-for="suggestion in suggestedQuestions"
+              :key="suggestion"
               type="button"
-              @click="exportConversation"
-              :title="$t('chatbot.exportConversation')"
-              class="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-card hover:text-accent"
+              class="flex items-center justify-between gap-2 border-b border-border py-3 text-left text-sm text-foreground transition-colors last:border-b-0 hover:text-accent"
+              @click="sendMessage(suggestion)"
             >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <span class="truncate">{{ suggestion }}</span>
+              <svg class="h-3.5 w-3.5 shrink-0 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
-                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12l4.5 4.5m0 0l4.5-4.5m-4.5 4.5V3"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              @click="onClearMessages"
-              :title="$t('chatbot.clearConversation')"
-              class="flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-card hover:text-accent"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  d="M5 12h14M13 6l6 6-6 6"
                 />
               </svg>
             </button>
           </div>
         </div>
+
+        <div class="flex items-center gap-1 border-t border-border pt-4 text-muted-foreground">
+          <button
+            type="button"
+            @click="toggleColorScheme"
+            :title="
+              scheme === 'dark' ? $t('chatbot.themeToggleLight') : $t('chatbot.themeToggleDark')
+            "
+            class="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-muted hover:text-accent"
+          >
+            <svg
+              v-if="scheme === 'light'"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+              />
+            </svg>
+            <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            @click="toggleSoundMuted"
+            :aria-pressed="soundMuted"
+            :title="soundMuted ? $t('chatbot.soundUnmute') : $t('chatbot.soundMute')"
+            class="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-muted hover:text-accent"
+          >
+            <svg
+              v-if="soundMuted"
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"
+              />
+            </svg>
+            <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"
+              />
+            </svg>
+          </button>
+          <button
+            v-if="pinnedMessages.length > 0"
+            type="button"
+            @click="showPinnedList = !showPinnedList"
+            :aria-pressed="showPinnedList"
+            :title="$t('chatbot.pinnedMessages')"
+            :class="[
+              'relative flex h-9 w-9 items-center justify-center rounded-full transition-colors',
+              showPinnedList ? 'text-accent' : 'hover:bg-muted hover:text-accent',
+            ]"
+          >
+            <svg class="h-4 w-4" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
+              />
+            </svg>
+            <span
+              class="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground"
+            >
+              {{ pinnedMessages.length }}
+            </span>
+          </button>
+          <button
+            v-if="messages.length > 0"
+            type="button"
+            @click="exportConversation"
+            :title="$t('chatbot.exportConversation')"
+            class="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-muted hover:text-accent"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12l4.5 4.5m0 0l4.5-4.5m-4.5 4.5V3"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            @click="onClearMessages"
+            :title="$t('chatbot.clearConversation')"
+            class="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-muted hover:text-accent"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Colonne conversation : englobe l'en-tête compacte mobile, les
+           messages, et tout ce qui se positionne en `absolute` par-dessus
+           (panneau épinglés, toasts, formulaire) -- `relative` sert de
+           point d'ancrage à ces derniers, indépendamment du panneau
+           d'identité ci-dessus sur desktop. -->
+      <div
+        :class="[
+          'flex flex-1 flex-col min-h-0',
+          // Anchors the absolutely-positioned overlays below (pinned panel,
+          // scroll-to-top, back-online toast, new-message pill) to this
+          // column specifically -- only needed for the page variant, where
+          // <aside> sits beside it and would otherwise skew their
+          // left-1/2 centering. For the widget, staying unpositioned here
+          // lets them fall back to the outer panel (unchanged from before
+          // this column existed) instead of shifting down by the header's
+          // height.
+          variant === 'page' ? 'relative' : '',
+        ]"
+      >
+        <!-- En-tête compacte (mobile/tablette, plein écran) : identité +
+             accès aux actions secondaires via un menu -- le panneau
+             d'identité ci-dessus prend le relais dès lg. -->
+        <div
+          v-if="variant === 'page'"
+          class="relative z-20 flex items-center gap-2 border-b border-border bg-card/95 px-1.5 py-1.5 backdrop-blur-sm lg:hidden"
+        >
+          <NuxtLink
+            to="/"
+            :title="$t('chatbot.backHome')"
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-accent"
+          >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </NuxtLink>
+          <NuxtImg
+            src="/maximejolivet.jpg"
+            alt="Maxime"
+            width="30"
+            height="30"
+            format="webp"
+            class="h-[30px] w-[30px] shrink-0 rounded-full object-cover"
+          />
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5">
+              <span class="truncate font-serif italic text-foreground">{{ title }}</span>
+              <span
+                class="shrink-0 rounded-full bg-accent/10 px-2.5 py-1 text-xs font-bold uppercase leading-none tracking-wide text-accent"
+              >
+                {{ $t('chatbot.betaBadge') }}
+              </span>
+            </div>
+            <p class="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
+              <span
+                :class="[
+                  'h-1.5 w-1.5 rounded-full',
+                  llmStatus === 'online'
+                    ? 'animate-pulse-dot bg-accent motion-reduce:animate-none'
+                    : llmStatus === 'offline'
+                      ? 'bg-destructive'
+                      : 'bg-muted-foreground',
+                ]"
+              />
+              {{ llmStatusLabel }}
+            </p>
+          </div>
+          <button
+            type="button"
+            @click="showMobileMenu = !showMobileMenu"
+            :aria-expanded="showMobileMenu"
+            :title="$t('chatbot.moreActions')"
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-accent"
+          >
+            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="5" r="1.6" />
+              <circle cx="12" cy="12" r="1.6" />
+              <circle cx="12" cy="19" r="1.6" />
+            </svg>
+          </button>
+
+          <Transition
+            enter-active-class="transition duration-150 ease-out"
+            enter-from-class="opacity-0 -translate-y-1"
+            enter-to-class="opacity-100 translate-y-0"
+            leave-active-class="transition duration-100 ease-in"
+            leave-from-class="opacity-100 translate-y-0"
+            leave-to-class="opacity-0 -translate-y-1"
+          >
+            <div
+              v-if="showMobileMenu"
+              class="absolute top-full right-1.5 z-30 mt-1 w-60 overflow-hidden rounded-2xl border border-border bg-card p-1.5 shadow-xl"
+            >
+              <button
+                type="button"
+                class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-foreground hover:bg-muted"
+                @click="
+                  toggleColorScheme();
+                  showMobileMenu = false;
+                "
+              >
+                <svg
+                  v-if="scheme === 'light'"
+                  class="h-4 w-4 shrink-0 text-muted-foreground"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                  />
+                </svg>
+                <svg
+                  v-else
+                  class="h-4 w-4 shrink-0 text-muted-foreground"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                  />
+                </svg>
+                {{ scheme === 'dark' ? $t('chatbot.themeToggleLight') : $t('chatbot.themeToggleDark') }}
+              </button>
+              <button
+                type="button"
+                class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-foreground hover:bg-muted"
+                @click="
+                  toggleSoundMuted();
+                  showMobileMenu = false;
+                "
+              >
+                <svg
+                  v-if="soundMuted"
+                  class="h-4 w-4 shrink-0 text-muted-foreground"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M17.25 9.75L19.5 12m0 0l2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"
+                  />
+                </svg>
+                <svg
+                  v-else
+                  class="h-4 w-4 shrink-0 text-muted-foreground"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"
+                  />
+                </svg>
+                {{ soundMuted ? $t('chatbot.soundUnmute') : $t('chatbot.soundMute') }}
+              </button>
+              <button
+                v-if="pinnedMessages.length > 0"
+                type="button"
+                class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-foreground hover:bg-muted"
+                @click="
+                  showPinnedList = !showPinnedList;
+                  showMobileMenu = false;
+                "
+              >
+                <svg
+                  class="h-4 w-4 shrink-0 text-muted-foreground"
+                  fill="currentColor"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
+                  />
+                </svg>
+                {{ $t('chatbot.pinnedMessages') }} ({{ pinnedMessages.length }})
+              </button>
+              <button
+                v-if="messages.length > 0"
+                type="button"
+                class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-foreground hover:bg-muted"
+                @click="
+                  exportConversation();
+                  showMobileMenu = false;
+                "
+              >
+                <svg
+                  class="h-4 w-4 shrink-0 text-muted-foreground"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12l4.5 4.5m0 0l4.5-4.5m-4.5 4.5V3"
+                  />
+                </svg>
+                {{ $t('chatbot.exportConversation') }}
+              </button>
+              <button
+                type="button"
+                class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-foreground hover:bg-muted"
+                @click="
+                  onClearMessages();
+                  showMobileMenu = false;
+                "
+              >
+                <svg
+                  class="h-4 w-4 shrink-0 text-muted-foreground"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                {{ $t('chatbot.clearConversation') }}
+              </button>
+            </div>
+          </Transition>
+        </div>
+
+        <!-- Messages -->
+        <div
+          ref="messagesContainerRef"
+        :class="[
+          'flex-1 overflow-y-auto',
+          variant !== 'page' || scheme === 'dark' ? 'bg-background' : '',
+        ]"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+        @scroll="onMessagesScroll"
+      >
         <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col space-y-3 p-4 sm:px-6">
           <div
             v-if="isRestoringHistory"
@@ -401,7 +723,14 @@
           </div>
           <div
             v-else-if="messages.length === 0"
-            class="flex flex-1 flex-col items-center justify-center gap-6 text-center"
+            :class="[
+              'flex flex-1 flex-col items-center justify-center gap-6 text-center',
+              // Desktop page variant already shows this same identity/greeting
+              // content persistently in the left panel (see <aside> above) --
+              // showing it a second time in the empty conversation area would
+              // just duplicate it, so it's mobile/widget-only there.
+              variant === 'page' ? 'lg:hidden' : '',
+            ]"
           >
             <NuxtImg
               src="/maximejolivet.jpg"
@@ -442,10 +771,7 @@
               covered by it. -->
               <div
                 v-if="item.dateLabel"
-                :class="[
-                  'sticky z-10 flex w-full justify-center bg-background py-2',
-                  variant === 'page' ? 'top-12' : 'top-0',
-                ]"
+                class="sticky top-0 z-10 flex w-full justify-center bg-background py-2"
               >
                 <span
                   class="rounded-full bg-card px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm shadow-foreground/5"
@@ -456,6 +782,7 @@
               <MessageBubble
                 :id="`msg-${item.message.id}`"
                 :message="item.message"
+                :plain="variant === 'page'"
                 :is-grouped="item.isGrouped"
                 :is-speaking="speakingId === item.message.id"
                 :awaiting-identity="awaitingIdentity"
@@ -1001,6 +1328,7 @@
         </form>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -1353,6 +1681,12 @@ const jumpToLatest = () => {
 // re-fetching/re-rendering anything.
 const showPinnedList = ref(false);
 
+// Mobile/tablette (plein écran, < lg) : le panneau d'identité desktop (voir
+// <aside> dans le template) n'a pas la place de s'afficher, donc ses
+// actions secondaires (thème, son, épinglés, export, effacer) vivent dans
+// ce menu ••• de l'en-tête compacte à la place.
+const showMobileMenu = ref(false);
+
 // Unpinning the last item from inside the panel itself (its own unpin
 // button, see the v-for below) would otherwise leave an empty panel open
 // with no way to close it -- the header toggle button that normally does
@@ -1630,7 +1964,9 @@ const onKeydown = (e: KeyboardEvent) => {
 
   if ('Escape' !== e.key) return;
 
-  if (showEmojiPicker.value) {
+  if (showMobileMenu.value) {
+    showMobileMenu.value = false;
+  } else if (showEmojiPicker.value) {
     showEmojiPicker.value = false;
   } else if (showSlashMenu.value) {
     inputValue.value = '';

@@ -18,6 +18,7 @@
   },
   "chatbot": {
     "defaultTitle": "Assistant IA",
+    "betaBadge": "Bêta",
     "writePlaceholder": "Écris ton message...",
     "clearConversation": "Effacer la conversation",
     "fullscreenEnter": "Ouvrir en plein écran",
@@ -60,6 +61,7 @@
     "slashPinned": "Afficher les messages épinglés",
     "slashEmpty": "Aucune commande ne correspond",
     "pinnedMessages": "Messages épinglés",
+    "moreActions": "Plus d'actions",
     "exportConversation": "Exporter la conversation",
     "toolCallPlanifierEntretien": "Réservation du créneau en cours…",
     "toolCallListerCreneaux": "Vérification des disponibilités…",
