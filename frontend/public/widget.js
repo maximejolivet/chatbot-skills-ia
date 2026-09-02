@@ -1,19 +1,29 @@
 /**
  * Embeddable chatbot widget loader.
  *
- * Drop this on any third-party page:
+ * Default mode -- a self-contained floating bubble:
  *   <script src="https://<this-app-origin>/widget.js" async></script>
  *
- * It injects an <iframe src="<origin>/embed"> (pages/embed.vue, which mounts
- * only <StickyChatBubble embedded />) fixed in the bottom-right corner, and
- * resizes that iframe between a small "closed bubble" box and a larger
- * "open panel" box by listening for the postMessage StickyChatBubble.vue's
- * notifyEmbedHost() sends on every open/close. The sizes below are a fixed
- * approximation of that component's own Tailwind box (button + bottom-6/
- * right-6 margins for closed; the widget panel + button row + gaps for
- * open) -- they don't need to be pixel-perfect, just big enough that
- * nothing gets clipped and small enough that the transparent iframe box
- * doesn't cover host-page content the visitor still needs to click.
+ * Triggered mode -- no bubble of its own; opens when the host page's own
+ * button (already styled/positioned however the host wants) is clicked:
+ *   <script src="https://<this-app-origin>/widget.js" data-trigger="#book-btn" async></script>
+ * `data-trigger` is any CSS selector, matched against the whole page --
+ * every matching element opens the widget on click (querySelectorAll, not
+ * just the first match).
+ *
+ * Either way this injects an <iframe src="<origin>/embed"> (pages/embed.vue,
+ * which mounts only <StickyChatBubble embedded [headless] />) fixed in the
+ * bottom-right corner, and resizes that iframe by listening for the
+ * postMessage StickyChatBubble.vue's notifyEmbedHost() sends on every open/
+ * close. The sizes below are a fixed approximation of that component's own
+ * Tailwind box (button + bottom-6/right-6 margins for closed; the widget
+ * panel + button row + gaps for open) -- they don't need to be pixel-
+ * perfect, just big enough that nothing gets clipped and small enough that
+ * the transparent iframe box doesn't cover host-page content the visitor
+ * still needs to click. In triggered mode the closed box is 0x0 instead --
+ * StickyChatBubble's own bubble/tab is hidden there (?headless=1), so
+ * there's nothing of its own to show or click until the host's button
+ * opens it.
  */
 (function () {
   'use strict';
@@ -28,7 +38,10 @@
   // change re-executes it, ...) must not stack a second iframe.
   if (document.getElementById(IFRAME_ID)) return;
 
-  var CLOSED_SIZE = { width: '340px', height: '104px' };
+  var TRIGGER_SELECTOR = CURRENT_SCRIPT.dataset.trigger || '';
+  var CLOSED_SIZE = TRIGGER_SELECTOR
+    ? { width: '0px', height: '0px' }
+    : { width: '340px', height: '104px' };
   var OPEN_SIZE = { width: '480px', height: '620px' };
 
   function applySize(iframe, size) {
@@ -39,7 +52,7 @@
   function inject() {
     var iframe = document.createElement('iframe');
     iframe.id = IFRAME_ID;
-    iframe.src = ORIGIN + '/embed';
+    iframe.src = ORIGIN + '/embed' + (TRIGGER_SELECTOR ? '?headless=1' : '');
     iframe.title = 'Assistant IA';
     iframe.setAttribute('scrolling', 'no');
     iframe.setAttribute('allowtransparency', 'true');
@@ -61,6 +74,16 @@
     });
 
     document.body.appendChild(iframe);
+
+    if (!TRIGGER_SELECTOR) return;
+    // Sizing itself happens above, through the same 'toggle' message
+    // StickyChatBubble already sends on every open/close -- this just tells
+    // it to open, once the visitor clicks the host's own button.
+    document.querySelectorAll(TRIGGER_SELECTOR).forEach(function (el) {
+      el.addEventListener('click', function () {
+        iframe.contentWindow.postMessage({ source: 'chatbot-ia-widget', type: 'open' }, ORIGIN);
+      });
+    });
   }
 
   if ('loading' === document.readyState) {

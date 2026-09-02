@@ -96,6 +96,16 @@ Ce script (`public/widget.js`) injecte un `<iframe>` pointant vers `/embed` (`pa
 
 `/embed` est la seule route dont la CSP autorise `frame-ancestors *` (voir `nuxt.config.ts`) : toutes les autres restent verrouillées à `'self'` contre le clickjacking. Les appels API du widget (`/api/...`) restent relatifs à l'origine de cette app (celle de l'iframe), pas à celle du site hôte — aucune config CORS supplémentaire n'est donc nécessaire côté backend.
 
+### Mode déclenché (bouton du site hôte, pas de bulle)
+
+Pour ouvrir le widget depuis un bouton déjà présent sur le site hôte plutôt que d'afficher la bulle flottante par défaut, ajouter `data-trigger` sur le tag `<script>` avec un sélecteur CSS :
+
+```html
+<script src="https://<origine-de-cette-app>/widget.js" data-trigger="#mon-bouton" async></script>
+```
+
+Dans ce mode : aucune bulle/onglet propre au widget ne s'affiche (`StickyChatBubble.vue` reçoit `headless` via `?headless=1` sur l'URL de l'iframe, et cache son bouton rond/onglet mobile) ; l'iframe reste à 0×0 (invisible, ne bloque aucun clic du site hôte) jusqu'à ce qu'un élément correspondant au sélecteur soit cliqué (`document.querySelectorAll`, tous les éléments correspondants, pas juste le premier) — `widget.js` envoie alors un `postMessage` `{ type: 'open' }` à l'iframe, qui ouvre le panneau puis redimensionne l'iframe via le même mécanisme `postMessage`/`toggle` que le mode par défaut.
+
 ## Notes de version
 
 - **TypeScript 7** : `@vue/compiler-sfc` échoue à résoudre les props typées (`defineProps<X>()`) sous TS7 (`No fs option provided to compileScript in non-Node environment`). Contourné en passant explicitement le module `fs` de Node via `vite.vue.script.fs` dans `nuxt.config.ts`.

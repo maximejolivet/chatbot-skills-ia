@@ -56,7 +56,7 @@
       />
     </Transition>
 
-    <div class="group flex items-center gap-3">
+    <div v-if="!headless" class="group flex items-center gap-3">
       <span
         v-if="!isOpen"
         :class="[
@@ -113,8 +113,15 @@
 // CSP relaxation). Everywhere else (pages/index.vue) this runs at the
 // site's own top level, so all the branches below stay their normal,
 // pre-embed behaviour.
-const props = withDefaults(defineProps<{ embedded?: boolean }>(), {
+// headless (set via pages/embed.vue's ?headless=1, itself set by widget.js
+// when the host page passed its own data-trigger selector) drops the round
+// button/mobile tab entirely -- the host's own button is the only way to
+// open the widget then, via the postMessage listener below. Only
+// meaningful alongside embedded: true, since it's public/widget.js on the
+// host page that owns and clicks that external trigger.
+const props = withDefaults(defineProps<{ embedded?: boolean; headless?: boolean }>(), {
   embedded: false,
+  headless: false,
 });
 
 const isOpen = ref(false);
@@ -191,4 +198,23 @@ const onKeydown = (e: KeyboardEvent) => {
 
 onMounted(() => window.addEventListener('keydown', onKeydown));
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
+
+// The headless open command from public/widget.js, sent when a visitor
+// clicks the host page's own trigger element -- no origin check since this
+// widget is meant to be embeddable on arbitrary third-party origins (same
+// posture as notifyEmbedHost's outbound '*' below), and the message can
+// only ever open the panel, never read or change anything sensitive.
+// notifyEmbedHost() still fires from here so widget.js resizes the iframe
+// through the same single 'toggle' listener it already uses everywhere
+// else, instead of a second, parallel resize path just for this trigger.
+const onHostMessage = (e: MessageEvent) => {
+  if (!props.embedded) return;
+  const data = e.data as { source?: string; type?: string } | null;
+  if (!data || 'chatbot-ia-widget' !== data.source || 'open' !== data.type) return;
+  isOpen.value = true;
+  notifyEmbedHost();
+};
+
+onMounted(() => window.addEventListener('message', onHostMessage));
+onBeforeUnmount(() => window.removeEventListener('message', onHostMessage));
 </script>

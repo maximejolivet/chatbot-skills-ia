@@ -1,5 +1,5 @@
 <template>
-  <StickyChatBubble embedded />
+  <StickyChatBubble embedded :headless="headless" />
 </template>
 
 <script setup lang="ts">
@@ -14,4 +14,10 @@ useHead({
   title: 'chatbot-ia-widget',
   meta: [{ name: 'robots', content: 'noindex' }],
 });
+
+// Set by public/widget.js (?headless=1) when the host page passed its own
+// data-trigger selector -- that host button is the only way to open the
+// widget then, so StickyChatBubble's own round button/mobile tab would just
+// be a second, redundant toggle floating on top of the host's UI.
+const headless = '1' === useRoute().query.headless;
 </script>
