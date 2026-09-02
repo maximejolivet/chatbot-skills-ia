@@ -11,7 +11,7 @@
     v-if="!embedded"
     to="/chat"
     :aria-label="$t('stickyBubble.start')"
-    class="fixed bottom-6 right-0 z-50 flex size-11 items-center justify-center rounded-l-full border-y border-l-0 border-r border-primary bg-primary text-primary-foreground shadow-lg transition-transform duration-300 hover:scale-105 hover:bg-accent hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 sm:hidden"
+    class="fixed bottom-4 right-0 z-50 flex size-11 items-center justify-center rounded-l-full border-y border-l-0 border-r border-primary bg-primary text-primary-foreground shadow-lg transition-transform duration-300 hover:scale-105 hover:bg-accent hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 sm:hidden"
   >
     <svg
       class="pointer-events-none size-5 translate-x-px"
@@ -30,7 +30,7 @@
 
   <div
     :class="[
-      'fixed bottom-6 right-6 z-50 flex-col items-end gap-3',
+      'fixed bottom-4 right-6 z-50 flex-col items-end gap-3',
       embedded ? 'flex' : 'hidden sm:flex',
     ]"
   >
