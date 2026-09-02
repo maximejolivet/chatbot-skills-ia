@@ -16,9 +16,11 @@ auth:basic {
 }
 
 docs {
-  Read-only via REST (GetCollection + Get only, PUBLIC_ACCESS -- same
-  conditions as AiAgent): creating/editing/deleting a FAQ only happens
-  through the admin backoffice (/admin/faqs, session + CSRF), not this API.
+  GetCollection + Get are PUBLIC_ACCESS (same conditions as AiAgent). Since
+  2026-09-02, a `Post` operation also exists (ROLE_ADMIN) -- see
+  Create Faq -- so creation is possible through this API too. Editing and
+  deleting a FAQ still only happen through the admin backoffice (/admin/faqs,
+  session + CSRF): no `Put`/`Patch`/`Delete` operation is exposed here.
 
   FaqActiveCollectionExtension filters this collection to isActive = true
   only -- draft/retired FAQs never appear here, though they still show up

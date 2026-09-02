@@ -1,0 +1,44 @@
+meta {
+  name: Create Faq
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/faqs
+  body: json
+  auth: basic
+}
+
+auth:basic {
+  username: {{admin_username}}
+  password: {{admin_password}}
+}
+
+headers {
+  Content-Type: application/ld+json
+}
+
+body:json {
+  {
+    "question": "Combien de jours de congés par an ?",
+    "answer": "25 jours ouvrés, proratisés la première année."
+  }
+}
+
+docs {
+  Added 2026-09-02: Faq gained a `Post` operation (ROLE_ADMIN), so creation
+  is no longer backoffice-only -- unlike AiAgent, which still has no writable
+  API operation at all. Edition/deletion are still not exposed here: no
+  `Put`/`Patch`/`Delete` on this resource, only `/admin/faqs` (session +
+  CSRF) can change or remove an existing FAQ. See Update/Delete Category for
+  what that would look like if it existed.
+
+  No validation constraints on the entity beyond the two required fields
+  (`question`, `answer` -- see FaqType); `category` (IRI, e.g.
+  `/api/document_categories/{id}`), `tags` (array of strings), `priority`
+  (int) and `isHighlighted`/`isActive` (bool) are all optional and default
+  to `0`/`[]`/`false`/`true` respectively. Verified via curl against a
+  running container: 201 with just `question`+`answer`, defaults applied as
+  above; a follow-up `PATCH`/`DELETE` on the created id both return 405.
+}

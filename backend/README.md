@@ -77,7 +77,7 @@ App feuille (aucune dépendance sur `knowledge_base`/`chat`) qui ne connaît que
 
 ### `knowledge_base`
 
-- `App\Entity\DocumentCategory`, `Faq` — CRUD complet via `/api/document_categories`, `/api/faqs`. Aucun champ `created_by` (pas de scoping par utilisateur)
+- `App\Entity\DocumentCategory` — CRUD complet via `/api/document_categories`. `App\Entity\Faq` — `GetCollection`/`Get` publics (`PUBLIC_ACCESS`) + `POST /api/faqs` (`ROLE_ADMIN`) via `/api/faqs` ; pas de `PATCH`/`DELETE` côté API, édition/suppression réservées au backoffice (`/admin/faqs`). Aucun champ `created_by` (pas de scoping par utilisateur)
 - `App\Entity\Collection` — collection de documents optionnellement liée à un agent IA (`AiAgent`, `chat`) et/ou un `VectorIndex`, exposée via `/api/collections`
 - `App\Entity\Document` / `DocumentChunk` — upload multipart (`POST /api/documents`), CRUD (`GET`/`PATCH`/`DELETE`), actions `POST /documents/{id}/process` (réindexation) et `GET /documents/{id}/chunks`. Aucun champ `uploaded_by` (même raison)
 - `App\KnowledgeBase\DocumentProcessorService` — extraction de texte (PDF/TXT/DOCX/MD/HTML/JSON) + découpage en chunks avec chevauchement (1000/200 caractères)
@@ -176,11 +176,18 @@ un par type d'opération API Platform :
   `ConversationStreamController`) utilisent à la place
   `#[IsGranted('OWNER', subject: 'data')]`, toujours appliqué par Symfony.
 
-Toutes les autres ressources (`Document`, `Workflow`, `AiAgent`,
-`AiProviderConfig`, `Collection`, `Faq`, `DocumentCategory`, `VectorIndex`)
-exigent explicitement `ROLE_ADMIN` sur leur propre `#[ApiResource(security:
-...)]`, indépendamment de la règle `access_control` globale (voir §Sécurité)
-— un compte `ROLE_USER` ne peut ni les lire ni les modifier.
+Toutes les autres ressources (`Document`, `Workflow`, `AiProviderConfig`,
+`Collection`, `DocumentCategory`, `VectorIndex`) exigent explicitement
+`ROLE_ADMIN` sur leur propre `#[ApiResource(security: ...)]`, indépendamment
+de la règle `access_control` globale (voir §Sécurité) — un compte `ROLE_USER`
+ne peut ni les lire ni les modifier. **Exceptions** : `AiAgent` et `Faq`
+gardent `ROLE_ADMIN` par défaut au niveau ressource mais redéclarent
+`GetCollection`/`Get` en `PUBLIC_ACCESS` — lecture ouverte à tout compte
+authentifié, y compris `ROLE_USER` (l'`access_control` global `^/(api|doc)`
+exige de toute façon `ROLE_USER`, voir §Sécurité). `Faq` expose en plus un
+`POST` en `ROLE_ADMIN` (création possible via l'API depuis peu,
+édition/suppression restant réservées au backoffice) ; `AiAgent` n'expose
+aucune autre opération d'écriture via l'API.
 
 > [!CAUTION]
 > Ce `security:` de ressource ne s'applique pas aux opérations à contrôleur

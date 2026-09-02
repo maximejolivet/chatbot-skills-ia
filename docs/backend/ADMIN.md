@@ -98,9 +98,10 @@ du hit).
   celles avec `highlighted: true` comme questions suggérées (curation éditoriale distincte de
   `isActive`) ; la grille `/admin/faqs` trie pareil par défaut et expose `priority` comme colonne
   triable.
-  → **API** : lecture seule, `GET /api/faqs`, `GET /api/faqs/{id}`. Création/édition/suppression
-  uniquement via ce backoffice — pas de `POST`/`PATCH`/`DELETE` côté API (même schéma que
-  `AiAgent`, §4.5 de `SPECIFICATION.md`).
+  → **API** : `GET /api/faqs`, `GET /api/faqs/{id}` publics (`PUBLIC_ACCESS`, même schéma que
+  `AiAgent`, §4.5 de `SPECIFICATION.md`), plus `POST /api/faqs` réservé `ROLE_ADMIN` — une FAQ peut
+  donc désormais être créée par ce biais. Édition/suppression restent uniquement via ce
+  backoffice — pas de `PATCH`/`DELETE` côté API.
 
 ### Workflows
 
@@ -242,8 +243,9 @@ Elle crée un **`VectorIndex`** : `name = "kb-rh"`, `collectionId = "kb_rh"`,
   contrairement à l'intuition, cette FAQ n'est reliée à rien côté chat — aucune référence à `Faq`
   dans `src/Chat/`, `src/KnowledgeBase/` ou `src/VectorConnector/`. Un agent ne la verra jamais tant
   que rien ne l'y branche ; sa seule utilisation actuelle est de nourrir les questions suggérées du
-  widget public (`question` uniquement, via `GET /api/faqs` — lecture seule, la création/édition
-  reste ici, dans ce backoffice).
+  widget public (`question` uniquement, via `GET /api/faqs`, public). La création est aussi
+  possible via `POST /api/faqs` (`ROLE_ADMIN`), mais l'édition/suppression restent réservées à ce
+  backoffice.
 
 ### 5. Définir un workflow-outil
 
