@@ -30,7 +30,7 @@
 
   <div
     :class="[
-      'fixed bottom-4 right-6 z-50 flex-col items-end gap-3',
+      'fixed bottom-4 right-4 z-50 flex-col items-end gap-3 sm:right-6',
       embedded ? 'flex' : 'hidden sm:flex',
     ]"
   >
