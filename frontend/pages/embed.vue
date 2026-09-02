@@ -1,5 +1,5 @@
 <template>
-  <StickyChatBubble embedded :headless="headless" />
+  <StickyChatBubble embedded :headless="headless" :host-theme="hostTheme" />
 </template>
 
 <script setup lang="ts">
@@ -24,5 +24,12 @@ useHead({
 // data-trigger selector -- that host button is the only way to open the
 // widget then, so StickyChatBubble's own round button/mobile tab would just
 // be a second, redundant toggle floating on top of the host's UI.
-const headless = '1' === useRoute().query.headless;
+const query = useRoute().query;
+const headless = '1' === query.headless;
+
+// Set by public/widget.js (?theme=dark|light) from the host page's own
+// dark-mode state at injection time -- see composables/useColorScheme.ts
+// for why the widget follows this instead of just the visitor's OS
+// preference.
+const hostTheme = 'dark' === query.theme ? 'dark' : 'light' === query.theme ? 'light' : null;
 </script>

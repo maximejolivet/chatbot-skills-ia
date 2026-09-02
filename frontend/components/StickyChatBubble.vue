@@ -48,6 +48,7 @@
         :title="$t('chatbot.defaultTitle')"
         api-url="/api"
         :placeholder="$t('chatbot.writePlaceholder')"
+        :host-scheme="hostScheme"
         show-close
         @close="
           isOpen = false;
@@ -119,10 +120,22 @@
 // open the widget then, via the postMessage listener below. Only
 // meaningful alongside embedded: true, since it's public/widget.js on the
 // host page that owns and clicks that external trigger.
-const props = withDefaults(defineProps<{ embedded?: boolean; headless?: boolean }>(), {
-  embedded: false,
-  headless: false,
-});
+// hostTheme: the host page's dark/light state at the moment public/widget.js
+// injected the iframe (its src carries ?theme=dark|light), so the widget
+// doesn't default to the visitor's unrelated OS preference while the host
+// site is already, say, in dark mode. Kept in a ref (not just read once)
+// because the host can still toggle its own theme after the iframe loads --
+// see onHostMessage below, which widget.js's MutationObserver drives.
+const props = withDefaults(
+  defineProps<{ embedded?: boolean; headless?: boolean; hostTheme?: 'light' | 'dark' | null }>(),
+  {
+    embedded: false,
+    headless: false,
+    hostTheme: null,
+  },
+);
+
+const hostScheme = ref(props.hostTheme);
 
 const isOpen = ref(false);
 
@@ -209,8 +222,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown));
 // else, instead of a second, parallel resize path just for this trigger.
 const onHostMessage = (e: MessageEvent) => {
   if (!props.embedded) return;
-  const data = e.data as { source?: string; type?: string } | null;
-  if (!data || 'chatbot-ia-widget' !== data.source || 'open' !== data.type) return;
+  const data = e.data as { source?: string; type?: string; theme?: 'light' | 'dark' } | null;
+  if (!data || 'chatbot-ia-widget' !== data.source) return;
+
+  if ('theme' === data.type && data.theme) {
+    hostScheme.value = data.theme;
+    return;
+  }
+
+  if ('open' !== data.type) return;
   isOpen.value = true;
   notifyEmbedHost();
 };

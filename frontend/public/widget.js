@@ -24,6 +24,13 @@
  * StickyChatBubble's own bubble/tab is hidden there (?headless=1), so
  * there's nothing of its own to show or click until the host's button
  * opens it.
+ *
+ * Also passes the host page's own dark/light state (?theme=dark|light,
+ * read off <html class="dark">, the standard Tailwind darkMode:'class'
+ * convention -- this app's own pages/embed.vue and this host page both use
+ * it) so the widget matches a host page already in dark mode instead of
+ * defaulting to the visitor's unrelated OS preference, and keeps it synced
+ * afterwards if the host's own toggle changes it mid-session.
  */
 (function () {
   'use strict';
@@ -56,10 +63,17 @@
     iframe.style.height = size.height;
   }
 
+  function hostTheme() {
+    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  }
+
   function inject() {
+    var params = TRIGGER_SELECTOR ? ['headless=1'] : [];
+    params.push('theme=' + hostTheme());
+
     var iframe = document.createElement('iframe');
     iframe.id = IFRAME_ID;
-    iframe.src = ORIGIN + '/embed' + (TRIGGER_SELECTOR ? '?headless=1' : '');
+    iframe.src = ORIGIN + '/embed?' + params.join('&');
     iframe.title = 'Assistant IA';
     iframe.setAttribute('scrolling', 'no');
     iframe.setAttribute('allowtransparency', 'true');
@@ -79,6 +93,21 @@
       if (!data || 'chatbot-ia-widget' !== data.source || 'toggle' !== data.type) return;
       applySize(iframe, data.open ? OPEN_SIZE : CLOSED_SIZE);
     });
+
+    // Live sync if the host toggles its own dark mode after the iframe
+    // already loaded -- most such toggles just flip the class on <html>
+    // rather than replacing it outright, so 'class' is the one attribute
+    // worth observing here.
+    var lastTheme = hostTheme();
+    new MutationObserver(function () {
+      var theme = hostTheme();
+      if (theme === lastTheme) return;
+      lastTheme = theme;
+      iframe.contentWindow.postMessage(
+        { source: 'chatbot-ia-widget', type: 'theme', theme: theme },
+        ORIGIN,
+      );
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
     document.body.appendChild(iframe);
 

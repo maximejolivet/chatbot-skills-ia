@@ -63,6 +63,11 @@ export interface ChatbotProps {
   showClose?: boolean;
   /** 'widget': fixed-size floating card. 'page': fills its container, no fullscreen toggle. */
   variant?: 'widget' | 'page';
+  /** Host page's own dark/light state, forwarded by StickyChatBubble.vue when embedded
+   * (public/widget.js detects it on the host page and passes it through) -- overrides
+   * `theme`/OS preference, but not a visitor's own explicit in-widget toggle. See
+   * composables/useColorScheme.ts. */
+  hostScheme?: 'light' | 'dark' | null;
 }
 
 export interface ChatbotState {

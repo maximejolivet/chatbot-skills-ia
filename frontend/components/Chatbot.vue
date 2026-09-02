@@ -1699,7 +1699,10 @@ const jumpToPinned = (id: string) => {
 // `theme` prop is now only the lowest-priority fallback -- the visitor's own
 // stored choice, then the OS `prefers-color-scheme`, both win over it. See
 // composables/useColorScheme.ts.
-const { scheme, toggle: toggleColorScheme } = useColorScheme(props.theme ?? 'light');
+const { scheme, toggle: toggleColorScheme } = useColorScheme(
+  props.theme ?? 'light',
+  () => props.hostScheme,
+);
 const themeClass = computed(() => (scheme.value === 'dark' ? 'dark' : ''));
 
 const llmStatusLabel = computed(() => {
