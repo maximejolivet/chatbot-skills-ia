@@ -25,12 +25,17 @@
  * there's nothing of its own to show or click until the host's button
  * opens it.
  *
- * Also passes the host page's own dark/light state (?theme=dark|light,
- * read off <html class="dark">, the standard Tailwind darkMode:'class'
- * convention -- this app's own pages/embed.vue and this host page both use
- * it) so the widget matches a host page already in dark mode instead of
+ * Also passes the host page's own dark/light state (?theme=dark|light) so
+ * the widget matches a host page already in dark mode instead of
  * defaulting to the visitor's unrelated OS preference, and keeps it synced
- * afterwards if the host's own toggle changes it mid-session.
+ * afterwards if the host's own toggle changes it mid-session. Detected off
+ * whichever convention the host actually uses -- there's no single
+ * standard, so hostTheme() below checks each one it can, in order:
+ * <html class="dark"> (Tailwind's own darkMode:'class', used by this app's
+ * pages/embed.vue itself), <html data-theme="dark|night"> (a common
+ * alternative -- e.g. maxime.bzh, a separate site by the same author,
+ * uses data-theme="night"/"day"), then falls back to the visitor's OS
+ * preference if neither attribute is set at all.
  */
 (function () {
   'use strict';
@@ -64,7 +69,14 @@
   }
 
   function hostTheme() {
-    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    var html = document.documentElement;
+    if (html.classList.contains('dark')) return 'dark';
+    if (html.classList.contains('light')) return 'light';
+    var dataTheme = html.dataset.theme;
+    if (dataTheme) {
+      return 'dark' === dataTheme || 'night' === dataTheme ? 'dark' : 'light';
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
 
   function inject() {
@@ -95,9 +107,8 @@
     });
 
     // Live sync if the host toggles its own dark mode after the iframe
-    // already loaded -- most such toggles just flip the class on <html>
-    // rather than replacing it outright, so 'class' is the one attribute
-    // worth observing here.
+    // already loaded -- covers both conventions hostTheme() reads (a class
+    // toggle, or a data-theme attribute toggle).
     var lastTheme = hostTheme();
     new MutationObserver(function () {
       var theme = hostTheme();
@@ -107,7 +118,10 @@
         { source: 'chatbot-ia-widget', type: 'theme', theme: theme },
         ORIGIN,
       );
-    }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    }).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'data-theme'],
+    });
 
     document.body.appendChild(iframe);
 
