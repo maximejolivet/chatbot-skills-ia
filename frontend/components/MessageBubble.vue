@@ -298,16 +298,17 @@ onBeforeUnmount(() => {
 
 const isUser = computed(() => props.message.role === 'user');
 const isTyping = computed(() => props.message.isTyping);
-// Both branches below are fixed hex, not the --accent/--card tokens, so they
-// stay put across light/dark instead of following the theme -- the paired
-// text color has to be fixed too (not accent-foreground/card-foreground,
-// which flip per theme and would go invisible against a bg that no longer
-// does).
+// The user bubble is a fixed hex, not the --primary/--foreground tokens, so
+// it stays put across light/dark (paired with a fixed white text to match) --
+// it already reads fine against both --background values. The assistant
+// bubble instead follows --card/--card-foreground: it used to be a fixed
+// white too, which left it stranded as a bright white box on a dark panel
+// once dark mode landed.
 const bubbleClass = computed(() => [
   'group max-w-[80%] px-4 py-2.5',
   isUser.value
     ? 'rounded-3xl bg-[#1d3540] text-white'
-    : 'rounded-3xl bg-white text-[#1d3540] shadow-sm shadow-foreground/5',
+    : 'rounded-3xl bg-card text-card-foreground shadow-sm shadow-foreground/5',
 ]);
 const wrapperMargin = computed(() => (props.isGrouped ? 'mb-1' : 'mb-3'));
 const formattedTime = computed(() =>
