@@ -14,6 +14,25 @@ const STORAGE_KEY = 'chatbot:color_scheme';
 // background stuck on the old theme after toggling from inside the widget.
 const CHANGE_EVENT = 'chatbot:color_scheme_change';
 
+// Shared (Nuxt useState, not a plain ref -- this runs SSR-side too, and a
+// plain module-scope ref would leak between different visitors' requests on
+// the server) between every useColorScheme() instance on the page: app.vue's
+// own root call, and StickyChatBubble.vue's Chatbot.vue instance. Without
+// this, app.vue's root -- OS-preference/stored only, no host awareness of
+// its own -- can resolve a *different* scheme than the embedded panel next
+// to it: the panel correctly follows the host's theme (StickyChatBubble sets
+// this from public/widget.js's ?theme= query param and its live postMessage)
+// while app.vue's root, mounted around it, follows the visitor's own OS
+// preference instead. Since --background &co. are CSS custom properties
+// only ever redefined at `:root` and `.dark` (not also at some explicit
+// "not dark" class), a wrongly-`.dark` app.vue root cascades that value down
+// into any of the panel's own descendants that don't themselves carry
+// `.dark` -- even though the panel's *own* scheme resolved correctly.
+// Sharing the same hostScheme input at both call sites keeps them in
+// agreement instead. Read via useHostScheme() below; StickyChatBubble.vue is
+// the only writer.
+export const useHostScheme = () => useState<ColorScheme | null>('chatbot-host-scheme', () => null);
+
 const readStored = (): ColorScheme | null => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);

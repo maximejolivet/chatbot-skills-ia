@@ -124,9 +124,11 @@
 // hostTheme: the host page's dark/light state at the moment public/widget.js
 // injected the iframe (its src carries ?theme=dark|light), so the widget
 // doesn't default to the visitor's unrelated OS preference while the host
-// site is already, say, in dark mode. Kept in a ref (not just read once)
-// because the host can still toggle its own theme after the iframe loads --
-// see onHostMessage below, which widget.js's MutationObserver drives.
+// site is already, say, in dark mode. Written into the shared useHostScheme()
+// state (not just read once) because the host can still toggle its own theme
+// after the iframe loads -- see onHostMessage below, which widget.js's
+// MutationObserver drives -- and because app.vue's own root reads that same
+// shared state too (see the comment on useHostScheme for why).
 const props = withDefaults(
   defineProps<{ embedded?: boolean; headless?: boolean; hostTheme?: 'light' | 'dark' | null }>(),
   {
@@ -136,7 +138,8 @@ const props = withDefaults(
   },
 );
 
-const hostScheme = ref(props.hostTheme);
+const hostScheme = useHostScheme();
+hostScheme.value = props.hostTheme;
 
 const isOpen = ref(false);
 

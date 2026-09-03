@@ -21,6 +21,11 @@ useHead({
 // value from wherever it's declared, so a descendant page toggling `.dark`
 // on its own root doesn't repaint text colored by an ancestor -- it has to
 // sit here, at the same level as `text-foreground` itself.
-const { scheme } = useColorScheme();
+//
+// hostScheme (useHostScheme, shared with Chatbot.vue's own instance) so this
+// root doesn't independently resolve OS-preference-only when embedded --
+// see the long comment on useHostScheme for why a plain, unrelated .dark
+// here would otherwise leak into the panel's own CSS custom properties.
+const { scheme } = useColorScheme(undefined, useHostScheme());
 const themeClass = computed(() => (scheme.value === 'dark' ? 'dark' : ''));
 </script>
