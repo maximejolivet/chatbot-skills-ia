@@ -78,22 +78,6 @@
           </div>
           <div class="flex shrink-0 items-center gap-1">
             <button
-              v-if="messages.length > 0"
-              type="button"
-              @click="exportConversation"
-              :title="$t('chatbot.exportConversation')"
-              class="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-accent"
-            >
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12l4.5 4.5m0 0l4.5-4.5m-4.5 4.5V3"
-                />
-              </svg>
-            </button>
-            <button
               type="button"
               @click="onClearMessages"
               :title="$t('chatbot.clearConversation')"
@@ -105,37 +89,6 @@
                   stroke-linejoin="round"
                   stroke-width="2"
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              @click="toggleColorScheme"
-              :title="
-                scheme === 'dark' ? $t('chatbot.themeToggleLight') : $t('chatbot.themeToggleDark')
-              "
-              class="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-accent"
-            >
-              <svg
-                v-if="scheme === 'light'"
-                class="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                />
-              </svg>
-              <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
                 />
               </svg>
             </button>
@@ -1119,14 +1072,6 @@
 
             <!-- Barre classique (widget flottant) -->
             <div v-else class="flex items-center gap-2">
-              <button
-                type="button"
-                @click="toggleEmojiPicker"
-                :aria-label="$t('chatbot.insertEmoji')"
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg text-muted-foreground transition-colors hover:bg-muted hover:text-accent"
-              >
-                🙂
-              </button>
               <textarea
                 ref="textareaRef"
                 :value="inputValue"
@@ -1454,15 +1399,17 @@ interface SlashCommand {
 const slashCommands = computed<SlashCommand[]>(() => {
   const commands: SlashCommand[] = [
     { name: 'effacer', description: t('chatbot.slashClear'), run: onClearMessages },
-    { name: 'theme', description: t('chatbot.slashTheme'), run: toggleColorScheme },
     { name: 'son', description: t('chatbot.slashSound'), run: toggleSoundMuted },
-    { name: 'exporter', description: t('chatbot.slashExport'), run: exportConversation },
     { name: 'cv', description: t('chatbot.slashCV'), run: openCV },
   ];
-  // Only exists as a concept for the floating widget -- the 'page' variant
-  // (/chat) already fills its container, see the header buttons above which
-  // omit this toggle there too.
-  if ('page' !== props.variant) {
+  // theme/exporter are hidden from the floating widget (see the header
+  // buttons above) but stay available on the 'page' variant.
+  if ('page' === props.variant) {
+    commands.push(
+      { name: 'theme', description: t('chatbot.slashTheme'), run: toggleColorScheme },
+      { name: 'exporter', description: t('chatbot.slashExport'), run: exportConversation },
+    );
+  } else {
     commands.push({
       name: 'ecran',
       description: t('chatbot.slashFullscreen'),
