@@ -26,23 +26,6 @@
         <p :class="['font-mono text-[10px]', isUser ? 'text-white/70' : 'text-muted-foreground']">
           {{ formattedTime }}
         </p>
-        <button v-if="!isTyping" type="button" :aria-pressed="message.pinned"
-          :title="message.pinned ? $t('messageBubble.unpin') : $t('messageBubble.pin')" :class="[
-            'flex h-5 w-5 items-center justify-center rounded-full transition-all sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100',
-            message.pinned
-              ? isUser
-                ? 'text-white sm:opacity-100'
-                : 'text-accent sm:opacity-100'
-              : isUser
-                ? 'text-white/70 hover:text-white'
-                : 'text-muted-foreground hover:text-accent',
-          ]" @click="$emit('pin', message.id)">
-          <svg class="h-3.5 w-3.5" :fill="message.pinned ? 'currentColor' : 'none'" stroke="currentColor"
-            viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
-          </svg>
-        </button>
         <button v-if="!isUser && !isTyping && speechSupported" type="button" :aria-pressed="isSpeaking"
           :title="isSpeaking ? $t('messageBubble.speakStop') : $t('messageBubble.speakStart')"
           class="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground transition-all hover:text-accent sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
@@ -281,7 +264,6 @@ const emit = defineEmits<{
   speak: [id: string, content: string];
   feedback: [id: string, feedback: 'positive' | 'negative' | null];
   regenerate: [];
-  pin: [id: string];
   identity: [submission: InterviewBookingSubmission];
   email: [submission: InterviewBookingSubmission];
 }>();

@@ -30,7 +30,6 @@ export interface Message {
   toolCalls?: ToolCallTrace[];
   tokenUsage?: TokenUsage;
   feedback?: 'positive' | 'negative' | null;
-  pinned?: boolean;
 }
 
 // Payload emitted by MessageBubble.vue's identity/email cards (see

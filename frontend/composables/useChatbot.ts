@@ -37,25 +37,6 @@ const persistLastMessagePreview = (message: Message) => {
   );
 };
 
-// Pinning is purely a client-side organizational aid (no backend field for
-// it) -- persisted as a bare set of message ids rather than on ChatbotState
-// so it survives independently of the in-memory thread and can be applied
-// back onto messages restored from the server (see restoreConversation).
-export const PINNED_MESSAGES_KEY = 'chatbot:pinned_messages';
-
-const readPinnedIds = (): Set<string> => {
-  try {
-    const raw = localStorage.getItem(PINNED_MESSAGES_KEY);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch {
-    return new Set();
-  }
-};
-
-const writePinnedIds = (ids: Set<string>) => {
-  localStorage.setItem(PINNED_MESSAGES_KEY, JSON.stringify([...ids]));
-};
-
 export const useChatbot = ({ apiUrl = '/api/chat', onMessage }: UseChatbotProps = {}) => {
   const {
     playMessageSound,
@@ -273,7 +254,6 @@ export const useChatbot = ({ apiUrl = '/api/chat', onMessage }: UseChatbotProps 
       });
 
       conversationId.value = Number(storedId);
-      const pinnedIds = readPinnedIds();
       state.value.messages = response.map((message) => ({
         id: String(message.id),
         content: message.content,
@@ -283,7 +263,6 @@ export const useChatbot = ({ apiUrl = '/api/chat', onMessage }: UseChatbotProps 
         toolCalls: message.metadata?.tool_calls,
         tokenUsage: message.metadata?.token_usage,
         feedback: message.feedback ?? null,
-        pinned: pinnedIds.has(String(message.id)),
       }));
       // Before scrollToBottom(), not after: it awaits nextTick() and
       // scrolls the DOM as it exists at that point -- if isRestoringHistory
@@ -568,7 +547,6 @@ export const useChatbot = ({ apiUrl = '/api/chat', onMessage }: UseChatbotProps 
     conversationId.value = null;
     localStorage.removeItem(CONVERSATION_ID_STORAGE_KEY);
     localStorage.removeItem(LAST_MESSAGE_PREVIEW_KEY);
-    localStorage.removeItem(PINNED_MESSAGES_KEY);
   };
 
   const setSelectedAgent = (agentId: number | null) => {
@@ -601,23 +579,6 @@ export const useChatbot = ({ apiUrl = '/api/chat', onMessage }: UseChatbotProps 
     }
   };
 
-  // Client-side only (see PINNED_MESSAGES_KEY above) -- no network call,
-  // unlike setFeedback.
-  const togglePin = (messageId: string) => {
-    const message = state.value.messages.find((m) => m.id === messageId);
-    if (!message) return;
-
-    message.pinned = !message.pinned;
-
-    const ids = readPinnedIds();
-    if (message.pinned) {
-      ids.add(messageId);
-    } else {
-      ids.delete(messageId);
-    }
-    writePinnedIds(ids);
-  };
-
   // Fetch agents, check LLM connectivity, and restore any previous
   // conversation on mount. restoreConversation is awaited before flushing
   // pendingMessage so a hero-bar question lands after history is loaded,
@@ -636,8 +597,6 @@ export const useChatbot = ({ apiUrl = '/api/chat', onMessage }: UseChatbotProps 
 
   return {
     messages: computed(() => state.value.messages),
-    pinnedMessages: computed(() => state.value.messages.filter((m) => m.pinned)),
-    togglePin,
     isLoading: computed(() => state.value.isLoading),
     inputValue: computed({
       get: () => state.value.inputValue,

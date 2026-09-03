@@ -78,33 +78,6 @@
           </div>
           <div class="flex shrink-0 items-center gap-1">
             <button
-              v-if="pinnedMessages.length > 0"
-              type="button"
-              @click="showPinnedList = !showPinnedList"
-              :aria-pressed="showPinnedList"
-              :title="$t('chatbot.pinnedMessages')"
-              :class="[
-                'relative flex h-8 w-8 items-center justify-center rounded-full transition-colors',
-                showPinnedList
-                  ? 'text-accent'
-                  : 'text-muted-foreground hover:bg-muted hover:text-accent',
-              ]"
-            >
-              <svg class="h-4 w-4" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
-                />
-              </svg>
-              <span
-                class="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground"
-              >
-                {{ pinnedMessages.length }}
-              </span>
-            </button>
-            <button
               v-if="messages.length > 0"
               type="button"
               @click="exportConversation"
@@ -381,31 +354,6 @@
             </svg>
           </button>
           <button
-            v-if="pinnedMessages.length > 0"
-            type="button"
-            @click="showPinnedList = !showPinnedList"
-            :aria-pressed="showPinnedList"
-            :title="$t('chatbot.pinnedMessages')"
-            :class="[
-              'relative flex h-9 w-9 items-center justify-center rounded-full transition-colors',
-              showPinnedList ? 'text-accent' : 'hover:bg-muted hover:text-accent',
-            ]"
-          >
-            <svg class="h-4 w-4" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
-              />
-            </svg>
-            <span
-              class="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent text-[9px] font-bold text-accent-foreground"
-            >
-              {{ pinnedMessages.length }}
-            </span>
-          </button>
-          <button
             v-if="messages.length > 0"
             type="button"
             @click="exportConversation"
@@ -441,15 +389,15 @@
 
       <!-- Colonne conversation : englobe l'en-tête compacte mobile, les
            messages, et tout ce qui se positionne en `absolute` par-dessus
-           (panneau épinglés, toasts, formulaire) -- `relative` sert de
-           point d'ancrage à ces derniers, indépendamment du panneau
-           d'identité ci-dessus sur desktop. -->
+           (toasts, formulaire) -- `relative` sert de point d'ancrage à ces
+           derniers, indépendamment du panneau d'identité ci-dessus sur
+           desktop. -->
       <div
         :class="[
           'flex flex-1 flex-col min-h-0',
-          // Anchors the absolutely-positioned overlays below (pinned panel,
-          // scroll-to-top, back-online toast, new-message pill) to this
-          // column specifically -- only needed for the page variant, where
+          // Anchors the absolutely-positioned overlays below (scroll-to-top,
+          // back-online toast, new-message pill) to this column
+          // specifically -- only needed for the page variant, where
           // <aside> sits beside it and would otherwise skew their
           // left-1/2 centering. For the widget, staying unpositioned here
           // lets them fall back to the outer panel (unchanged from before
@@ -613,30 +561,6 @@
                 {{ soundMuted ? $t('chatbot.soundUnmute') : $t('chatbot.soundMute') }}
               </button>
               <button
-                v-if="pinnedMessages.length > 0"
-                type="button"
-                class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-foreground hover:bg-muted"
-                @click="
-                  showPinnedList = !showPinnedList;
-                  showMobileMenu = false;
-                "
-              >
-                <svg
-                  class="h-4 w-4 shrink-0 text-muted-foreground"
-                  fill="currentColor"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
-                  />
-                </svg>
-                {{ $t('chatbot.pinnedMessages') }} ({{ pinnedMessages.length }})
-              </button>
-              <button
                 v-if="messages.length > 0"
                 type="button"
                 class="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm text-foreground hover:bg-muted"
@@ -780,7 +704,6 @@
                 </span>
               </div>
               <MessageBubble
-                :id="`msg-${item.message.id}`"
                 :message="item.message"
                 :plain="variant === 'page'"
                 :is-grouped="item.isGrouped"
@@ -796,7 +719,6 @@
                 @speak="speak"
                 @feedback="setFeedback"
                 @regenerate="regenerateLastReply"
-                @pin="togglePin"
                 @identity="onSubmitIdentity"
                 @email="onSubmitEmail"
               />
@@ -818,51 +740,6 @@
       <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {{ srAnnouncement }}
       </div>
-
-      <!-- Panneau des messages épinglés, ouvert depuis le bouton dans
-           l'en-tête (ou /epingles) -- cliquer un item fait défiler jusqu'à la
-           bulle correspondante (déjà dans le DOM, voir le :id sur
-           MessageBubble plus haut) plutôt que de la re-rendre séparément. -->
-      <Transition
-        enter-active-class="transition duration-150 ease-out"
-        enter-from-class="opacity-0 translate-y-1"
-        enter-to-class="opacity-100 translate-y-0"
-        leave-active-class="transition duration-100 ease-in"
-        leave-from-class="opacity-100 translate-y-0"
-        leave-to-class="opacity-0 translate-y-1"
-      >
-        <div
-          v-if="showPinnedList"
-          class="absolute bottom-20 left-3 z-30 max-h-72 w-72 overflow-y-auto rounded-2xl border border-border bg-card p-1.5 shadow-xl sm:left-4"
-        >
-          <div
-            v-for="pinned in pinnedMessages"
-            :key="pinned.id"
-            class="group/pin flex items-start gap-2 rounded-xl px-2.5 py-2 hover:bg-muted"
-          >
-            <button type="button" class="min-w-0 flex-1 text-left" @click="jumpToPinned(pinned.id)">
-              <p class="truncate text-xs font-medium text-card-foreground">
-                {{ 'user' === pinned.role ? '🧑' : '🤖' }} {{ pinned.content }}
-              </p>
-            </button>
-            <button
-              type="button"
-              :title="$t('messageBubble.unpin')"
-              class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/pin:opacity-100"
-              @click="togglePin(pinned.id)"
-            >
-              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </Transition>
 
       <!-- Bouton "remonter en haut" -- symétrique de la pastille "nouveau
            message" plus bas, visible dès que le visiteur a défilé assez loin
@@ -1406,8 +1283,6 @@ const {
   clearMessages,
   exportConversation,
   openCV,
-  pinnedMessages,
-  togglePin,
   messagesEndRef,
   autoScroll,
   scrollToBottom,
@@ -1583,13 +1458,6 @@ const slashCommands = computed<SlashCommand[]>(() => {
     { name: 'son', description: t('chatbot.slashSound'), run: toggleSoundMuted },
     { name: 'exporter', description: t('chatbot.slashExport'), run: exportConversation },
     { name: 'cv', description: t('chatbot.slashCV'), run: openCV },
-    {
-      name: 'epingles',
-      description: t('chatbot.slashPinned'),
-      run: () => {
-        showPinnedList.value = !showPinnedList.value;
-      },
-    },
   ];
   // Only exists as a concept for the floating widget -- the 'page' variant
   // (/chat) already fills its container, see the header buttons above which
@@ -1668,31 +1536,11 @@ const jumpToLatest = () => {
   scrollToBottom();
 };
 
-// Pinned messages panel (header button, only shown once there's at least
-// one) -- jumping to a pin scrolls the already-rendered bubble into view via
-// its DOM id (see the MessageBubble :id binding above) rather than
-// re-fetching/re-rendering anything.
-const showPinnedList = ref(false);
-
 // Mobile/tablette (plein écran, < lg) : le panneau d'identité desktop (voir
 // <aside> dans le template) n'a pas la place de s'afficher, donc ses
-// actions secondaires (thème, son, épinglés, export, effacer) vivent dans
-// ce menu ••• de l'en-tête compacte à la place.
+// actions secondaires (thème, son, export, effacer) vivent dans ce menu •••
+// de l'en-tête compacte à la place.
 const showMobileMenu = ref(false);
-
-// Unpinning the last item from inside the panel itself (its own unpin
-// button, see the v-for below) would otherwise leave an empty panel open
-// with no way to close it -- the header toggle button that normally does
-// that is itself `v-if="pinnedMessages.length > 0"`, so it disappears at
-// the same moment.
-watch(pinnedMessages, (list) => {
-  if (0 === list.length) showPinnedList.value = false;
-});
-
-const jumpToPinned = (id: string) => {
-  showPinnedList.value = false;
-  document.getElementById(`msg-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-};
 
 // `theme` prop is now only the lowest-priority fallback -- the visitor's own
 
@@ -1966,8 +1814,6 @@ const onKeydown = (e: KeyboardEvent) => {
     showEmojiPicker.value = false;
   } else if (showSlashMenu.value) {
     inputValue.value = '';
-  } else if (showPinnedList.value) {
-    showPinnedList.value = false;
   } else if (isLoading.value) {
     cancelReply();
   }

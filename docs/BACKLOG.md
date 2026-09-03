@@ -6,7 +6,7 @@
 
 ## Sommaire
 
-75 faites, 8 retirées/rejetées, 2 restantes. Détail complet (rationale, notes de vérification) dans les sections ci-dessous.
+74 faites, 9 retirées/rejetées, 2 restantes. Détail complet (rationale, notes de vérification) dans les sections ci-dessous.
 
 | Statut    | Domaine  | Fonctionnalité                                                  | Résumé                                                                                                                          |
 | --------- | -------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
@@ -60,7 +60,6 @@
 | ✅ Fait    | Frontend | Avatar animé                                                    | animation `breathe` (Tailwind, scale 1→1.06→1, 4s, `motion-reduce:animate-none`) sur les avatars "M" de l'en-tête et de…        |
 | ✅ Fait    | Frontend | Effet machine à écrire réel                                     | les deltas de streaming arrivent parfois par rafales (un mot entier d'un coup), rendu saccadé. `MessageBubble.vue` fait…        |
 | ✅ Fait    | Frontend | Export de conversation                                          | `useChatbot().exportConversation()` génère un `Blob` + `<a download>` à partir de `state.messages` (auteur, horodatage,…        |
-| ✅ Fait    | Frontend | Épingler un message                                             | bouton sur chaque bulle (question ou réponse), persistance purement client (`localStorage`, aucun champ backend), ré-appliqué…  |
 | ✅ Fait    | Frontend | Aperçu au survol de la bulle flottante fermée                   | `useChatbot.ts` sauvegarde un extrait (120 caractères) de chaque réponse assistant en `localStorage`, lu par…                   |
 | ✅ Fait    | Frontend | Barre de progression indéterminée                               | segment glissant en boucle (style GitHub/YouTube) posé sur le bord supérieur du panneau pendant `isLoading`, en plus du…        |
 | ✅ Fait    | Frontend | Célébration après réservation confirmée                         | effet ponctuel (pop + anneau de couleur accent qui s'étend et s'efface, une seule fois à l'insertion) sur la carte "✅…          |
@@ -75,6 +74,7 @@
 | 🚫 Retiré  | Frontend | Carte de contact `/contact`                                     | implémentée puis retirée à la demande explicite, remplacée par `/cv` (voir plus bas) plutôt que par un équivalent direct.       |
 | 🚫 Retiré  | Frontend | Partage natif d'une réponse                                     | implémentée puis retirée à la demande explicite, sans remplacement.                                                             |
 | 🚫 Retiré  | Frontend | Mode mains-libres                                               | implémentée puis retirée à la demande explicite, sans remplacement.                                                             |
+| 🚫 Retiré  | Frontend | Épingler un message                                             | implémentée (bouton sur chaque bulle + panneau dédié) puis retirée à la demande explicite (2026-09-03), sans remplacement.      |
 | ⏳ À faire | Backend  | 2FA sur `/admin`                                                | aujourd'hui mot de passe seul (firewall `form_login` classique).                                                                |
 | ⏳ À faire | Backend  | CAPTCHA/Turnstile léger sur `quick-send`                        | le seul endpoint pensé pour des embedders tiers, donc le plus exposé à un abus anonyme malgré le rate-limiting déjà en place.   |
 | ⏳ À faire | Backend  | Valider `start_time` avant l'appel Cal.eu                       | l'agent peut affirmer qu'un créneau est disponible sans support réel dans les tool calls de la conversation ; Cal.eu valide bien côté serveur au moment de réserver, mais le message affiché au recruteur avant ça peut être trompeur.        |
@@ -1216,12 +1216,17 @@ Le widget actuel n'exploite qu'une fraction de ce que l'API backend expose déj�
 - [x] ~~Question surprise~~ (bouton dé dans les barres de saisie, envoyait une
       FAQ aléatoire) — implémentée puis retirée à la demande explicite,
       sans remplacement.
-- [x] **Épingler un message** — bouton sur chaque bulle (question ou
-      réponse), persistance purement client (`localStorage`, aucun champ
-      backend), ré-appliqué à la restauration d'une conversation. Panneau
-      accessible depuis l'en-tête (badge avec le nombre d'épingles) listant
-      les messages épinglés, clic pour défiler jusqu'à la bulle via son id
-      DOM (`msg-{id}`).
+- [x] ~~Épingler un message~~ (bouton sur chaque bulle, persistance purement
+      client `localStorage` sans champ backend, panneau accessible depuis
+      l'en-tête listant les épingles avec un clic pour défiler jusqu'à la
+      bulle via son id DOM `msg-{id}`) — implémentée puis retirée à la
+      demande explicite (2026-09-03), sans remplacement. `docs/frontend/
+      SPECIFICATION.md` corrigé pour refléter le retrait (liste des actions
+      de la nav collante, ordre des couches fermées par Échap) ; l'entrée
+      juste en dessous, sur le bug du panneau qui restait ouvert et vide,
+      décrit une fonctionnalité qui n'existe plus mais est volontairement
+      laissée telle quelle comme trace historique, même logique que pour le
+      plein écran plus haut.
 - [x] **Aperçu au survol de la bulle flottante fermée** — `useChatbot.ts`
       sauvegarde un extrait (120 caractères) de chaque réponse assistant en
       `localStorage`, lu par `StickyChatBubble.vue` au montage pour remplacer

@@ -1,12 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { registerEndpoint, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { withSetup } from '../test/withSetup';
-import {
-  useChatbot,
-  CONVERSATION_ID_STORAGE_KEY,
-  LAST_MESSAGE_PREVIEW_KEY,
-  PINNED_MESSAGES_KEY,
-} from './useChatbot';
+import { useChatbot, CONVERSATION_ID_STORAGE_KEY, LAST_MESSAGE_PREVIEW_KEY } from './useChatbot';
 import type { ChatbotState } from '../types/index';
 
 // Real WebAudio isn't available in the test environment (happy-dom); the
@@ -685,58 +680,6 @@ describe('useChatbot: setFeedback', () => {
     await chatbot.setFeedback('msg-1', 'positive');
 
     expect(chatbot.messages.value[0].feedback).toBeNull();
-    wrapper.unmount();
-  });
-});
-
-describe('useChatbot: togglePin', () => {
-  afterEach(() => {
-    localStorage.removeItem(PINNED_MESSAGES_KEY);
-  });
-
-  it('pins and unpins a message, exposing it via pinnedMessages', async () => {
-    const [chatbot, wrapper] = await withSetup(() => useChatbot());
-    useState<ChatbotState>('chatbot-state').value.messages = [
-      { id: 'msg-1', content: 'Réponse', role: 'assistant', timestamp: new Date() },
-    ];
-
-    chatbot.togglePin('msg-1');
-    expect(chatbot.messages.value[0].pinned).toBe(true);
-    expect(chatbot.pinnedMessages.value.map((m) => m.id)).toEqual(['msg-1']);
-    expect(JSON.parse(localStorage.getItem(PINNED_MESSAGES_KEY) ?? '[]')).toEqual(['msg-1']);
-
-    chatbot.togglePin('msg-1');
-    expect(chatbot.messages.value[0].pinned).toBe(false);
-    expect(chatbot.pinnedMessages.value).toEqual([]);
-    expect(JSON.parse(localStorage.getItem(PINNED_MESSAGES_KEY) ?? '[]')).toEqual([]);
-
-    wrapper.unmount();
-  });
-
-  it('is a no-op for an unknown message id', async () => {
-    const [chatbot, wrapper] = await withSetup(() => useChatbot());
-    useState<ChatbotState>('chatbot-state').value.messages = [
-      { id: 'msg-1', content: 'Réponse', role: 'assistant', timestamp: new Date() },
-    ];
-
-    chatbot.togglePin('does-not-exist');
-
-    expect(chatbot.pinnedMessages.value).toEqual([]);
-    wrapper.unmount();
-  });
-
-  it('re-applies pinned status when a conversation is restored', async () => {
-    localStorage.setItem(CONVERSATION_ID_STORAGE_KEY, '55');
-    localStorage.setItem(PINNED_MESSAGES_KEY, JSON.stringify(['9']));
-    registerEndpoint('/api/conversations/55/messages', () => [
-      { id: 9, role: 'assistant', content: 'Important', created_at: '2026-08-24T10:00:00+00:00' },
-      { id: 10, role: 'user', content: 'Autre chose', created_at: '2026-08-24T10:00:05+00:00' },
-    ]);
-
-    const [chatbot, wrapper] = await withSetup(() => useChatbot());
-    await vi.waitFor(() => expect(chatbot.messages.value).toHaveLength(2));
-
-    expect(chatbot.pinnedMessages.value.map((m) => m.id)).toEqual(['9']);
     wrapper.unmount();
   });
 });
