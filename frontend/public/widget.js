@@ -13,16 +13,16 @@
  *
  * Either way this injects an <iframe src="<origin>/embed"> (pages/embed.vue,
  * which mounts only <StickyChatBubble embedded [headless] />) fixed in the
- * bottom-right corner. Sized to match StickyChatBubble's own real rendered
- * box, reported back via a 'size' postMessage (a ResizeObserver there,
- * covering both open and closed) -- not a fixed guess: a guess drifts from
- * reality in easy-to-miss ways (headless mode has no button row, so its
- * closed size is smaller than default mode's closed size; open differs by
- * conversation/theme too), and every bit of drift shows up as a stretch of
- * plain iframe canvas past wherever the panel itself actually reaches.
- * FALLBACK_CLOSED_SIZE/FALLBACK_OPEN_SIZE below are only what's applied
- * before that first real measurement arrives. In triggered mode the
- * closed box is 0x0 --
+ * bottom-right corner. The closed box is sized to match StickyChatBubble's
+ * own real rendered box, reported back via a 'size' postMessage (a
+ * ResizeObserver there) -- not a fixed guess: a guess drifts from reality in
+ * easy-to-miss ways (headless mode has no button row, so its closed size is
+ * smaller than default mode's), and every bit of drift shows up as a
+ * stretch of plain iframe canvas past wherever the bubble itself actually
+ * reaches. The open panel stays on the static FALLBACK_OPEN_SIZE formula
+ * below instead -- see the 'size' handler for why measuring it the same way
+ * is circular. FALLBACK_CLOSED_SIZE is what's applied before that first
+ * real measurement arrives. In triggered mode the closed box is 0x0 --
  * StickyChatBubble's own bubble/tab is hidden there (?headless=1), so
  * there's nothing of its own to show or click until the host's button
  * opens it.
@@ -124,15 +124,23 @@
       }
 
       if ('size' === data.type) {
-        var size = toCssSize(data.width, data.height);
-        if (data.open) {
-          measuredOpenSize = size;
-        } else {
-          measuredClosedSize = size;
-        }
-        // Live-update immediately only if this size report is for whichever
-        // state (open/closed) the iframe is currently actually showing.
-        if (data.open === isOpen) applySize(iframe, size);
+        // Open-state reports are intentionally ignored, both dimensions --
+        // measuredOpenSize stays on FALLBACK_OPEN_SIZE's static formula.
+        // Chatbot.vue caps the open panel at
+        // h-[min(30rem,calc(100vh-6rem))] w-[min(28rem,calc(100vw-2rem))],
+        // and that vw/vh is THIS iframe's own viewport -- the very thing
+        // this script would be setting from the measurement. Applying a
+        // measured open size feeds back into that formula: apply it, the
+        // panel's vw/vh shrinks, its measured size shrinks with it, apply
+        // that, and so on -- the panel collapses to nothing a couple of
+        // round trips in. The closed box has no such self-reference
+        // (button + tooltip, fixed pixel sizes only), so it alone is safe
+        // to take from the live measurement.
+        if (data.open) return;
+        measuredClosedSize = toCssSize(data.width, data.height);
+        // Live-update immediately only if the iframe is currently actually
+        // showing the closed state.
+        if (!isOpen) applySize(iframe, measuredClosedSize);
       }
     });
 

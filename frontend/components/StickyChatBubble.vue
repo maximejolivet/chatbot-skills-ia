@@ -239,26 +239,30 @@ const onHostMessage = (e: MessageEvent) => {
 onMounted(() => window.addEventListener('message', onHostMessage));
 onBeforeUnmount(() => window.removeEventListener('message', onHostMessage));
 
-// Reports this component's actual rendered box size to public/widget.js so
-// it can size the iframe to match reality instead of guessing fixed pixel
-// dimensions -- a guess drifts from the truth in exactly the ways that are
-// easy to miss (headless mode has no button row, so its "closed" size is
-// smaller than default mode's; the "open" panel's real height also depends
-// on which of those two the guess was tuned for), and every drift shows up
-// as a stretch of plain iframe canvas the panel itself doesn't reach.
+// Reports this component's actual rendered CLOSED box size to
+// public/widget.js so it can size the iframe to match reality instead of
+// guessing fixed pixel dimensions -- a guess drifts from the truth in
+// easy-to-miss ways (headless mode has no button row, so its closed size is
+// smaller than default mode's), and every drift shows up as a stretch of
+// plain iframe canvas the bubble itself doesn't reach. Closed only, not
+// open: the open panel's own width/height CSS (Chatbot.vue) is itself
+// capped against this iframe's viewport, so reporting its rendered size
+// back to widget.js -- which sets that very viewport from the report --
+// would be circular (widget.js ignores it regardless; see its 'size'
+// handler).
 const wrapperRef = ref<HTMLElement | null>(null);
 let resizeObserver: ResizeObserver | null = null;
 
 onMounted(() => {
   if (!props.embedded || !wrapperRef.value) return;
   const report = () => {
-    if (!wrapperRef.value) return;
+    if (!wrapperRef.value || isOpen.value) return;
     const rect = wrapperRef.value.getBoundingClientRect();
     window.parent.postMessage(
       {
         source: 'chatbot-ia-widget',
         type: 'size',
-        open: isOpen.value,
+        open: false,
         width: Math.ceil(rect.width),
         height: Math.ceil(rect.height),
       },
