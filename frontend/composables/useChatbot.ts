@@ -43,6 +43,7 @@ export const useChatbot = ({ apiUrl = '/api/chat', onMessage }: UseChatbotProps 
     muted: soundMuted,
     toggleMuted: toggleSoundMuted,
   } = useNotificationSound();
+  const { flash: flashTabTitle } = useTabTitleAlert();
   const { t } = useI18n();
 
   // useState (not ref): keeps the conversation in memory if the visitor
@@ -157,17 +158,50 @@ export const useChatbot = ({ apiUrl = '/api/chat', onMessage }: UseChatbotProps 
   // user gesture (send), which is what most browsers require anyway.
   let notificationPermissionRequested = false;
 
+  // pages/embed.vue -- public/widget.js's real production mount point -- is
+  // always a cross-origin iframe on a third-party host page, and Chrome/
+  // Firefox have deliberately disallowed Notification.requestPermission()
+  // there entirely (no `allow` attribute can restore it -- unlike camera/
+  // mic, the Notifications API has no permission-delegation model at all;
+  // see chromium.org/Home/chromium-security/deprecating-permissions-in-
+  // cross-origin-iframes). Relayed to the host page instead, same as
+  // useTabTitleAlert's title flash -- see widget.js's 'notify-permission'
+  // and 'notify' listeners, which own the actual permission/Notification
+  // calls (from a real top-level document, where they're unrestricted)
+  // from here on.
+  const inIframe = 'undefined' !== typeof window && window.self !== window.top;
+
   const ensureNotificationPermission = () => {
     if (notificationPermissionRequested) return;
     notificationPermissionRequested = true;
+
+    if (inIframe) {
+      window.parent.postMessage({ source: 'chatbot-ia-widget', type: 'notify-permission' }, '*');
+      return;
+    }
 
     if ('undefined' === typeof Notification || 'default' !== Notification.permission) return;
     Notification.requestPermission();
   };
 
   const notifyIfHidden = (message: Message) => {
+    if ('undefined' === typeof document) return;
+
+    if (inIframe) {
+      window.parent.postMessage(
+        {
+          source: 'chatbot-ia-widget',
+          type: 'notify',
+          title: t('chatbot.defaultTitle'),
+          body: message.content.slice(0, 120),
+        },
+        '*',
+      );
+      return;
+    }
+
+    if (!document.hidden) return;
     if ('undefined' === typeof Notification || 'granted' !== Notification.permission) return;
-    if ('undefined' === typeof document || !document.hidden) return;
 
     const notification = new Notification(t('chatbot.defaultTitle'), {
       body: message.content.slice(0, 120),
@@ -466,6 +500,7 @@ export const useChatbot = ({ apiUrl = '/api/chat', onMessage }: UseChatbotProps 
       state.value.isLoading = false;
       playMessageSound();
       notifyIfHidden(assistantMessage);
+      flashTabTitle(t('chatbot.newMessage'));
 
       persistLastMessagePreview(assistantMessage);
       onMessage?.(assistantMessage);

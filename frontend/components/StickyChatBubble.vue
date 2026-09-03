@@ -64,6 +64,7 @@
         :class="[
           'pointer-events-none translate-x-2 whitespace-nowrap rounded-full bg-card px-3.5 py-2 text-sm font-medium text-card-foreground opacity-0 shadow-lg shadow-foreground/10 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100',
           lastMessagePreview ? 'max-w-xs truncate' : '',
+          showProactiveTeaser ? '!translate-x-0 !opacity-100' : '',
         ]"
       >
         {{ lastMessagePreview ?? $t('stickyBubble.start') }}
@@ -160,10 +161,43 @@ const showFirstVisitBadge = ref(false);
 // plain "start a conversation" tooltip below.
 const lastMessagePreview = ref<string | null>(null);
 
+// Same first-visit window as showFirstVisitBadge above, but forces the
+// hover-only teaser span open on its own for a few seconds instead of
+// waiting for a hover/focus that a visitor who hasn't noticed the bubble
+// yet will never trigger -- the badge alone is easy to miss outside
+// central vision. Auto-dismisses itself so it doesn't linger as a
+// permanent, naggy tooltip; interacting with the bubble also cancels it
+// via onBubbleClick below.
+const showProactiveTeaser = ref(false);
+const PROACTIVE_TEASER_DELAY_MS = 2500;
+const PROACTIVE_TEASER_VISIBLE_MS = 8000;
+let proactiveTeaserTimers: ReturnType<typeof setTimeout>[] = [];
+
+const clearProactiveTeaserTimers = () => {
+  proactiveTeaserTimers.forEach(clearTimeout);
+  proactiveTeaserTimers = [];
+};
+
 onMounted(() => {
   showFirstVisitBadge.value = localStorage.getItem(BUBBLE_SEEN_KEY) !== '1';
   lastMessagePreview.value = localStorage.getItem(LAST_MESSAGE_PREVIEW_KEY);
+
+  if (showFirstVisitBadge.value) {
+    proactiveTeaserTimers.push(
+      setTimeout(() => {
+        if (isOpen.value) return;
+        showProactiveTeaser.value = true;
+        proactiveTeaserTimers.push(
+          setTimeout(() => {
+            showProactiveTeaser.value = false;
+          }, PROACTIVE_TEASER_VISIBLE_MS),
+        );
+      }, PROACTIVE_TEASER_DELAY_MS),
+    );
+  }
 });
+
+onBeforeUnmount(clearProactiveTeaserTimers);
 
 // A conversation already exists (id persisted by useChatbot's
 // ensureConversation) -- send the visitor to /chat to pick it back up there
@@ -175,6 +209,8 @@ const onBubbleClick = () => {
     showFirstVisitBadge.value = false;
     localStorage.setItem(BUBBLE_SEEN_KEY, '1');
   }
+  clearProactiveTeaserTimers();
+  showProactiveTeaser.value = false;
 
   if (isOpen.value) {
     isOpen.value = false;

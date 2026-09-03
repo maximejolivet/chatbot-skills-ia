@@ -65,6 +65,35 @@
   var measuredOpenSize = FALLBACK_OPEN_SIZE;
   var isOpen = false;
 
+  // Flashes THIS (host) page's own tab title on a 'title-flash' message from
+  // the iframe -- composables/useTabTitleAlert.ts can't touch it directly,
+  // since document.title inside the iframe is invisible to the visitor.
+  // document.hidden here is the host's own, real visibility state (more
+  // trustworthy than relaying the iframe's), so it alone decides whether to
+  // actually start flashing; the host's own visibilitychange listener below
+  // is likewise the sole authority on when to stop, decoupled from whatever
+  // the iframe does on its side.
+  var TITLE_FLASH_INTERVAL_MS = 1500;
+  var originalHostTitle = null;
+  var titleFlashInterval = null;
+  var titleFlashOn = false;
+
+  function stopTitleFlash() {
+    if (titleFlashInterval) {
+      clearInterval(titleFlashInterval);
+      titleFlashInterval = null;
+    }
+    if (null !== originalHostTitle) {
+      document.title = originalHostTitle;
+      originalHostTitle = null;
+    }
+    titleFlashOn = false;
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) stopTitleFlash();
+  });
+
   function applySize(iframe, size) {
     iframe.style.width = size.width;
     iframe.style.height = size.height;
@@ -141,6 +170,40 @@
         // Live-update immediately only if the iframe is currently actually
         // showing the closed state.
         if (!isOpen) applySize(iframe, measuredClosedSize);
+        return;
+      }
+
+      if ('title-flash' === data.type) {
+        if (!document.hidden) return;
+        if (null === originalHostTitle) originalHostTitle = document.title;
+        if (titleFlashInterval) clearInterval(titleFlashInterval);
+        titleFlashOn = false;
+        titleFlashInterval = setInterval(function () {
+          titleFlashOn = !titleFlashOn;
+          document.title = titleFlashOn ? data.text : originalHostTitle || document.title;
+        }, TITLE_FLASH_INTERVAL_MS);
+        return;
+      }
+
+      // Desktop notification for a reply that arrived while the visitor had
+      // switched away -- relayed here because Notification.requestPermission()
+      // is flat-out disallowed inside the iframe itself (a cross-origin-iframe
+      // restriction with no `allow` attribute workaround, unlike camera/mic --
+      // see composables/useChatbot.ts's notifyIfHidden comment). Runs from
+      // this real top-level document instead, where it's unrestricted.
+      if ('notify-permission' === data.type) {
+        if ('undefined' === typeof Notification || 'default' !== Notification.permission) return;
+        Notification.requestPermission();
+        return;
+      }
+
+      if ('notify' === data.type) {
+        if ('undefined' === typeof Notification || 'granted' !== Notification.permission) return;
+        var notification = new Notification(data.title, { body: data.body });
+        notification.onclick = function () {
+          window.focus();
+          notification.close();
+        };
       }
     });
 
