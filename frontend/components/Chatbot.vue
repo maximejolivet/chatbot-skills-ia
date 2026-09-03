@@ -1016,7 +1016,7 @@
                   :aria-pressed="isListening"
                   :title="isListening ? $t('chatbot.micStop') : $t('chatbot.micStart')"
                   :class="[
-                    'flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                    'hidden h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 lg:flex',
                     isListening
                       ? 'animate-pulse-dot motion-reduce:animate-none text-destructive'
                       : 'text-muted-foreground hover:text-accent',
